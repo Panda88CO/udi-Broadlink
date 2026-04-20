@@ -4,92 +4,66 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import json
-from typing import Dict
 
 
-@dataclass
+@dataclass(slots=True)
 class PluginConfig:
     """Runtime configuration loaded from PG3 custom parameters."""
 
-    user_id: str = ""
-    user_password: str = ""
     hub_ip: str = ""
-    wifi_ssid: str = ""
-    wifi_password: str = ""
-    wifi_security_mode: int = 4
-    setup_ip: str = "255.255.255.255"
-    ir_codes: Dict[str, str] = field(default_factory=dict)
-    rf_codes: Dict[str, str] = field(default_factory=dict)
+    ignored_hub_ips: list[str] = field(default_factory=list)
+
+    @property
+    def has_hub(self) -> bool:
+        return bool(self.hub_ip)
 
 
-def _normalize_code_key(key: str) -> str:
-    """Normalize user code names to stable labels."""
-    return str(key).strip()
-
-
-def parse_code_map(raw_value: str) -> Dict[str, str]:
-    """Parse codes from JSON or line format.
-
-    Supported formats:
-    1) JSON object string:
-       {"TV Power": "2600...", "AMP VolUp": "b64:AAEC..."}
-    2) Multi-line key/value pairs:
-       TV Power=2600...
-       AMP VolUp=b64:AAEC...
-    """
+def parse_ip_list(raw_value) -> list[str]:
+    """Parse hub IPs from JSON list, CSV, or newline-delimited text."""
     if not raw_value:
-        return {}
+        return []
 
-    text = str(raw_value).strip()
-    if not text:
-        return {}
+    if isinstance(raw_value, list):
+        candidates = raw_value
+    elif isinstance(raw_value, tuple):
+        candidates = list(raw_value)
+    else:
+        text = str(raw_value).strip()
+        if not text:
+            return []
 
-    parsed: Dict[str, str] = {}
+        if text.startswith("["):
+            data = json.loads(text)
+            if not isinstance(data, list):
+                raise ValueError("HUB_IPS JSON must be a list")
+            candidates = data
+        else:
+            candidates = []
+            for line in text.splitlines():
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#"):
+                    continue
+                candidates.extend(part.strip() for part in stripped.split(","))
 
-    if text.startswith("{"):
-        data = json.loads(text)
-        if not isinstance(data, dict):
-            raise ValueError("Code map JSON must be an object")
-        for key, value in data.items():
-            norm_key = _normalize_code_key(key)
-            if not norm_key:
-                continue
-            parsed[norm_key] = str(value).strip()
-        return parsed
+    parsed: list[str] = []
+    seen: set[str] = set()
 
-    for line in text.splitlines():
-        striped = line.strip()
-        if not striped or striped.startswith("#"):
+    for candidate in candidates:
+        value = str(candidate).strip()
+        if not value or value in seen:
             continue
-        if "=" not in striped:
-            raise ValueError(f"Invalid code line (missing '='): {striped}")
-        key, value = striped.split("=", 1)
-        norm_key = _normalize_code_key(key)
-        if not norm_key:
-            continue
-        parsed[norm_key] = value.strip()
+        seen.add(value)
+        parsed.append(value)
 
     return parsed
 
 
-def build_config(custom_params: dict) -> PluginConfig:
+def build_config(custom_params: dict | None) -> PluginConfig:
     """Build PluginConfig from raw PG3 custom params."""
     params = custom_params or {}
-
-    wifi_security_mode = 4
-    try:
-        wifi_security_mode = int(params.get("WIFI_SECURITY_MODE", 4))
-    except (TypeError, ValueError):
-        wifi_security_mode = 4
-
+    raw_hubs = params.get("hub_ip", params.get("hub_ips", params.get("HUB_IP", params.get("HUB_IPS", ""))))
+    hub_ips = parse_ip_list(raw_hubs)
     return PluginConfig(
-        user_id=str(params.get("USER_ID", "")).strip(),
-        user_password=str(params.get("USER_PASSWORD", "")).strip(),
-        hub_ip=str(params.get("HUB_IP", "")).strip(),
-        wifi_ssid=str(params.get("WIFI_SSID", "")).strip(),
-        wifi_password=str(params.get("WIFI_PASSWORD", "")).strip(),
-        wifi_security_mode=wifi_security_mode,
-        setup_ip=str(params.get("SETUP_IP", "255.255.255.255")).strip() or "255.255.255.255",
-        ir_codes=parse_code_map(str(params.get("IR_CODES", ""))),
-        rf_codes=parse_code_map(str(params.get("RF_CODES", ""))),
+        hub_ip=hub_ips[0] if hub_ips else "",
+        ignored_hub_ips=hub_ips[1:],
     )

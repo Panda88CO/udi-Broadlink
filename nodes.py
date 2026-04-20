@@ -1,18 +1,112 @@
-"""Node classes for Broadlink PG3 plugin."""
+"""Node classes for the Broadlink PG3 plugin single-hub rewrite."""
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import time
-from typing import Dict, List
 
 import udi_interface
 
-from broadlink_client import BroadlinkHubClient
+from broadlink_client import BroadlinkHubClient, BroadlinkHubInfo
 from config_parser import PluginConfig, build_config
 
 LOGGER = udi_interface.LOGGER
 Custom = udi_interface.Custom
-VERSION = "0.1.0"
+VERSION = "0.2.0"
+
+PROFILE_DEFINITION = {
+    "plugin": {
+        "name": "Broadlink Remote",
+        "description": "Broadlink PG3 node server",
+        "publisher": "chris",
+        "language": "python3",
+        "executableName": "udibroadlink.py",
+        "installScript": "install.sh",
+        "documentationLink": "README.md",
+        "licenseLink": "LICENSE.md",
+        "shortPoll": 60,
+        "longPoll": 300,
+        "profileVersion": VERSION,
+        "initialLogLevel": "INFO",
+        "enableOAUTH2": False,
+        "worksOnPolisy": True,
+        "worksOnEisy": True,
+        "requiresIoXAccess": False,
+        "requirements": [],
+        "version": VERSION,
+    },
+    "editors": [
+        {"id": "status_index", "uom": "Index | 25", "min": 0, "max": 2},
+        {"id": "binary_index", "uom": "Index | 25", "min": 0, "max": 1},
+        {"id": "raw_value", "uom": "Raw Value | 56", "min": 0, "max": 65535},
+        {"id": "timestamp", "uom": "Unix Timestamp | 151", "min": 0, "max": 4294967295},
+    ],
+    "nodedefs": [
+        {
+            "id": "setup",
+            "name": "Broadlink Hub",
+            "icon": "GenericCtl",
+            "properties": [
+                {
+                    "id": "ST",
+                    "name": "Status",
+                    "editor": {"idref": "status_index"},
+                    "is_settable": False,
+                },
+                {
+                    "id": "GV0",
+                    "name": "Device Type",
+                    "editor": {"idref": "raw_value"},
+                    "is_settable": False,
+                },
+                {
+                    "id": "GV1",
+                    "name": "Connected",
+                    "editor": {"idref": "binary_index"},
+                    "is_settable": False,
+                },
+                {
+                    "id": "TIME",
+                    "name": "Last Update",
+                    "editor": {"idref": "timestamp"},
+                    "is_settable": False,
+                },
+            ],
+            "commands": {
+                "accepts": [
+                    {"id": "QUERY", "name": "Query"},
+                    {"id": "UPDATE", "name": "Update"},
+                ],
+                "sends": [
+                    {"id": "DON", "name": "Heartbeat On"},
+                    {"id": "DOF", "name": "Heartbeat Off"},
+                ],
+            },
+        },
+    ],
+}
+
+TYPED_PARAMETER_DEFINITIONS = [
+    {
+        "name": "hub_ip",
+        "title": "Broadlink Hub IP Address",
+        "type": "STRING",
+        "desc": "Enter one already-provisioned Broadlink hub IP address for this PG3 node server instance.",
+    }
+]
+
+
+@dataclass(slots=True)
+class HubBlueprint:
+    """Runtime representation of the configured hub for this PG3 instance."""
+
+    ip_address: str
+    display_name: str
+    mac_address: str = ""
+    device_type: str = "unknown"
+    model_name: str = "unknown"
+    connected: bool = False
+    last_error: str = ""
 
 
 class BaseNode(udi_interface.Node):
@@ -25,58 +119,10 @@ class BaseNode(udi_interface.Node):
             self.setDriver(driver, value, True, force, uom=uom)
 
 
-class BroadlinkCodeNode(BaseNode):
-    """Subnode representing one IR or RF code."""
+class BroadlinkCapabilityNode(BaseNode):
+    """Placeholder capability node for a later implementation pass."""
 
-    id = "blircode"
-    drivers = [
-        {"driver": "ST", "value": 0, "uom": 25},
-        {"driver": "GV30", "value": 0, "uom": 25},
-        {"driver": "TIME", "value": int(time.time()), "uom": 151},
-    ]
-
-    def __init__(self, polyglot, primary, address: str, name: str, mode: str, code_name: str, controller):
-        super().__init__(polyglot, primary, address, name)
-        self.mode = mode
-        self.code_name = code_name
-        self.controller = controller
-        if self.mode == "rf":
-            self.id = "blrfcode"
-
-    def set_code_name(self, code_name: str) -> None:
-        self.code_name = code_name
-
-    def start(self):
-        self._set("GV30", 1)
-        self._set("TIME", int(time.time()), 151)
-
-    def stop(self):
-        self._set("GV30", 0)
-
-    def query(self, command=None):
-        self._set("TIME", int(time.time()), 151)
-
-    def send_code(self, command=None):
-        try:
-            self.controller.send_configured_code(self.mode, self.code_name)
-            self._set("ST", 1)
-            self._set("GV30", 1)
-        except Exception as err:
-            LOGGER.error("Failed sending %s code '%s': %s", self.mode, self.code_name, err)
-            self._set("ST", 2)
-            self._set("GV30", 0)
-        self._set("TIME", int(time.time()), 151)
-
-    commands = {
-        "TXCODE": send_code,
-        "QUERY": query,
-    }
-
-
-class BroadlinkRemoteNode(BaseNode):
-    """Parent node for IR or RF code subnodes."""
-
-    id = "blirremote"
+    id = "blcap"
     drivers = [
         {"driver": "ST", "value": 0, "uom": 25},
         {"driver": "GV0", "value": 0, "uom": 56},
@@ -84,52 +130,51 @@ class BroadlinkRemoteNode(BaseNode):
         {"driver": "TIME", "value": int(time.time()), "uom": 151},
     ]
 
-    def __init__(self, polyglot, primary, address: str, name: str, mode: str, controller):
+    def __init__(self, polyglot, primary, address: str, name: str, capability: str):
         super().__init__(polyglot, primary, address, name)
-        self.mode = mode
-        self.controller = controller
-        if self.mode == "rf":
-            self.id = "blrfremote"
+        self.capability = capability
+        self.id = f"bl{capability}"
 
     def start(self):
-        self.update_status()
+        self.query()
 
-    def stop(self):
-        self._set("GV30", 0)
-
-    def update_status(self, command=None):
-        code_count = len(self.controller.get_mode_codes(self.mode))
-        connected = 1 if self.controller.is_connected() else 0
-        self._set("ST", 1 if connected else 0)
-        self._set("GV0", code_count)
-        self._set("GV30", connected)
+    def query(self, command=None):
         self._set("TIME", int(time.time()), 151)
 
-    def learn_code(self, command=None):
-        try:
-            name, _ = self.controller.learn_code(self.mode)
-            LOGGER.info("Learned %s code: %s", self.mode.upper(), name)
-            self._set("ST", 1)
-            self._set("GV30", 1)
-        except Exception as err:
-            LOGGER.error("Failed to learn %s code: %s", self.mode, err)
-            self._set("ST", 2)
-            self._set("GV30", 0)
-        self.update_status()
+    commands = {
+        "QUERY": query,
+        "UPDATE": query,
+    }
+
+
+class BroadlinkCodeNode(BaseNode):
+    """Placeholder code node for a later implementation pass."""
+
+    id = "blcode"
+    drivers = [
+        {"driver": "ST", "value": 0, "uom": 25},
+        {"driver": "GV30", "value": 0, "uom": 25},
+        {"driver": "TIME", "value": int(time.time()), "uom": 151},
+    ]
+
+    def start(self):
+        self.query()
+
+    def query(self, command=None):
+        self._set("TIME", int(time.time()), 151)
 
     commands = {
-        "UPDATE": update_status,
-        "QUERY": update_status,
-        "LEARNCODE": learn_code,
+        "QUERY": query,
     }
 
 
 class BroadlinkController(BaseNode):
-    """Controller node and orchestration layer."""
+    """Primary node representing one configured Broadlink hub."""
 
     id = "setup"
     drivers = [
         {"driver": "ST", "value": 0, "uom": 25},
+        {"driver": "GV0", "value": 0, "uom": 56},
         {"driver": "GV1", "value": 0, "uom": 25},
         {"driver": "TIME", "value": int(time.time()), "uom": 151},
     ]
@@ -139,36 +184,37 @@ class BroadlinkController(BaseNode):
         self.poly = polyglot
         self.config = PluginConfig()
         self.parameters = Custom(self.poly, "customparams")
+        self.typed_parameters = Custom(self.poly, "customtypedparams")
+        self.typed_data = Custom(self.poly, "customtypeddata")
         self.data_store = Custom(self.poly, "customdata")
         self.heartbeat_state = 0
-        self.learned_ir_codes: Dict[str, str] = {}
-        self.learned_rf_codes: Dict[str, str] = {}
-
-        self.client: BroadlinkHubClient | None = None
-        self.ir_parent: BroadlinkRemoteNode | None = None
-        self.rf_parent: BroadlinkRemoteNode | None = None
-        self.ir_nodes: Dict[str, BroadlinkCodeNode] = {}
-        self.rf_nodes: Dict[str, BroadlinkCodeNode] = {}
+        self.hub_blueprint: HubBlueprint | None = None
+        self.hub_client: BroadlinkHubClient | None = None
+        self.node_name_cache: dict[str, str] = {}
 
         self.poly.subscribe(self.poly.START, self.start, self.address)
         self.poly.subscribe(self.poly.STOP, self.stop)
         self.poly.subscribe(self.poly.POLL, self.poll)
         self.poly.subscribe(self.poly.CUSTOMPARAMS, self.handle_params)
+        self.poly.subscribe(self.poly.CUSTOMTYPEDDATA, self.handle_typed_params)
         self.poly.subscribe(self.poly.CUSTOMDATA, self.handle_custom_data)
         self.poly.subscribe(self.poly.LOGLEVEL, self.handle_log_level)
         self.poly.subscribe(self.poly.DISCOVER, self.discover)
 
-        self.poly.updateProfile()
+        self._publish_profile()
         self.poly.ready()
-        self.poly.addNode(self, conn_status="ST", rename=True)
+        self.poly.addNode(self, conn_status="ST", rename=False)
 
     def start(self):
+        self._publish_typed_parameters()
         self._set("TIME", int(time.time()), 151)
-        self.apply_config()
+        self.reconcile_structure()
 
     def stop(self):
+        self._sync_node_names_from_db()
         self._set("ST", 0)
         self._set("GV1", 0)
+        self.poly.stop()
 
     def handle_log_level(self, level):
         if isinstance(level, dict) and "level" in level:
@@ -183,30 +229,43 @@ class BroadlinkController(BaseNode):
         except Exception as err:
             self.poly.Notices["config"] = f"Invalid configuration format: {err}"
             LOGGER.error("Failed to parse custom params: %s", err)
+            self._set("ST", 2)
+            self._set("GV1", 0)
+            self._set("GV0", 0, 56)
             return
 
-        missing: List[str] = []
-        if not self.config.user_id:
-            missing.append("USER_ID")
-        if not self.config.user_password:
-            missing.append("USER_PASSWORD")
-        if not self.config.hub_ip:
-            missing.append("HUB_IP")
+        if not self.config.has_hub:
+            self.poly.Notices["required"] = "Set HUB_IP to the IP address for this Broadlink hub instance."
+        elif self.config.ignored_hub_ips:
+            self.poly.Notices["config_scope"] = "Only the first configured hub IP is used. Run one PG3 instance per hub."
 
-        if missing:
-            self.poly.Notices["required"] = "Missing required parameters: " + ", ".join(missing)
+        self.reconcile_structure()
 
-        self.apply_config()
+    def handle_typed_params(self, typed_data):
+        self.typed_data.load(typed_data or {})
+        self.poly.Notices.clear()
+
+        try:
+            self.config = build_config(typed_data)
+        except Exception as err:
+            self.poly.Notices["config"] = f"Invalid typed configuration format: {err}"
+            LOGGER.error("Failed to parse typed params: %s", err)
+            self._set("ST", 2)
+            self._set("GV1", 0)
+            self._set("GV0", 0, 56)
+            return
+
+        if not self.config.has_hub:
+            self.poly.Notices["required"] = "Set the typed Broadlink hub IP address for this PG3 instance."
+        elif self.config.ignored_hub_ips:
+            self.poly.Notices["config_scope"] = "Only the first configured hub IP is used. Run one PG3 instance per hub."
+
+        self.reconcile_structure()
 
     def handle_custom_data(self, custom_data):
         self.data_store.load(custom_data or {})
-        self.learned_ir_codes = self._safe_code_map(self.data_store.get("learned_ir_codes", {}))
-        self.learned_rf_codes = self._safe_code_map(self.data_store.get("learned_rf_codes", {}))
-
-        # If nodes are already initialized, refresh the dynamic node set.
-        if self.ir_parent or self.rf_parent:
-            self._reconcile_nodes()
-            self._refresh_parents()
+        self.node_name_cache = self._safe_name_map(self.data_store.get("node_names", {}))
+        self._sync_node_names_from_db()
 
     def poll(self, poll_type):
         self._set("TIME", int(time.time()), 151)
@@ -219,200 +278,152 @@ class BroadlinkController(BaseNode):
                 self.reportCmd("DOF", 2)
             return
 
-        if self.client:
-            online = 1 if self.client.refresh() else 0
-            self._set("GV1", online)
-        self._refresh_parents()
+        self._refresh_hub_connection()
+        self._sync_node_names_from_db()
+        self.reconcile_structure(update_time=False)
 
     def discover(self, *_):
-        self.apply_config()
+        self.reconcile_structure()
 
-    def is_connected(self) -> bool:
-        return bool(self.client and self.client.connected)
+    def reconcile_structure(self, update_time: bool = True):
+        self.hub_blueprint = self._build_hub_blueprint()
+        self._sync_node_names_from_db()
 
-    def get_mode_codes(self, mode: str) -> Dict[str, str]:
-        if mode == "ir":
-            merged = dict(self.learned_ir_codes)
-            merged.update(self.config.ir_codes)
-            return merged
-        if mode == "rf":
-            merged = dict(self.learned_rf_codes)
-            merged.update(self.config.rf_codes)
-            return merged
-        return {}
-
-    def learn_code(self, mode: str):
-        if self.client is None:
-            raise RuntimeError("Broadlink client is not initialized")
-
-        if mode == "ir":
-            packet = self.client.learn_ir()
-        elif mode == "rf":
-            packet = self.client.learn_rf()
-        else:
-            raise ValueError(f"Unsupported learn mode: {mode}")
-
-        code_name = self._next_learned_code_name(mode)
-        code_value = packet.hex()
-
-        if mode == "ir":
-            self.learned_ir_codes[code_name] = code_value
-        else:
-            self.learned_rf_codes[code_name] = code_value
-
-        self._persist_learned_codes()
-        self._reconcile_nodes()
-        self._refresh_parents()
-        self._set("ST", 1)
-        self._set("GV1", 1)
-        self.poly.Notices[f"learn_{mode}"] = f"Learned {mode.upper()} code '{code_name}'"
-        return code_name, code_value
-
-    def send_configured_code(self, mode: str, code_name: str) -> None:
-        code_map = self.get_mode_codes(mode)
-        if code_name not in code_map:
-            raise KeyError(f"Code '{code_name}' is not configured")
-        if self.client is None:
-            raise RuntimeError("Broadlink client is not initialized")
-
-        self.client.send_code(code_map[code_name])
-        self._set("GV1", 1)
-        self._set("ST", 1)
-
-    def apply_config(self):
-        required_ok = bool(self.config.user_id and self.config.user_password and self.config.hub_ip)
-        if not required_ok:
+        if self.hub_blueprint is None:
             self._set("ST", 0)
+            self._set("GV0", 0, 56)
             self._set("GV1", 0)
-            self._refresh_parents()
-            return
+            self.poly.Notices["stage"] = "Single-hub mode active: configure HUB_IP for this node server instance."
+            self.poly.Notices.delete("hub_errors")
+        else:
+            status_value = 1 if self.hub_blueprint.connected else 2 if self.hub_blueprint.last_error else 0
+            self._set("ST", status_value)
+            self._set(
+                "GV0",
+                int(self.hub_blueprint.device_type[2:], 16)
+                if self.hub_blueprint.device_type.startswith("0x")
+                else 0,
+                56,
+            )
+            self._set("GV1", 1 if self.hub_blueprint.connected else 0)
 
-        self.client = BroadlinkHubClient(
-            hub_ip=self.config.hub_ip,
-            user_id=self.config.user_id,
-            user_password=self.config.user_password,
+            self.node_name_cache[self.address] = self.hub_blueprint.display_name
+            self.data_store["node_names"] = dict(self.node_name_cache)
+
+            if self.hub_blueprint.connected:
+                self.poly.Notices["stage"] = (
+                    "Single-hub mode active: this PG3 instance is managing one Broadlink hub. "
+                    "IR/RF nodes will be added next."
+                )
+                self.poly.Notices.delete("hub_errors")
+            else:
+                self.poly.Notices["stage"] = (
+                    "Single-hub mode active: this PG3 instance is reconciling one Broadlink hub. "
+                    "IR/RF nodes remain deferred."
+                )
+                if self.hub_blueprint.last_error:
+                    self.poly.Notices["hub_errors"] = (
+                        f"{self.hub_blueprint.ip_address}: {self.hub_blueprint.last_error}"
+                    )
+
+        if update_time:
+            self._set("TIME", int(time.time()), 151)
+
+    def _build_hub_blueprint(self) -> HubBlueprint | None:
+        if not self.config.has_hub:
+            return None
+
+        client = self._get_or_create_hub_client(self.config.hub_ip)
+        hub_info, error_text, connected = self._identify_hub(client)
+        display_name = self._resolve_node_name(self.address, self.name or "Broadlink Hub")
+        return HubBlueprint(
+            ip_address=self.config.hub_ip,
+            display_name=display_name,
+            mac_address=hub_info.mac_address if hub_info else "",
+            device_type=hub_info.device_type if hub_info else "unknown",
+            model_name=hub_info.model_name if hub_info else "unknown",
+            connected=connected,
+            last_error=error_text,
         )
 
+    def _refresh_hub_connection(self):
+        if self.hub_client is not None:
+            self.hub_client.refresh()
+
+    def _get_or_create_hub_client(self, ip_address: str) -> BroadlinkHubClient:
+        if self.hub_client is None or self.hub_client.hub_ip != ip_address:
+            self.hub_client = BroadlinkHubClient(hub_ip=ip_address)
+        return self.hub_client
+
+    def _identify_hub(self, client: BroadlinkHubClient) -> tuple[BroadlinkHubInfo | None, str, bool]:
         try:
-            self.client.connect()
-            self._set("ST", 1)
-            self._set("GV1", 1)
+            hub_info = client.identify()
+            return hub_info, "", client.connected
         except Exception as err:
-            LOGGER.error("Broadlink connect/auth failed: %s", err)
-            self._set("ST", 0)
-            self._set("GV1", 0)
-            self.poly.Notices["connect"] = f"Could not connect/auth with Broadlink hub: {err}"
+            hub_info = client.hub_info
+            return hub_info, str(err), False
 
-        self._reconcile_nodes()
-        self._refresh_parents()
+    def _resolve_node_name(self, address: str, default_name: str) -> str:
+        if address:
+            db_name = self.poly.getNodeNameFromDb(address)
+            if db_name:
+                self.node_name_cache[address] = db_name
+                return db_name
+            if address in self.node_name_cache:
+                return self.node_name_cache[address]
+        return default_name
 
-    def ap_setup(self, command=None):
-        """Provision Broadlink device while it is in AP mode."""
-        try:
-            temp_client = BroadlinkHubClient(hub_ip=self.config.hub_ip)
-            temp_client.provision_ap(
-                ssid=self.config.wifi_ssid,
-                password=self.config.wifi_password,
-                security_mode=self.config.wifi_security_mode,
-                setup_ip=self.config.setup_ip,
-            )
-            self.poly.Notices["apsetup"] = "AP setup packet sent. Put device in AP mode and wait for it to join Wi-Fi."
-            LOGGER.info("Sent broadlink.setup AP provisioning packet")
-        except Exception as err:
-            LOGGER.error("AP setup failed: %s", err)
-            self.poly.Notices["apsetup"] = f"AP setup failed: {err}"
+    def _publish_typed_parameters(self):
+        if list(self.typed_parameters) == TYPED_PARAMETER_DEFINITIONS:
+            return
+        self.typed_parameters.load(TYPED_PARAMETER_DEFINITIONS, save=True)
 
-    def _refresh_parents(self):
-        if self.ir_parent:
-            self.ir_parent.update_status()
-        if self.rf_parent:
-            self.rf_parent.update_status()
+    def _publish_profile(self):
+        update_json_profile = getattr(self.poly, "updateJsonProfile", None)
+        if callable(update_json_profile):
+            current_profile_getter = getattr(self.poly, "getJsonProfile", None)
+            if callable(current_profile_getter):
+                try:
+                    if current_profile_getter() == PROFILE_DEFINITION:
+                        return
+                except Exception as err:
+                    LOGGER.warning("Unable to read existing JSON profile: %s", err)
+            try:
+                update_json_profile(PROFILE_DEFINITION)
+                return
+            except TypeError as err:
+                LOGGER.warning("JSON profile publish is not supported by this installed udi_interface version: %s", err)
+            except Exception as err:
+                LOGGER.warning("JSON profile publish failed, falling back to legacy profile update: %s", err)
 
-    def _reconcile_nodes(self):
-        self._ensure_parent_nodes()
-        self._reconcile_mode_nodes("ir", self.ir_nodes, self.ir_parent.address)
-        self._reconcile_mode_nodes("rf", self.rf_nodes, self.rf_parent.address)
-        self._remove_stale_nodes()
+        self.poly.updateProfile()
 
-    def _ensure_parent_nodes(self):
-        if not self.ir_parent:
-            self.ir_parent = BroadlinkRemoteNode(self.poly, self.address, "blirhub", "Broadlink IR", "ir", self)
-            self.poly.addNode(self.ir_parent, rename=True)
+    def _sync_node_names_from_db(self):
+        db_name = self.poly.getNodeNameFromDb(self.address)
+        resolved_name = db_name or self.node_name_cache.get(self.address)
+        if resolved_name:
+            self.name = resolved_name
 
-        if not self.rf_parent:
-            self.rf_parent = BroadlinkRemoteNode(self.poly, self.address, "blrfhub", "Broadlink RF", "rf", self)
-            self.poly.addNode(self.rf_parent, rename=True)
+        self.node_name_cache[self.address] = self.name
+        self.data_store["node_names"] = dict(self.node_name_cache)
 
-    def _reconcile_mode_nodes(self, mode: str, node_map: Dict[str, BroadlinkCodeNode], primary: str):
-        codes = sorted(self.get_mode_codes(mode).keys())
-        expected_addresses = []
-
-        for index, code_name in enumerate(codes, start=1):
-            prefix = "blir" if mode == "ir" else "blrf"
-            addr = self.poly.getValidAddress(f"{prefix}{index:02d}")
-            expected_addresses.append(addr)
-            display_name = self.poly.getValidName(f"{mode.upper()} {code_name}")
-
-            if addr in node_map:
-                node = node_map[addr]
-                node.set_code_name(code_name)
-                if node.name != display_name:
-                    node.rename(display_name)
-                continue
-
-            node = BroadlinkCodeNode(self.poly, primary, addr, display_name, mode, code_name, self)
-            self.poly.addNode(node, rename=True)
-            node_map[addr] = node
-
-        for addr in list(node_map.keys()):
-            if addr not in expected_addresses:
-                self.poly.delNode(addr)
-                del node_map[addr]
-
-    def _remove_stale_nodes(self):
-        expected = {
-            self.address,
-            "blirhub",
-            "blrfhub",
-            *self.ir_nodes.keys(),
-            *self.rf_nodes.keys(),
-        }
-        for node_addr in list(self.poly.getNodes().keys()):
-            if node_addr in expected:
-                continue
-            if node_addr.startswith("blir") or node_addr.startswith("blrf"):
-                self.poly.delNode(node_addr)
-
-    def _safe_code_map(self, candidate) -> Dict[str, str]:
+    def _safe_name_map(self, candidate) -> dict[str, str]:
         if not isinstance(candidate, dict):
             return {}
-        parsed: Dict[str, str] = {}
+
+        parsed: dict[str, str] = {}
         for key, value in candidate.items():
-            key_str = str(key).strip()
-            value_str = str(value).strip()
-            if not key_str or not value_str:
+            key_text = str(key).strip()
+            value_text = str(value).strip()
+            if not key_text or not value_text:
                 continue
-            parsed[key_str] = value_str
+            parsed[key_text] = value_text
         return parsed
 
-    def _persist_learned_codes(self):
-        self.data_store["learned_ir_codes"] = dict(self.learned_ir_codes)
-        self.data_store["learned_rf_codes"] = dict(self.learned_rf_codes)
-
-    def _next_learned_code_name(self, mode: str) -> str:
-        prefix = "Learned IR" if mode == "ir" else "Learned RF"
-        existing = set(self.get_mode_codes(mode).keys())
-        index = 1
-        while True:
-            name = f"{prefix} {index:02d}"
-            if name not in existing:
-                return name
-            index += 1
-
     def force_update(self, command=None):
-        self.apply_config()
+        self.reconcile_structure()
 
     commands = {
         "UPDATE": force_update,
-        "APSETUP": ap_setup,
+        "QUERY": force_update,
     }

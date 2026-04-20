@@ -1,54 +1,57 @@
 # Broadlink Node Server Configuration
 
+## Current Stage
+
+This rewrite is currently in the hub-integration pass.
+
+What is implemented now:
+- Controller startup and PG3x scaffolding
+- Single-hub configuration parsing
+- Structure and persistence groundwork
+- Rename replay groundwork using PG3 database names as the first priority
+- Hub initialization from the configured IP address
+- Cached hub identity and status reconciliation on startup and long poll
+- Minimal in-code JSON profile publication for `setup`
+
+What is intentionally deferred:
+- IR and RF operational nodes
+- Code send and learn flows
+
+## Profile Notes
+
+The node server now publishes a minimal JSON profile from code for the currently implemented primary node.
+If the installed `udi_interface` version does not support JSON profile publication, the code falls back to the legacy profile update path.
+
 ## Required Parameters
 
-- `USER_ID`: User identifier for your Broadlink setup (stored for compatibility/future cloud extensions)
-- `USER_PASSWORD`: User password (stored for compatibility/future cloud extensions)
-- `HUB_IP`: IP address of your Broadlink RM hub (for example `192.168.1.120`)
+- `HUB_IP`: IP address of the Broadlink hub managed by this PG3 instance
 
-## AP Provisioning Parameters (broadlink.setup)
+The node server assumes each Broadlink device is already provisioned on the local Wi-Fi network.
+AP setup is not part of the normal workflow for this implementation stage.
+The current implementation does not rely on `server.json` to seed runtime configuration values.
+Enter configuration through the PG3 configuration UI.
 
-Use these only when provisioning a device in AP mode:
+The preferred UI path is now a code-defined typed parameter published by the node server.
+Plain custom parameter text is still accepted as a fallback while the rewrite is in progress.
+Older list-style inputs such as `HUB_IPS` are still accepted for migration, but only the first IP is used.
 
-- `WIFI_SSID`: target Wi-Fi SSID
-- `WIFI_PASSWORD`: target Wi-Fi password
-- `WIFI_SECURITY_MODE`: `0..4` (`4` = WPA1/2 default)
-- `SETUP_IP`: destination IP for setup packet (default `255.255.255.255`)
+Supported `HUB_IP` formats:
 
-After setting these, run the setup-node command `Provision AP Setup`.
-
-## Code Configuration
-
-Two parameters define the transmit codes and automatically create subnodes:
-
-- `IR_CODES`
-- `RF_CODES`
-
-Both support either JSON or `key=value` lines.
-
-### JSON example
-```json
-{
-  "TV Power": "2600d200949512...",
-  "Receiver Vol Up": "b64:AAECAwQFBgc..."
-}
-```
-
-### key/value example
+### Single IP
 ```text
-TV Power=2600d200949512...
-Receiver Vol Up=b64:AAECAwQFBgc...
+192.168.1.120
 ```
 
-Encoding options:
-- Hex (default)
-- Base64 with `b64:` prefix
+### Legacy list input
+```text
+192.168.1.120, 192.168.1.121
+```
+
+Only the first IP is used from legacy list input.
 
 ## Operational Notes
 
-- Changing `IR_CODES` or `RF_CODES` updates the code subnodes.
-- Each code subnode has a `TXCODE` command to send its packet.
-- IR and RF parent nodes support `LEARNCODE` to learn packets directly from the hub and create subnodes automatically.
-- Setup node supports `APSETUP` ("Provision AP Setup") which calls `broadlink.setup(...)`.
-- `shortPoll` provides heartbeat updates.
-- `longPoll` refreshes Broadlink connectivity state.
+- `shortPoll` provides heartbeat updates on the controller.
+- `longPoll` refreshes hub connectivity and persisted node-name information from PG3.
+- Run one PG3 node server instance per Broadlink hub.
+- The next implementation pass will add IR/RF operational nodes and code handling on top of the current single-hub layer.

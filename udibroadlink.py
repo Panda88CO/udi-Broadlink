@@ -14,7 +14,7 @@ if __name__ == "__main__":
         polyglot = udi_interface.Interface([])
         polyglot.start({"version": VERSION, "requestId": True})
         polyglot.setCustomParamsDoc()
-        BroadlinkController(polyglot, "setup", "setup", "Broadlink Setup")
+        BroadlinkController(polyglot, "setup", "setup", "Broadlink Hub")
         polyglot.runForever()
     except (KeyboardInterrupt, SystemExit):
         sys.exit(0)

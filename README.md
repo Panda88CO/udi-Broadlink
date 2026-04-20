@@ -1,107 +1,85 @@
 # udi-broadlink
 
-Broadlink node server for UDI Polyglot v3 (PG3/PG3x), implemented in Python using:
+Broadlink node server rewrite for UDI Polyglot v3 (PG3/PG3x), implemented in Python using:
 - `udi_interface`
 - `python-broadlink`
 
-Initial scope:
-- Broadlink RM remotes (including RM4 Pro class devices)
-- Two parent nodes: one for IR, one for RF
-- One subnode per configured code string (IR or RF)
+## Current Status
 
-The code is intentionally structured for readability and future extension to other Broadlink device families.
+The repository is now in the hub-integration rewrite phase.
 
-## Architecture
+Implemented in this pass:
+- Controller startup and PG3 scaffolding
+- Single-hub configuration parsing from PG3 custom parameters
+- Structure and persistence groundwork for later rename replay
+- Architecture separation for primary hub, capability, and code layers
+- Hub initialization from the configured IP using `broadlink.hello(ip)` and `auth()`
+- Cached hub identity and status reconciliation during startup and polling
+- Minimal in-code JSON profile publication for `setup`
 
-- `udi_broadlink.py`: Entry point
-- `nodes.py`: Controller + parent/subnode classes
-- `config_parser.py`: PG3 custom parameter parsing
-- `broadlink_client.py`: Wrapper around `python-broadlink` API
+Intentionally deferred:
+- IR and RF operational nodes
+- Code send and learn flows
 
-Node layout in ISY/IoX:
-- `setup` controller
-- `Broadlink IR` parent node
-- `Broadlink RF` parent node
-- `IR <code_name>` subnodes
-- `RF <code_name>` subnodes
+## Profile Direction
+
+The rewrite now publishes a minimal JSON profile from code for the primary node.
+That currently covers:
+- `setup`
+
+If the installed `udi_interface` does not support JSON profile publication, the code falls back to the legacy `updateProfile()` path.
+
+## Architecture Direction
+
+Planned node layout in ISY/IoX:
+- One `setup` primary node per configured Broadlink hub instance
+- One IR operational node below that hub
+- One RF operational node below that hub
+- Code subnodes below the relevant IR or RF node
+
+Run one PG3 node server instance per Broadlink hub. The design is being staged so the per-hub structure, naming, and persistence are stable before IR/RF runtime logic is added.
 
 ## Configuration
 
-Configure custom parameters in PG3 Configuration.
+Configure runtime values through the PG3 configuration UI.
+The current rewrite does not rely on `server.json` to provide runtime configuration defaults.
 
-Required parameters:
-- `USER_ID`
-- `USER_PASSWORD`
+Current required parameter:
 - `HUB_IP`
 
-Notes:
-- `USER_ID` and `USER_PASSWORD` are currently validated and stored, but not required by local RM protocol itself.
-- `HUB_IP` is used to connect/authenticate to the Broadlink hub.
+The preferred configuration surface is now a code-defined typed parameter in PG3.
+The parser still accepts plain custom parameter input as a fallback during the rewrite.
+Older list-style inputs such as `HUB_IPS` are still accepted for migration, but only the first IP is used.
 
-AP provisioning (optional):
-- `WIFI_SSID`, `WIFI_PASSWORD`, `WIFI_SECURITY_MODE`, `SETUP_IP`
-- Run setup-node command `Provision AP Setup` to call `broadlink.setup(...)` when device is in AP mode.
+Supported formats:
 
-Code parameters:
-- `IR_CODES`
-- `RF_CODES`
-
-Each code parameter supports either format:
-
-1) JSON object
-```json
-{"TV Power": "2600d200...", "Receiver VolumeUp": "b64:AAECAw..."}
-```
-
-2) Multi-line key/value
+### Single IP
 ```text
-TV Power=2600d200...
-Receiver VolumeUp=b64:AAECAw...
+192.168.1.120
 ```
 
-Code value encoding:
-- Hex string (default)
-- Base64 prefixed with `b64:`
+### Legacy list input
+```text
+192.168.1.120, 192.168.1.121
+```
 
-## Behavior
+Only the first IP is used from legacy list input.
 
-- On startup and parameter updates (`handleParams`), the node server:
-  - Parses config
-  - Connects/authenticates to Broadlink hub using `hello()` + `auth()` for normal runtime control
-  - Builds/rebuilds IR and RF code subnodes from configured code maps
-- AP provisioning is a separate explicit action (`APSETUP`) that calls `broadlink.setup()`.
-- Each code subnode exposes `TXCODE` (Send Code)
-- IR/RF parent nodes expose `LEARNCODE` to learn new packets from the hub
-- Short poll toggles heartbeat (`DON`/`DOF`) on controller
-- Long poll refreshes hub connectivity and updates parent node status
+The current design assumes each Broadlink device is already provisioned on the local Wi-Fi network.
 
-### Learning Workflow
+## Staged Plan
 
-- Run `Learn IR Code` on the `Broadlink IR` parent node or `Learn RF Code` on the `Broadlink RF` parent node.
-- After a successful learn, the node server:
-  - creates a generated code name (for example `Learned IR 01`)
-  - stores the packet in persistent `customdata`
-  - rebuilds dynamic subnodes so the learned code appears as a new subnode
-
-Learned codes persist across restarts through `customdata`.
+1. Build the overall PG3 structure and persistence model.
+2. Add single-hub integration using the configured IP and stable identity data.
+3. Add IR and RF operational nodes and their code subnodes.
 
 ## Install
 
 ### Local test
 ```bash
 pip install -r requirements.txt
-python udi_broadlink.py
+python udibroadlink.py
 ```
 
 ### PG3 install script
 `install.sh` installs dependencies from `requirements.txt`.
-
-## Extending to Other Broadlink Devices
-
-Design points for extension:
-- Add new methods/classes in `broadlink_client.py` for additional device types
-- Add new nodedefs in `profile/nodedef/nodedefs.xml`
-- Add corresponding node classes in `nodes.py`
-- Add parameter parsing in `config_parser.py`
-
-This keeps Broadlink protocol operations separate from node orchestration logic.

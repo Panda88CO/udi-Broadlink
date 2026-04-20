@@ -16,6 +16,9 @@
   "shortPoll": 60,
   "longPoll": 300,
   "profile_version": "0.2.0",
+  "customParams": {
+    "HUB_IPS": "192.168.1.100\n192.168.1.101"
+  },
   "restart": true,
   "language": "python3"
 }
