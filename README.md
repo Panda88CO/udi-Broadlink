@@ -14,7 +14,7 @@ Implemented in this pass:
 - Structure and persistence groundwork for later rename replay
 - Architecture separation for primary hub, capability, and code layers
 - Hub initialization from the configured IP using `broadlink.hello(ip)` and `auth()`
-- Cached hub identity and status reconciliation during startup and polling
+- Cached hub identity plus automatic reconnect and status reconciliation during startup and polling
 - Minimal in-code JSON profile publication for `setup`
 
 Intentionally deferred:

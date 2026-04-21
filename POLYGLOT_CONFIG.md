@@ -10,7 +10,7 @@ What is implemented now:
 - Structure and persistence groundwork
 - Rename replay groundwork using PG3 database names as the first priority
 - Hub initialization from the configured IP address
-- Cached hub identity and status reconciliation on startup and long poll
+- Cached hub identity plus automatic reconnect and status reconciliation on startup and long poll
 - Minimal in-code JSON profile publication for `setup`
 
 What is intentionally deferred:
@@ -52,6 +52,6 @@ Only the first IP is used from legacy list input.
 ## Operational Notes
 
 - `shortPoll` provides heartbeat updates on the controller.
-- `longPoll` refreshes hub connectivity and persisted node-name information from PG3.
+- `longPoll` refreshes hub connectivity, reconnects if needed, and syncs persisted node-name information from PG3.
 - Run one PG3 node server instance per Broadlink hub.
 - The next implementation pass will add IR/RF operational nodes and code handling on top of the current single-hub layer.

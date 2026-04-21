@@ -335,7 +335,7 @@ class BroadlinkController(BaseNode):
 
         client = self._get_or_create_hub_client(self.config.hub_ip)
         hub_info, error_text, connected = self._identify_hub(client)
-        display_name = self._resolve_node_name(self.address, self.name or "Broadlink Hub")
+        display_name = self._resolve_node_name(self.address, self._default_hub_name(hub_info))
         return HubBlueprint(
             ip_address=self.config.hub_ip,
             display_name=display_name,
@@ -357,11 +357,21 @@ class BroadlinkController(BaseNode):
 
     def _identify_hub(self, client: BroadlinkHubClient) -> tuple[BroadlinkHubInfo | None, str, bool]:
         try:
-            hub_info = client.identify()
-            return hub_info, "", client.connected
+            hub_info = client.ensure_connected()
+            return hub_info, "", True
         except Exception as err:
             hub_info = client.hub_info
             return hub_info, str(err), False
+
+    def _default_hub_name(self, hub_info: BroadlinkHubInfo | None) -> str:
+        if hub_info is None:
+            return self.name or "Broadlink Hub"
+
+        model_name = hub_info.model_name or "Broadlink Hub"
+        mac_suffix = hub_info.mac_address[-6:] if hub_info.mac_address else ""
+        if mac_suffix:
+            return f"{model_name} {mac_suffix.upper()}"
+        return model_name
 
     def _resolve_node_name(self, address: str, default_name: str) -> str:
         if address:

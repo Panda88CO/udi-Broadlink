@@ -66,7 +66,7 @@ class BroadlinkHubClient:
     def identify(self) -> BroadlinkHubInfo:
         """Ensure the hub is connected and return cached identity details."""
         with self._lock:
-            if self._hub_info is None:
+            if self._hub_info is None or self._device is None:
                 self.connect()
             return self._hub_info
 
@@ -74,7 +74,11 @@ class BroadlinkHubClient:
         """Best-effort connectivity refresh."""
         with self._lock:
             if self._device is None:
-                return False
+                try:
+                    self.connect()
+                    return True
+                except Exception:
+                    return False
             try:
                 self._device.ping()
                 return True
@@ -92,6 +96,20 @@ class BroadlinkHubClient:
                 except Exception:
                     self._device = None
                     return False
+
+    def ensure_connected(self) -> BroadlinkHubInfo:
+        """Reconnect if needed and return the current identified hub details."""
+        with self._lock:
+            if self._device is not None:
+                try:
+                    self._device.ping()
+                    if self._hub_info is not None:
+                        return self._hub_info
+                except Exception:
+                    self._device = None
+
+            self.connect()
+            return self._hub_info
 
     def send_code(self, encoded_code: str) -> bool:
         """Transmit an IR or RF packet to the Broadlink hub."""
