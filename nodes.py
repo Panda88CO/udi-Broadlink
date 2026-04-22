@@ -15,6 +15,16 @@ LOGGER = udi_interface.LOGGER
 Custom = udi_interface.Custom
 VERSION = "0.2.0"
 
+MODEL_INDEX_NAMES = {
+    "0": "Unknown",
+    "1": "RM4 Pro",
+    "2": "RM4 Mini",
+    "3": "RM Pro",
+    "4": "RM Mini",
+    "5": "RM2",
+    "6": "Other Broadlink",
+}
+
 PROFILE_DEFINITION = {
     "editors": [
         {
@@ -45,6 +55,16 @@ PROFILE_DEFINITION = {
             ],
         },
         {
+            "id": "model_index",
+            "ranges": [
+                {
+                    "uom": "25",
+                    "subset": "0-6",
+                    "names": MODEL_INDEX_NAMES,
+                }
+            ],
+        },
+        {
             "id": "raw_value",
             "ranges": [
                 {
@@ -70,6 +90,7 @@ PROFILE_DEFINITION = {
     "nodedefs": [
         {
             "id": "setup",
+            "nls": "nlssetup",
             "icon": "GenericCtl",
             "properties": [
                 {
@@ -79,8 +100,8 @@ PROFILE_DEFINITION = {
                 },
                 {
                     "id": "GV0",
-                    "name": "Device Type",
-                    "editor": "raw_value",
+                    "name": "Model",
+                    "editor": "model_index",
                 },
                 {
                     "id": "GV1",
@@ -134,6 +155,23 @@ class BaseNode(udi_interface.Node):
             self.setDriver(driver, value, True, force)
         else:
             self.setDriver(driver, value, True, force, uom=uom)
+
+
+def _model_index(model_name: str) -> int:
+    text = str(model_name or "").strip().lower()
+    if not text or text == "unknown":
+        return 0
+    if text.startswith("rm4pro"):
+        return 1
+    if text.startswith("rm4mini"):
+        return 2
+    if text.startswith("rmpro"):
+        return 3
+    if text.startswith("rmmini"):
+        return 4
+    if text.startswith("rm2"):
+        return 5
+    return 6
 
 
 class BroadlinkCapabilityNode(BaseNode):
@@ -191,7 +229,7 @@ class BroadlinkController(BaseNode):
     id = "setup"
     drivers = [
         {"driver": "ST", "value": 0, "uom": 25},
-        {"driver": "GV0", "value": 0, "uom": 56},
+        {"driver": "GV0", "value": 0, "uom": 25},
         {"driver": "GV1", "value": 0, "uom": 25},
         {"driver": "TIME", "value": int(time.time()), "uom": 151},
     ]
@@ -314,7 +352,7 @@ class BroadlinkController(BaseNode):
         if self.hub_blueprint is None:
             LOGGER.info("[reconcile_structure] Hub blueprint is None - no HUB_IP configured")
             self._set("ST", 0)
-            self._set("GV0", 0, 56)
+            self._set("GV0", 0, 25)
             self._set("GV1", 0)
             self.poly.Notices["stage"] = "Single-hub mode active: configure HUB_IP for this node server instance."
             self.poly.Notices.delete("hub_errors")
@@ -328,10 +366,8 @@ class BroadlinkController(BaseNode):
             
             self._set(
                 "GV0",
-                int(self.hub_blueprint.device_type[2:], 16)
-                if self.hub_blueprint.device_type.startswith("0x")
-                else 0,
-                56,
+                _model_index(self.hub_blueprint.model_name),
+                25,
             )
             self._set("GV1", 1 if self.hub_blueprint.connected else 0)
             LOGGER.debug("[reconcile_structure] Set GV0 and GV1 drivers")
@@ -342,10 +378,7 @@ class BroadlinkController(BaseNode):
 
             if self.hub_blueprint.connected:
                 LOGGER.info("[reconcile_structure] Hub is connected and ready")
-                self.poly.Notices["stage"] = (
-                    "Single-hub mode active: this PG3 instance is managing one Broadlink hub. "
-                    "IR/RF nodes will be added next."
-                )
+                self.poly.Notices.delete("stage")
                 self.poly.Notices.delete("hub_errors")
             else:
                 LOGGER.warning("[reconcile_structure] Hub not connected, will retry on next poll")
