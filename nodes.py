@@ -249,6 +249,7 @@ class BroadlinkController(BaseNode):
     def handle_params(self, custom_params):
         self.parameters.load(custom_params)
         self.poly.Notices.clear()
+        LOGGER.debug("Received CUSTOMPARAMS keys: %s", sorted((custom_params or {}).keys()))
 
         try:
             self.config = build_config(custom_params)
@@ -260,6 +261,13 @@ class BroadlinkController(BaseNode):
             self._set("GV0", 0, 56)
             return
 
+        if self.config.has_hub:
+            LOGGER.info("Resolved HUB_IP from custom params: %s", self.config.hub_ip)
+            if self.config.ignored_hub_ips:
+                LOGGER.info("Additional HUB_IP values ignored in single-hub mode: %s", self.config.ignored_hub_ips)
+        else:
+            LOGGER.warning("No HUB_IP resolved from custom params payload.")
+
         if not self.config.has_hub:
             self.poly.Notices["required"] = "Set HUB_IP to the IP address for this Broadlink hub instance."
         elif self.config.ignored_hub_ips:
@@ -270,6 +278,9 @@ class BroadlinkController(BaseNode):
     def handle_typed_params(self, typed_data):
         self.typed_data.load(typed_data or {})
         self.poly.Notices.clear()
+        LOGGER.debug("Received CUSTOMTYPEDDATA type: %s", type(typed_data).__name__)
+        if isinstance(typed_data, dict):
+            LOGGER.debug("Received CUSTOMTYPEDDATA keys: %s", sorted(typed_data.keys()))
 
         try:
             self.config = build_config(typed_data)
@@ -280,6 +291,13 @@ class BroadlinkController(BaseNode):
             self._set("GV1", 0)
             self._set("GV0", 0, 56)
             return
+
+        if self.config.has_hub:
+            LOGGER.info("Resolved HUB_IP from typed params: %s", self.config.hub_ip)
+            if self.config.ignored_hub_ips:
+                LOGGER.info("Additional HUB_IP values ignored in single-hub mode: %s", self.config.ignored_hub_ips)
+        else:
+            LOGGER.warning("No HUB_IP resolved from typed params payload.")
 
         if not self.config.has_hub:
             self.poly.Notices["required"] = "Set the typed Broadlink hub IP address for this PG3 instance."

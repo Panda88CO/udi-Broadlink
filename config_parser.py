@@ -58,10 +58,65 @@ def parse_ip_list(raw_value) -> list[str]:
     return parsed
 
 
+def _extract_typed_value(raw_value):
+    """Extract actual value from common PG3 typed-parameter payload shapes."""
+    if isinstance(raw_value, dict):
+        for key in ("value", "val", "text", "raw", "default"):
+            if key in raw_value:
+                return raw_value[key]
+    return raw_value
+
+
+def _flatten_param_map(params: dict) -> dict:
+    """Normalize incoming param payload into a flat key/value dictionary."""
+    normalized = dict(params)
+
+    for container_key in ("customparams", "customtypeddata", "typed_data", "params"):
+        candidate = params.get(container_key)
+        if isinstance(candidate, dict):
+            for key, value in candidate.items():
+                normalized.setdefault(key, value)
+
+    for list_key in ("customtypedparams", "typedparams", "typed_parameters"):
+        candidate = params.get(list_key)
+        if isinstance(candidate, list):
+            for item in candidate:
+                if not isinstance(item, dict):
+                    continue
+                name = item.get("name") or item.get("id") or item.get("key")
+                if not name:
+                    continue
+                normalized.setdefault(str(name), item.get("value", item.get("val", "")))
+
+    return normalized
+
+
+def _first_present(params: dict, keys: tuple[str, ...]):
+    for key in keys:
+        if key in params:
+            return params[key]
+    return ""
+
+
 def build_config(custom_params: dict | None) -> PluginConfig:
     """Build PluginConfig from raw PG3 custom params."""
-    params = custom_params or {}
-    raw_hubs = params.get("hub_ip", params.get("hub_ips", params.get("HUB_IP", params.get("HUB_IPS", ""))))
+    params = _flatten_param_map(custom_params or {})
+
+    raw_hubs = _first_present(
+        params,
+        (
+            "hub_ip",
+            "hub_ips",
+            "HUB_IP",
+            "HUB_IPS",
+            "Hub_IP",
+            "Hub_IPs",
+            "hubIp",
+            "hubIps",
+        ),
+    )
+    raw_hubs = _extract_typed_value(raw_hubs)
+
     hub_ips = parse_ip_list(raw_hubs)
     return PluginConfig(
         hub_ip=hub_ips[0] if hub_ips else "",
