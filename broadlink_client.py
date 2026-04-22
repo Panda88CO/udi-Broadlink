@@ -27,6 +27,16 @@ class BroadlinkHubInfo:
     model_name: str
 
 
+@dataclass(slots=True)
+class SensorData:
+    """Sensor readings from a hub with an attached sensor cable."""
+
+    has_temperature: bool
+    has_humidity: bool
+    temperature_c: float
+    humidity: float
+
+
 class BroadlinkHubClient:
     """Thin wrapper around python-broadlink remote functionality."""
 
@@ -142,14 +152,37 @@ class BroadlinkHubClient:
             return self._hub_info
 
     def send_code(self, encoded_code: str) -> bool:
-        """Transmit an IR or RF packet to the Broadlink hub."""
+        """Transmit an IR or RF packet to the Broadlink hub. Returns True on success."""
         packet = decode_code_string(encoded_code)
 
         with self._lock:
             if self._device is None:
                 self.connect()
-            self._device.send_data(packet)
-            return True
+            try:
+                self._device.send_data(packet)
+                return True
+            except Exception as err:
+                LOGGER.error("[send_code] Transmission failed: %s", err)
+                return False
+
+    def check_sensors(self) -> SensorData:
+        """Query the hub for temperature and humidity sensor readings.
+
+        Raises an exception if the device does not support sensor queries
+        or if no sensor cable is attached.
+        """
+        with self._lock:
+            if self._device is None:
+                self.connect()
+            data = self._device.check_sensors()
+            temp = data.get("temperature")
+            humidity = data.get("humidity")
+            return SensorData(
+                has_temperature=temp is not None,
+                has_humidity=humidity is not None,
+                temperature_c=float(temp) if temp is not None else 0.0,
+                humidity=float(humidity) if humidity is not None else 0.0,
+            )
 
     def learn_ir(self, timeout_sec: int = 30, poll_interval: float = 1.0) -> bytes:
         """Learn a single IR packet and return raw Broadlink bytes."""

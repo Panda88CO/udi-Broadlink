@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import threading
 import time
 
 import udi_interface
 
-from broadlink_client import BroadlinkHubClient, BroadlinkHubInfo
+from broadlink_client import BroadlinkHubClient, BroadlinkHubInfo, SensorData
 from config_parser import PluginConfig, build_config
 
 LOGGER = udi_interface.LOGGER
@@ -25,95 +26,77 @@ MODEL_INDEX_NAMES = {
     "6": "Other Broadlink",
 }
 
-PROFILE_DEFINITION = {
-    "editors": [
+def _build_profile_definition(
+    has_temp: bool = False,
+    has_humidity: bool = False,
+    temp_unit: str = "C",
+) -> dict:
+    """Build the dynamic JSON profile definition.
+
+    Conditionally includes temperature (GV2) and humidity (GV3) drivers on the
+    setup node based on detected sensor cable state. Temperature UOM is chosen
+    based on temp_unit: 'C' → UOM 17 (°C), 'F' → UOM 4 (°F).
+    """
+    temp_editor_id = "temp_f" if temp_unit == "F" else "temp_c"
+
+    editors = [
         {
             "id": "status_index",
-            "ranges": [
-                {
-                    "uom": "25",
-                    "subset": "0-2",
-                    "names": {
-                        "0": "Not Configured",
-                        "1": "Online",
-                        "2": "Error",
-                    },
-                }
-            ],
+            "ranges": [{"uom": "25", "subset": "0-2", "names": {"0": "Not Configured", "1": "Online", "2": "Error"}}],
         },
         {
             "id": "binary_index",
-            "ranges": [
-                {
-                    "uom": "25",
-                    "subset": "0-1",
-                    "names": {
-                        "0": "No",
-                        "1": "Yes",
-                    },
-                }
-            ],
+            "ranges": [{"uom": "25", "subset": "0-1", "names": {"0": "No", "1": "Yes"}}],
         },
         {
             "id": "model_index",
-            "ranges": [
-                {
-                    "uom": "25",
-                    "subset": "0-6",
-                    "names": MODEL_INDEX_NAMES,
-                }
-            ],
+            "ranges": [{"uom": "25", "subset": "0-6", "names": MODEL_INDEX_NAMES}],
         },
         {
             "id": "raw_value",
-            "ranges": [
-                {
-                    "uom": "56",
-                    "min": 0,
-                    "max": 65535,
-                    "prec": 0,
-                }
-            ],
+            "ranges": [{"uom": "56", "min": 0, "max": 65535, "prec": 0}],
         },
         {
             "id": "timestamp",
-            "ranges": [
-                {
-                    "uom": "151",
-                    "min": 0,
-                    "max": 4294967295,
-                    "prec": 0,
-                }
-            ],
+            "ranges": [{"uom": "151", "min": 0, "max": 4294967295, "prec": 0}],
         },
-    ],
-    "nodedefs": [
+        {
+            "id": "learn_status",
+            "ranges": [{"uom": "25", "subset": "0-3", "names": {"0": "Idle", "1": "Learning", "2": "Learned OK", "3": "Failed"}}],
+        },
+        {
+            "id": "tx_status",
+            "ranges": [{"uom": "25", "subset": "0-3", "names": {"0": "Ready", "1": "Sending", "2": "Sent OK", "3": "Failed"}}],
+        },
+        {
+            "id": "tx_result",
+            "ranges": [{"uom": "25", "subset": "0-2", "names": {"0": "Never", "1": "Success", "2": "Failed"}}],
+        },
+    ]
+
+    if has_temp:
+        editors.append({"id": "temp_c", "ranges": [{"uom": "17", "min": -40, "max": 125, "prec": 1}]})
+        editors.append({"id": "temp_f", "ranges": [{"uom": "4", "min": -40, "max": 257, "prec": 1}]})
+    if has_humidity:
+        editors.append({"id": "humidity_pct", "ranges": [{"uom": "22", "min": 0, "max": 100, "prec": 1}]})
+
+    setup_properties = [
+        {"id": "ST", "name": "Status", "editor": "status_index"},
+        {"id": "GV0", "name": "Model", "editor": "model_index"},
+        {"id": "GV1", "name": "Connected", "editor": "binary_index"},
+        {"id": "TIME", "name": "Last Update", "editor": "timestamp"},
+    ]
+    if has_temp:
+        setup_properties.append({"id": "GV2", "name": "Temperature", "editor": temp_editor_id})
+    if has_humidity:
+        setup_properties.append({"id": "GV3", "name": "Humidity", "editor": "humidity_pct"})
+
+    nodedefs = [
         {
             "id": "setup",
             "nls": "nlssetup",
             "icon": "GenericCtl",
-            "properties": [
-                {
-                    "id": "ST",
-                    "name": "Status",
-                    "editor": "status_index",
-                },
-                {
-                    "id": "GV0",
-                    "name": "Model",
-                    "editor": "model_index",
-                },
-                {
-                    "id": "GV1",
-                    "name": "Connected",
-                    "editor": "binary_index",
-                },
-                {
-                    "id": "TIME",
-                    "name": "Last Update",
-                    "editor": "timestamp",
-                },
-            ],
+            "properties": setup_properties,
             "cmds": {
                 "accepts": [
                     {"id": "QUERY", "name": "Query"},
@@ -124,14 +107,97 @@ PROFILE_DEFINITION = {
                     {"id": "DOF", "name": "Heartbeat Off"},
                 ],
             },
-            "links": {
-                "ctl": [],
-                "rsp": [],
-            },
+            "links": {"ctl": [], "rsp": []},
         },
-    ],
-    "linkdefs": [],
-}
+        {
+            "id": "blirctl",
+            "nls": "nlsirctl",
+            "icon": "GenericCtl",
+            "properties": [
+                {"id": "ST", "name": "Status", "editor": "learn_status"},
+                {"id": "GV0", "name": "Last Learn", "editor": "timestamp"},
+                {"id": "GV1", "name": "Learn Count", "editor": "raw_value"},
+                {"id": "GV2", "name": "Hub Connected", "editor": "binary_index"},
+            ],
+            "cmds": {
+                "accepts": [
+                    {"id": "LEARNCODE", "name": "Learn IR Code"},
+                    {"id": "QUERY", "name": "Query"},
+                ],
+                "sends": [],
+            },
+            "links": {"ctl": [], "rsp": []},
+        },
+        {
+            "id": "blrfctl",
+            "nls": "nlsrfctl",
+            "icon": "GenericCtl",
+            "properties": [
+                {"id": "ST", "name": "Status", "editor": "learn_status"},
+                {"id": "GV0", "name": "Last Learn", "editor": "timestamp"},
+                {"id": "GV1", "name": "Learn Count", "editor": "raw_value"},
+                {"id": "GV2", "name": "Hub Connected", "editor": "binary_index"},
+            ],
+            "cmds": {
+                "accepts": [
+                    {"id": "LEARNCODE", "name": "Learn RF Code"},
+                    {"id": "QUERY", "name": "Query"},
+                ],
+                "sends": [],
+            },
+            "links": {"ctl": [], "rsp": []},
+        },
+        {
+            "id": "blircode",
+            "nls": "nlsircode",
+            "icon": "GenericCtl",
+            "properties": [
+                {"id": "ST", "name": "Status", "editor": "tx_status"},
+                {"id": "GV0", "name": "Created", "editor": "timestamp"},
+                {"id": "GV1", "name": "Last Sent", "editor": "timestamp"},
+                {"id": "GV2", "name": "Last Result", "editor": "tx_result"},
+                {"id": "GV3", "name": "TX Count", "editor": "raw_value"},
+            ],
+            "cmds": {
+                "accepts": [
+                    {"id": "TXCODE", "name": "Send Code"},
+                    {"id": "QUERY", "name": "Query"},
+                ],
+                "sends": [],
+            },
+            "links": {"ctl": [], "rsp": []},
+        },
+        {
+            "id": "blrfcode",
+            "nls": "nlsrfcode",
+            "icon": "GenericCtl",
+            "properties": [
+                {"id": "ST", "name": "Status", "editor": "tx_status"},
+                {"id": "GV0", "name": "Created", "editor": "timestamp"},
+                {"id": "GV1", "name": "Last Sent", "editor": "timestamp"},
+                {"id": "GV2", "name": "Last Result", "editor": "tx_result"},
+                {"id": "GV3", "name": "TX Count", "editor": "raw_value"},
+            ],
+            "cmds": {
+                "accepts": [
+                    {"id": "TXCODE", "name": "Send Code"},
+                    {"id": "QUERY", "name": "Query"},
+                ],
+                "sends": [],
+            },
+            "links": {"ctl": [], "rsp": []},
+        },
+    ]
+
+    return {"editors": editors, "nodedefs": nodedefs, "linkdefs": []}
+
+
+def _parse_temp_unit(custom_params: dict) -> str:
+    """Extract and normalize TEMP_UNIT from custom params. Returns 'C' or 'F'."""
+    raw = str((custom_params or {}).get("TEMP_UNIT", "")).strip().upper()
+    if raw in ("F", "FAHRENHEIT"):
+        return "F"
+    return "C"
 
 
 @dataclass(slots=True)
@@ -174,53 +240,201 @@ def _model_index(model_name: str) -> int:
     return 6
 
 
-class BroadlinkCapabilityNode(BaseNode):
-    """Placeholder capability node for a later implementation pass."""
+class _ControllerNode(BaseNode):
+    """Base class for IR and RF controller nodes.
 
-    id = "blcap"
+    Subclasses set ``id``, ``_code_type`` ('ir' or 'rf'), and ``_learn_timeout``.
+    Learning runs in a daemon thread so the LEARNCODE command returns immediately.
+    """
+
+    _code_type: str = "ir"
+    _learn_timeout: int = 30
+
     drivers = [
         {"driver": "ST", "value": 0, "uom": 25},
-        {"driver": "GV0", "value": 0, "uom": 56},
-        {"driver": "GV30", "value": 0, "uom": 25},
-        {"driver": "TIME", "value": int(time.time()), "uom": 151},
+        {"driver": "GV0", "value": 0, "uom": 151},
+        {"driver": "GV1", "value": 0, "uom": 56},
+        {"driver": "GV2", "value": 0, "uom": 25},
     ]
 
-    def __init__(self, polyglot, primary, address: str, name: str, capability: str):
+    def __init__(self, polyglot, primary, address: str, name: str, controller) -> None:
         super().__init__(polyglot, primary, address, name)
-        self.capability = capability
-        self.id = f"bl{capability}"
+        self.controller = controller
+        self._learn_thread: threading.Thread | None = None
+        self._learn_count: int = 0
 
-    def start(self):
-        self.query()
+    def start(self) -> None:
+        existing = [k for k in self.controller.learned_codes if k.startswith(self._code_type + "code")]
+        self._learn_count = len(existing)
+        self._set("GV1", self._learn_count, 56)
+        self._set("GV2", 1 if self.controller.hub_client and self.controller.hub_client.connected else 0)
+        self._set("ST", 0)
 
-    def query(self, command=None):
-        self._set("TIME", int(time.time()), 151)
+    def learn_code(self, command=None) -> None:
+        if self._learn_thread and self._learn_thread.is_alive():
+            LOGGER.warning("[%s] Learn already in progress, ignoring command", type(self).__name__)
+            return
+        self._set("ST", 1)  # Learning
+        self._learn_thread = threading.Thread(
+            target=self._do_learn, daemon=True, name=f"{self._code_type}-learn"
+        )
+        self._learn_thread.start()
+
+    def _do_learn(self) -> None:
+        tag = type(self).__name__
+        try:
+            if not self.controller.hub_client:
+                raise RuntimeError("Hub client not available")
+            LOGGER.info("[%s._do_learn] Starting %s learn (%ds window)", tag, self._code_type.upper(), self._learn_timeout)
+            if self._code_type == "rf":
+                packet = self.controller.hub_client.learn_rf(timeout_sec=self._learn_timeout)
+            else:
+                packet = self.controller.hub_client.learn_ir(timeout_sec=self._learn_timeout)
+
+            code_hex = packet.hex()
+            addr = self.controller._next_code_address(self._code_type)
+            name = f"{self._code_type.upper()} Code {addr[-3:]}"
+            metadata: dict = {
+                "name": name,
+                "code_hex": code_hex,
+                "created_at": int(time.time()),
+                "last_sent": 0,
+                "last_send_success": 0,
+                "tx_count": 0,
+                "controller_type": self._code_type,
+                "controller_addr": self.address,
+            }
+            self.controller._persist_learned_code(addr, metadata)
+
+            if self._code_type == "rf":
+                code_node = RFCodeNode(self.poly, self.address, addr, name, self.controller)
+            else:
+                code_node = IRCodeNode(self.poly, self.address, addr, name, self.controller)
+            code_node._code_meta = metadata
+            self.poly.addNode(code_node)
+
+            self._learn_count += 1
+            self._set("ST", 2)  # Learned OK
+            self._set("GV0", int(time.time()), 151)
+            self._set("GV1", self._learn_count, 56)
+            LOGGER.info("[%s._do_learn] Learned OK, stored as %s", tag, addr)
+        except TimeoutError:
+            LOGGER.warning("[%s._do_learn] Learn timed out after %ds", tag, self._learn_timeout)
+            self._set("ST", 3)
+        except Exception as err:
+            LOGGER.error("[%s._do_learn] Failed: %s", tag, err)
+            self._set("ST", 3)
+
+    def query(self, command=None) -> None:
+        self.start()
 
     commands = {
+        "LEARNCODE": learn_code,
         "QUERY": query,
-        "UPDATE": query,
     }
 
 
-class BroadlinkCodeNode(BaseNode):
-    """Placeholder code node for a later implementation pass."""
+class IRControllerNode(_ControllerNode):
+    """IR remote controller node."""
 
-    id = "blcode"
+    id = "blirctl"
+    _code_type = "ir"
+    _learn_timeout = 30
+
+
+class RFControllerNode(_ControllerNode):
+    """RF remote controller node."""
+
+    id = "blrfctl"
+    _code_type = "rf"
+    _learn_timeout = 45
+
+
+class _CodeNode(BaseNode):
+    """Base class for learned IR and RF code nodes.
+
+    Subclasses set ``id``. Transmission tracking is persisted to customdata
+    via the parent BroadlinkController.
+    """
+
     drivers = [
         {"driver": "ST", "value": 0, "uom": 25},
-        {"driver": "GV30", "value": 0, "uom": 25},
-        {"driver": "TIME", "value": int(time.time()), "uom": 151},
+        {"driver": "GV0", "value": 0, "uom": 151},
+        {"driver": "GV1", "value": 0, "uom": 151},
+        {"driver": "GV2", "value": 0, "uom": 25},
+        {"driver": "GV3", "value": 0, "uom": 56},
     ]
 
-    def start(self):
-        self.query()
+    def __init__(self, polyglot, primary, address: str, name: str, controller) -> None:
+        super().__init__(polyglot, primary, address, name)
+        self.controller = controller
+        self._code_meta: dict = {}
 
-    def query(self, command=None):
-        self._set("TIME", int(time.time()), 151)
+    def start(self) -> None:
+        meta = self._code_meta
+        self._set("GV0", meta.get("created_at", 0), 151)
+        self._set("GV1", meta.get("last_sent", 0), 151)
+        self._set("GV2", meta.get("last_send_success", 0), 25)
+        self._set("GV3", meta.get("tx_count", 0), 56)
+        self._set("ST", 0)  # Ready
+
+    def send_code(self, command=None) -> None:
+        meta = self._code_meta
+        code_hex = meta.get("code_hex", "")
+        if not code_hex:
+            LOGGER.error("[%s.send_code] No code stored for %s", type(self).__name__, self.address)
+            self._set("ST", 3)
+            return
+        if not self.controller.hub_client:
+            LOGGER.error("[%s.send_code] Hub client not available", type(self).__name__)
+            self._set("ST", 3)
+            return
+
+        self._set("ST", 1)  # Sending
+        now = int(time.time())
+        try:
+            success = self.controller.hub_client.send_code(code_hex)
+            meta["last_sent"] = now
+            if success:
+                meta["last_send_success"] = 1
+                meta["tx_count"] = meta.get("tx_count", 0) + 1
+                self._set("ST", 2)  # Sent OK
+                self._set("GV2", 1, 25)
+                self._set("GV3", meta["tx_count"], 56)
+            else:
+                meta["last_send_success"] = 2
+                self._set("ST", 3)  # Failed
+                self._set("GV2", 2, 25)
+            self._set("GV1", now, 151)
+            self.controller._persist_learned_code(self.address, meta)
+        except Exception as err:
+            LOGGER.error("[%s.send_code] Unexpected error: %s", type(self).__name__, err)
+            meta["last_sent"] = now
+            meta["last_send_success"] = 2
+            self._set("ST", 3)
+            self._set("GV1", now, 151)
+            self._set("GV2", 2, 25)
+            self.controller._persist_learned_code(self.address, meta)
+
+    def query(self, command=None) -> None:
+        self.start()
 
     commands = {
+        "TXCODE": send_code,
         "QUERY": query,
     }
+
+
+class IRCodeNode(_CodeNode):
+    """Learned IR code node."""
+
+    id = "blircode"
+
+
+class RFCodeNode(_CodeNode):
+    """Learned RF code node."""
+
+    id = "blrfcode"
 
 
 class BroadlinkController(BaseNode):
@@ -246,6 +460,13 @@ class BroadlinkController(BaseNode):
         self.hub_blueprint: HubBlueprint | None = None
         self.hub_client: BroadlinkHubClient | None = None
         self.node_name_cache: dict[str, str] = {}
+        self.temp_unit: str = "C"
+        self.has_temp_sensor: bool = False
+        self.has_humidity_sensor: bool = False
+        self.learned_codes: dict[str, dict] = {}
+        self._loaded_code_addrs: set[str] = set()
+        self.ir_controller: IRControllerNode | None = None
+        self.rf_controller: RFControllerNode | None = None
         LOGGER.debug("[__init__] Initialized instance variables")
 
         LOGGER.debug("[__init__] Subscribing to polyglot events")
@@ -273,12 +494,16 @@ class BroadlinkController(BaseNode):
         LOGGER.info("[start] Received START event")
         self._set("TIME", int(time.time()), 151)
         LOGGER.debug("[start] Set TIME driver")
-        
+
+        # Detect sensor cable before reconcile so profile can include sensor drivers
+        self._detect_and_apply_sensors()
+
         self.reconcile_structure()
         LOGGER.info("[start] Startup reconciliation complete")
 
     def stop(self):
-        self._sync_node_names_from_db()
+        # Flush all node names (captures any user renames since last long poll)
+        self._sync_all_node_names()
         self._set("ST", 0)
         self._set("GV1", 0)
         self.poly.stop()
@@ -311,16 +536,34 @@ class BroadlinkController(BaseNode):
         else:
             LOGGER.warning("[handle_params] No HUB_IP resolved from custom params payload.")
 
+        # Parse TEMP_UNIT: republish profile if unit changed while sensor is present
+        prev_temp_unit = self.temp_unit
+        self.temp_unit = _parse_temp_unit(custom_params)
+        if self.temp_unit != prev_temp_unit:
+            LOGGER.info("[handle_params] TEMP_UNIT changed from %s to %s", prev_temp_unit, self.temp_unit)
+
         if not self.config.has_hub:
             self.poly.Notices["required"] = "Set HUB_IP to the IP address for this Broadlink hub instance."
         elif self.config.ignored_hub_ips:
             self.poly.Notices["config_scope"] = "Only the first configured hub IP is used. Run one PG3 instance per hub."
+
+        # Detect sensors (may republish profile with sensor drivers)
+        if self.config.has_hub:
+            self._detect_and_apply_sensors()
+        # Republish if only temp_unit changed (sensor state unchanged, detect_and_apply skipped republish)
+        if self.temp_unit != prev_temp_unit and self.has_temp_sensor:
+            self._publish_profile()
 
         self.reconcile_structure()
 
     def handle_custom_data(self, custom_data):
         self.data_store.load(custom_data or {})
         self.node_name_cache = self._safe_name_map(self.data_store.get("node_names", {}))
+        self.learned_codes = self._safe_code_map(self.data_store.get("learned_codes", {}))
+        # Restore last-known sensor state so __init__'s profile publish is accurate on restart
+        sensor_state = self.data_store.get("sensor_state") or {}
+        self.has_temp_sensor = bool(sensor_state.get("has_temp", False))
+        self.has_humidity_sensor = bool(sensor_state.get("has_humidity", False))
         self._sync_node_names_from_db()
 
     def poll(self, poll_type):
@@ -332,6 +575,8 @@ class BroadlinkController(BaseNode):
                 self.reportCmd("DON", 2)
             else:
                 self.reportCmd("DOF", 2)
+            if self.has_temp_sensor or self.has_humidity_sensor:
+                self._refresh_sensor_readings()
             return
 
         self._refresh_hub_connection()
@@ -380,6 +625,8 @@ class BroadlinkController(BaseNode):
                 LOGGER.info("[reconcile_structure] Hub is connected and ready")
                 self.poly.Notices.delete("stage")
                 self.poly.Notices.delete("hub_errors")
+                self._ensure_controller_nodes()
+                self._load_learned_codes()
             else:
                 LOGGER.warning("[reconcile_structure] Hub not connected, will retry on next poll")
                 self.poly.Notices["stage"] = (
@@ -473,13 +720,15 @@ class BroadlinkController(BaseNode):
             return
         LOGGER.debug("[_publish_profile] updateJsonProfile method available")
 
+        profile = _build_profile_definition(self.has_temp_sensor, self.has_humidity_sensor, self.temp_unit)
+
         current_profile_getter = getattr(self.poly, "getJsonProfile", None)
         if callable(current_profile_getter):
             try:
                 LOGGER.debug("[_publish_profile] Attempting to retrieve current profile from IoX")
                 current_profile = current_profile_getter({"waitResponse": True})
                 LOGGER.debug("[_publish_profile] Current JSON profile from IoX: %s", json.dumps(current_profile, sort_keys=True))
-                if self._profiles_match(current_profile, PROFILE_DEFINITION):
+                if self._profiles_match(current_profile, profile):
                     LOGGER.info("[_publish_profile] JSON profile already up to date, skipping publish")
                     return
                 LOGGER.info("[_publish_profile] Profile mismatch detected, will republish")
@@ -487,7 +736,7 @@ class BroadlinkController(BaseNode):
                 LOGGER.debug("[_publish_profile] getJsonProfile does not support waitResponse, trying without")
                 current_profile = current_profile_getter()
                 LOGGER.debug("[_publish_profile] Current JSON profile from IoX: %s", json.dumps(current_profile, sort_keys=True))
-                if self._profiles_match(current_profile, PROFILE_DEFINITION):
+                if self._profiles_match(current_profile, profile):
                     LOGGER.info("[_publish_profile] JSON profile already up to date, skipping publish")
                     return
                 LOGGER.info("[_publish_profile] Profile mismatch detected, will republish")
@@ -496,12 +745,12 @@ class BroadlinkController(BaseNode):
 
         try:
             LOGGER.debug("[_publish_profile] Publishing profile with waitResponse=True")
-            update_json_profile(PROFILE_DEFINITION, {"waitResponse": True})
+            update_json_profile(profile, {"waitResponse": True})
             LOGGER.info("[_publish_profile] Dynamic JSON profile published successfully")
             self.poly.Notices.delete("profile")
         except TypeError:
             LOGGER.debug("[_publish_profile] updateJsonProfile does not support options, publishing without")
-            update_json_profile(PROFILE_DEFINITION)
+            update_json_profile(profile)
             LOGGER.info("[_publish_profile] Dynamic JSON profile published successfully")
             self.poly.Notices.delete("profile")
         except Exception as err:
@@ -546,6 +795,124 @@ class BroadlinkController(BaseNode):
                 continue
             parsed[key_text] = value_text
         return parsed
+
+    def _detect_and_apply_sensors(self) -> None:
+        """Connect to hub, detect sensor cable, and republish profile if state changed."""
+        if not self.config.has_hub:
+            return
+        client = self._get_or_create_hub_client(self.config.hub_ip)
+        try:
+            sensor_data = client.check_sensors()
+            new_has_temp = sensor_data.has_temperature
+            new_has_humidity = sensor_data.has_humidity
+            if new_has_temp != self.has_temp_sensor or new_has_humidity != self.has_humidity_sensor:
+                LOGGER.info(
+                    "[_detect_and_apply_sensors] Sensor state changed: temp=%s, humidity=%s",
+                    new_has_temp, new_has_humidity,
+                )
+                self.has_temp_sensor = new_has_temp
+                self.has_humidity_sensor = new_has_humidity
+                # Persist sensor state so next startup's initial profile publish is correct
+                self.data_store["sensor_state"] = {"has_temp": new_has_temp, "has_humidity": new_has_humidity}
+                self._publish_profile()
+        except Exception as err:
+            LOGGER.debug(
+                "[_detect_and_apply_sensors] Sensor check skipped (no cable or unsupported): %s", err
+            )
+
+    def _refresh_sensor_readings(self) -> None:
+        """Query hub for current temperature/humidity and update setup node drivers."""
+        if not self.hub_client:
+            return
+        try:
+            sensor_data = self.hub_client.check_sensors()
+            if sensor_data.has_temperature:
+                temp_c = sensor_data.temperature_c
+                display_val = round((temp_c * 9 / 5) + 32, 1) if self.temp_unit == "F" else round(temp_c, 1)
+                self._set("GV2", display_val)
+            if sensor_data.has_humidity:
+                self._set("GV3", round(sensor_data.humidity, 1))
+        except Exception as err:
+            LOGGER.debug("[_refresh_sensor_readings] Sensor query failed: %s", err)
+
+    def _ensure_controller_nodes(self) -> None:
+        """Create IR and RF controller subnodes if they do not already exist."""
+        if self.ir_controller is None:
+            ir_name = self._resolve_node_name("irctrl", "IR Controller")
+            self.ir_controller = IRControllerNode(self.poly, self.address, "irctrl", ir_name, self)
+            self.poly.addNode(self.ir_controller)
+            LOGGER.info("[_ensure_controller_nodes] Added IRControllerNode")
+        if self.rf_controller is None:
+            rf_name = self._resolve_node_name("rfctrl", "RF Controller")
+            self.rf_controller = RFControllerNode(self.poly, self.address, "rfctrl", rf_name, self)
+            self.poly.addNode(self.rf_controller)
+            LOGGER.info("[_ensure_controller_nodes] Added RFControllerNode")
+
+    def _load_learned_codes(self) -> None:
+        """Recreate code subnodes from persisted metadata (idempotent)."""
+        for addr, meta in self.learned_codes.items():
+            if addr in self._loaded_code_addrs:
+                continue
+            code_type = meta.get("controller_type", "ir")
+            ctrl_addr = meta.get("controller_addr", "irctrl")
+            name = meta.get("name") or f"{code_type.upper()} Code"
+            if code_type == "rf":
+                node: _CodeNode = RFCodeNode(self.poly, ctrl_addr, addr, name, self)
+            else:
+                node = IRCodeNode(self.poly, ctrl_addr, addr, name, self)
+            node._code_meta = dict(meta)
+            self.poly.addNode(node)
+            self._loaded_code_addrs.add(addr)
+            LOGGER.info("[_load_learned_codes] Restored %s code node: %s", code_type.upper(), addr)
+
+    def _persist_learned_code(self, addr: str, metadata: dict) -> None:
+        """Persist a single learned code's metadata to customdata (diff-safe)."""
+        updated = dict(self.learned_codes)
+        updated[addr] = dict(metadata)
+        self.learned_codes = updated
+        self._loaded_code_addrs.add(addr)
+        stored = self.data_store.get("learned_codes") or {}
+        if stored != updated:
+            self.data_store["learned_codes"] = updated
+
+    def _next_code_address(self, code_type: str) -> str:
+        """Return the next available unique address for a learned code."""
+        prefix = f"{code_type}code"
+        existing = [k for k in self.learned_codes if k.startswith(prefix)]
+        return f"{prefix}{len(existing) + 1:03d}"
+
+    def _safe_code_map(self, candidate) -> dict[str, dict]:
+        """Validate and return the learned_codes structure from customdata."""
+        if not isinstance(candidate, dict):
+            return {}
+        return {str(k).strip(): v for k, v in candidate.items() if isinstance(k, str) and isinstance(v, dict)}
+
+    def _sync_all_node_names(self) -> None:
+        """Flush all managed node names from PG3 DB to customdata (called on stop)."""
+        # Setup node
+        self._sync_node_names_from_db()
+        # IR/RF controller nodes
+        for addr in ("irctrl", "rfctrl"):
+            db_name = self.poly.getNodeNameFromDb(addr)
+            if db_name:
+                self.node_name_cache[addr] = db_name
+        # Code nodes — also update name in learned_codes metadata
+        codes_changed = False
+        updated_codes = dict(self.learned_codes)
+        for addr in list(self.learned_codes.keys()):
+            db_name = self.poly.getNodeNameFromDb(addr)
+            if db_name:
+                self.node_name_cache[addr] = db_name
+                if updated_codes[addr].get("name") != db_name:
+                    updated_codes[addr] = dict(updated_codes[addr])
+                    updated_codes[addr]["name"] = db_name
+                    codes_changed = True
+        if codes_changed:
+            self.learned_codes = updated_codes
+            stored = self.data_store.get("learned_codes") or {}
+            if stored != updated_codes:
+                self.data_store["learned_codes"] = updated_codes
+        self._persist_node_name_cache()
 
     def force_update(self, command=None):
         self.reconcile_structure()
