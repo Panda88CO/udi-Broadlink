@@ -27,7 +27,8 @@ The rewrite now publishes a minimal JSON profile from code for the primary node.
 That currently covers:
 - `setup`
 
-If the installed `udi_interface` does not support JSON profile publication, the code falls back to the legacy `updateProfile()` path.
+The plugin now uses Dynamic Profiles only and publishes with `updateJsonProfile(..., {"waitResponse": True})`.
+For migration visibility, startup also retrieves the current profile with `getJsonProfile({"waitResponse": True})` and logs it at debug level.
 
 ## Architecture Direction
 

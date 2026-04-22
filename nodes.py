@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 import time
 
 import udi_interface
@@ -15,64 +16,84 @@ Custom = udi_interface.Custom
 VERSION = "0.2.0"
 
 PROFILE_DEFINITION = {
-    "plugin": {
-        "name": "Broadlink Remote",
-        "description": "Broadlink PG3 node server",
-        "publisher": "chris",
-        "language": "python3",
-        "executableName": "udibroadlink.py",
-        "installScript": "install.sh",
-        "documentationLink": "README.md",
-        "licenseLink": "LICENSE.md",
-        "shortPoll": 60,
-        "longPoll": 300,
-        "profileVersion": VERSION,
-        "initialLogLevel": "INFO",
-        "enableOAUTH2": False,
-        "worksOnPolisy": True,
-        "worksOnEisy": True,
-        "requiresIoXAccess": False,
-        "requirements": [],
-        "version": VERSION,
-    },
     "editors": [
-        {"id": "status_index", "uom": "Index | 25", "min": 0, "max": 2},
-        {"id": "binary_index", "uom": "Index | 25", "min": 0, "max": 1},
-        {"id": "raw_value", "uom": "Raw Value | 56", "min": 0, "max": 65535},
-        {"id": "timestamp", "uom": "Unix Timestamp | 151", "min": 0, "max": 4294967295},
+        {
+            "id": "status_index",
+            "ranges": [
+                {
+                    "uom": "25",
+                    "subset": "0-2",
+                    "names": {
+                        "0": "Not Configured",
+                        "1": "Online",
+                        "2": "Error",
+                    },
+                }
+            ],
+        },
+        {
+            "id": "binary_index",
+            "ranges": [
+                {
+                    "uom": "25",
+                    "subset": "0-1",
+                    "names": {
+                        "0": "No",
+                        "1": "Yes",
+                    },
+                }
+            ],
+        },
+        {
+            "id": "raw_value",
+            "ranges": [
+                {
+                    "uom": "56",
+                    "min": 0,
+                    "max": 65535,
+                    "prec": 0,
+                }
+            ],
+        },
+        {
+            "id": "timestamp",
+            "ranges": [
+                {
+                    "uom": "151",
+                    "min": 0,
+                    "max": 4294967295,
+                    "prec": 0,
+                }
+            ],
+        },
     ],
     "nodedefs": [
         {
             "id": "setup",
-            "name": "Broadlink Hub",
             "icon": "GenericCtl",
             "properties": [
                 {
                     "id": "ST",
                     "name": "Status",
-                    "editor": {"idref": "status_index"},
-                    "is_settable": False,
+                    "editor": "status_index",
                 },
                 {
                     "id": "GV0",
                     "name": "Device Type",
-                    "editor": {"idref": "raw_value"},
-                    "is_settable": False,
+                    "editor": "raw_value",
                 },
                 {
                     "id": "GV1",
                     "name": "Connected",
-                    "editor": {"idref": "binary_index"},
-                    "is_settable": False,
+                    "editor": "binary_index",
                 },
                 {
                     "id": "TIME",
                     "name": "Last Update",
-                    "editor": {"idref": "timestamp"},
-                    "is_settable": False,
+                    "editor": "timestamp",
                 },
             ],
-            "commands": {
+            "cmds": {
                 "accepts": [
                     {"id": "QUERY", "name": "Query"},
                     {"id": "UPDATE", "name": "Update"},
@@ -82,8 +103,13 @@ PROFILE_DEFINITION = {
                     {"id": "DOF", "name": "Heartbeat Off"},
                 ],
             },
+            "links": {
+                "ctl": [],
+                "rsp": [],
+            },
         },
     ],
+    "linkdefs": [],
 }
 
 TYPED_PARAMETER_DEFINITIONS = [
@@ -390,23 +416,50 @@ class BroadlinkController(BaseNode):
 
     def _publish_profile(self):
         update_json_profile = getattr(self.poly, "updateJsonProfile", None)
-        if callable(update_json_profile):
-            current_profile_getter = getattr(self.poly, "getJsonProfile", None)
-            if callable(current_profile_getter):
-                try:
-                    if current_profile_getter() == PROFILE_DEFINITION:
-                        return
-                except Exception as err:
-                    LOGGER.warning("Unable to read existing JSON profile: %s", err)
-            try:
-                update_json_profile(PROFILE_DEFINITION)
-                return
-            except TypeError as err:
-                LOGGER.warning("JSON profile publish is not supported by this installed udi_interface version: %s", err)
-            except Exception as err:
-                LOGGER.warning("JSON profile publish failed, falling back to legacy profile update: %s", err)
+        if not callable(update_json_profile):
+            LOGGER.error("Dynamic profile publish is required, but updateJsonProfile is unavailable.")
+            self.poly.Notices["profile"] = "Dynamic profile publish failed: updateJsonProfile() is unavailable."
+            return
 
-        self.poly.updateProfile()
+        current_profile_getter = getattr(self.poly, "getJsonProfile", None)
+        if callable(current_profile_getter):
+            try:
+                current_profile = current_profile_getter({"waitResponse": True})
+                LOGGER.debug("Current JSON profile from IoX: %s", json.dumps(current_profile, sort_keys=True))
+                if self._profiles_match(current_profile, PROFILE_DEFINITION):
+                    LOGGER.debug("JSON profile already up to date.")
+                    return
+            except TypeError:
+                current_profile = current_profile_getter()
+                LOGGER.debug("Current JSON profile from IoX: %s", json.dumps(current_profile, sort_keys=True))
+                if self._profiles_match(current_profile, PROFILE_DEFINITION):
+                    LOGGER.debug("JSON profile already up to date.")
+                    return
+            except Exception as err:
+                LOGGER.warning("Unable to read existing JSON profile: %s", err)
+
+        try:
+            update_json_profile(PROFILE_DEFINITION, {"waitResponse": True})
+            LOGGER.info("Dynamic JSON profile published successfully.")
+            self.poly.Notices.delete("profile")
+        except TypeError:
+            update_json_profile(PROFILE_DEFINITION)
+            LOGGER.info("Dynamic JSON profile published successfully.")
+            self.poly.Notices.delete("profile")
+        except Exception as err:
+            LOGGER.error("Dynamic profile publish failed: %s", err)
+            self.poly.Notices["profile"] = f"Dynamic profile publish failed: {err}"
+
+    def _profiles_match(self, current_profile, expected_profile) -> bool:
+        if not isinstance(current_profile, dict):
+            return False
+        if not isinstance(expected_profile, dict):
+            return False
+
+        for key in ("editors", "nodedefs", "linkdefs"):
+            if current_profile.get(key, []) != expected_profile.get(key, []):
+                return False
+        return True
 
     def _sync_node_names_from_db(self):
         db_name = self.poly.getNodeNameFromDb(self.address)
