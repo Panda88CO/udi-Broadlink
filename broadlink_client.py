@@ -12,6 +12,9 @@ from threading import RLock
 import time
 
 import broadlink
+import udi_interface
+
+LOGGER = udi_interface.LOGGER
 
 
 @dataclass(slots=True)
@@ -28,12 +31,14 @@ class BroadlinkHubClient:
     """Thin wrapper around python-broadlink remote functionality."""
 
     def __init__(self, hub_ip: str, user_id: str = "", user_password: str = "") -> None:
+        LOGGER.debug("[BroadlinkHubClient.__init__] Creating client for ip=%s", hub_ip)
         self.hub_ip = hub_ip
         self.user_id = user_id
         self.user_password = user_password
         self._device = None
         self._hub_info: BroadlinkHubInfo | None = None
         self._lock = RLock()
+        LOGGER.debug("[BroadlinkHubClient.__init__] Client initialized")
 
     @property
     def connected(self) -> bool:
@@ -46,22 +51,34 @@ class BroadlinkHubClient:
     def connect(self) -> bool:
         """Discover and authenticate the Broadlink device at the configured IP."""
         with self._lock:
+            LOGGER.debug("[connect] Attempting to connect to %s", self.hub_ip)
             if not self.hub_ip:
+                LOGGER.error("[connect] HUB_IP is required")
                 raise ValueError("HUB_IP is required")
 
-            # hello() fetches devtype/mac, then auth() prepares encrypted session.
-            device = broadlink.hello(self.hub_ip)
-            if device is None:
-                raise RuntimeError(f"No Broadlink device found at {self.hub_ip}")
-            device.auth()
-            self._device = device
-            self._hub_info = BroadlinkHubInfo(
-                ip_address=self.hub_ip,
-                mac_address=_normalize_mac_address(getattr(device, "mac", None)),
-                device_type=_normalize_device_type(getattr(device, "devtype", None)),
-                model_name=type(device).__name__,
-            )
-            return True
+            try:
+                LOGGER.debug("[connect] Calling broadlink.hello(%s)", self.hub_ip)
+                device = broadlink.hello(self.hub_ip)
+                if device is None:
+                    LOGGER.error("[connect] No Broadlink device found at %s", self.hub_ip)
+                    raise RuntimeError(f"No Broadlink device found at {self.hub_ip}")
+                
+                LOGGER.debug("[connect] Device discovered, calling auth()")
+                device.auth()
+                
+                self._device = device
+                self._hub_info = BroadlinkHubInfo(
+                    ip_address=self.hub_ip,
+                    mac_address=_normalize_mac_address(getattr(device, "mac", None)),
+                    device_type=_normalize_device_type(getattr(device, "devtype", None)),
+                    model_name=type(device).__name__,
+                )
+                LOGGER.info("[connect] Connected to %s, model=%s, mac=%s", 
+                           self.hub_ip, self._hub_info.model_name, self._hub_info.mac_address)
+                return True
+            except Exception as err:
+                LOGGER.error("[connect] Connection failed: %s", err)
+                raise
 
     def identify(self) -> BroadlinkHubInfo:
         """Ensure the hub is connected and return cached identity details."""
@@ -73,16 +90,22 @@ class BroadlinkHubClient:
     def refresh(self) -> bool:
         """Best-effort connectivity refresh."""
         with self._lock:
+            LOGGER.debug("[refresh] Attempting refresh")
             if self._device is None:
                 try:
+                    LOGGER.debug("[refresh] Device not cached, connecting")
                     self.connect()
                     return True
-                except Exception:
+                except Exception as err:
+                    LOGGER.warning("[refresh] Connect failed: %s", err)
                     return False
             try:
+                LOGGER.debug("[refresh] Testing cached device with ping")
                 self._device.ping()
+                LOGGER.debug("[refresh] Ping successful")
                 return True
-            except Exception:
+            except Exception as err:
+                LOGGER.warning("[refresh] Ping failed: %s, attempting re-auth", err)
                 try:
                     self._device.auth()
                     if self._hub_info is None:
@@ -92,22 +115,29 @@ class BroadlinkHubClient:
                             device_type=_normalize_device_type(getattr(self._device, "devtype", None)),
                             model_name=type(self._device).__name__,
                         )
+                    LOGGER.info("[refresh] Re-auth successful")
                     return True
-                except Exception:
+                except Exception as auth_err:
+                    LOGGER.error("[refresh] Re-auth failed: %s, clearing device", auth_err)
                     self._device = None
                     return False
 
     def ensure_connected(self) -> BroadlinkHubInfo:
         """Reconnect if needed and return the current identified hub details."""
         with self._lock:
+            LOGGER.debug("[ensure_connected] Checking connection state")
             if self._device is not None:
                 try:
+                    LOGGER.debug("[ensure_connected] Testing cached device with ping")
                     self._device.ping()
                     if self._hub_info is not None:
+                        LOGGER.debug("[ensure_connected] Device already connected")
                         return self._hub_info
-                except Exception:
+                except Exception as err:
+                    LOGGER.warning("[ensure_connected] Ping failed: %s, will reconnect", err)
                     self._device = None
 
+            LOGGER.info("[ensure_connected] Connecting to %s", self.hub_ip)
             self.connect()
             return self._hub_info
 

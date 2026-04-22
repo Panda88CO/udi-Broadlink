@@ -112,15 +112,6 @@ PROFILE_DEFINITION = {
     "linkdefs": [],
 }
 
-TYPED_PARAMETER_DEFINITIONS = [
-    {
-        "name": "hub_ip",
-        "title": "Broadlink Hub IP Address",
-        "type": "STRING",
-        "desc": "Enter one already-provisioned Broadlink hub IP address for this PG3 node server instance.",
-    }
-]
-
 
 @dataclass(slots=True)
 class HubBlueprint:
@@ -206,35 +197,47 @@ class BroadlinkController(BaseNode):
     ]
 
     def __init__(self, polyglot, primary, address, name):
+        LOGGER.info("[__init__] Constructing BroadlinkController")
         super().__init__(polyglot, primary, address, name)
         self.poly = polyglot
         self.config = PluginConfig()
         self.parameters = Custom(self.poly, "customparams")
-        self.typed_parameters = Custom(self.poly, "customtypedparams")
         self.typed_data = Custom(self.poly, "customtypeddata")
         self.data_store = Custom(self.poly, "customdata")
         self.heartbeat_state = 0
         self.hub_blueprint: HubBlueprint | None = None
         self.hub_client: BroadlinkHubClient | None = None
         self.node_name_cache: dict[str, str] = {}
+        LOGGER.debug("[__init__] Initialized instance variables")
 
+        LOGGER.debug("[__init__] Subscribing to polyglot events")
         self.poly.subscribe(self.poly.START, self.start, self.address)
         self.poly.subscribe(self.poly.STOP, self.stop)
         self.poly.subscribe(self.poly.POLL, self.poll)
         self.poly.subscribe(self.poly.CUSTOMPARAMS, self.handle_params)
-        self.poly.subscribe(self.poly.CUSTOMTYPEDDATA, self.handle_typed_params)
         self.poly.subscribe(self.poly.CUSTOMDATA, self.handle_custom_data)
         self.poly.subscribe(self.poly.LOGLEVEL, self.handle_log_level)
         self.poly.subscribe(self.poly.DISCOVER, self.discover)
+        LOGGER.debug("[__init__] Event subscriptions registered")
 
+        LOGGER.info("[__init__] Publishing JSON profile")
         self._publish_profile()
+        
+        LOGGER.info("[__init__] Signaling polyglot ready")
         self.poly.ready()
+        
+        LOGGER.info("[__init__] Adding node to polyglot")
         self.poly.addNode(self, conn_status="ST", rename=False)
+        
+        LOGGER.info("[__init__] BroadlinkController construction complete")
 
     def start(self):
-        self._publish_typed_parameters()
+        LOGGER.info("[start] Received START event")
         self._set("TIME", int(time.time()), 151)
+        LOGGER.debug("[start] Set TIME driver")
+        
         self.reconcile_structure()
+        LOGGER.info("[start] Startup reconciliation complete")
 
     def stop(self):
         self._sync_node_names_from_db()
@@ -247,60 +250,31 @@ class BroadlinkController(BaseNode):
             LOGGER.info("New log level: %s", level["level"])
 
     def handle_params(self, custom_params):
+        LOGGER.info("[handle_params] CUSTOMPARAMS event received")
         self.parameters.load(custom_params)
         self.poly.Notices.clear()
-        LOGGER.debug("Received CUSTOMPARAMS keys: %s", sorted((custom_params or {}).keys()))
+        LOGGER.debug("[handle_params] Received CUSTOMPARAMS keys: %s", sorted((custom_params or {}).keys()))
+        LOGGER.debug("[handle_params] CUSTOMPARAMS payload: %s", custom_params)
 
         try:
             self.config = build_config(custom_params)
         except Exception as err:
             self.poly.Notices["config"] = f"Invalid configuration format: {err}"
-            LOGGER.error("Failed to parse custom params: %s", err)
+            LOGGER.error("[handle_params] Failed to parse custom params: %s", err)
             self._set("ST", 2)
             self._set("GV1", 0)
             self._set("GV0", 0, 56)
             return
 
         if self.config.has_hub:
-            LOGGER.info("Resolved HUB_IP from custom params: %s", self.config.hub_ip)
+            LOGGER.info("[handle_params] *** HUB_IP RESOLVED FROM CUSTOMPARAMS: %s ***", self.config.hub_ip)
             if self.config.ignored_hub_ips:
-                LOGGER.info("Additional HUB_IP values ignored in single-hub mode: %s", self.config.ignored_hub_ips)
+                LOGGER.info("[handle_params] Additional HUB_IP values ignored in single-hub mode: %s", self.config.ignored_hub_ips)
         else:
-            LOGGER.warning("No HUB_IP resolved from custom params payload.")
+            LOGGER.warning("[handle_params] No HUB_IP resolved from custom params payload.")
 
         if not self.config.has_hub:
             self.poly.Notices["required"] = "Set HUB_IP to the IP address for this Broadlink hub instance."
-        elif self.config.ignored_hub_ips:
-            self.poly.Notices["config_scope"] = "Only the first configured hub IP is used. Run one PG3 instance per hub."
-
-        self.reconcile_structure()
-
-    def handle_typed_params(self, typed_data):
-        self.typed_data.load(typed_data or {})
-        self.poly.Notices.clear()
-        LOGGER.debug("Received CUSTOMTYPEDDATA type: %s", type(typed_data).__name__)
-        if isinstance(typed_data, dict):
-            LOGGER.debug("Received CUSTOMTYPEDDATA keys: %s", sorted(typed_data.keys()))
-
-        try:
-            self.config = build_config(typed_data)
-        except Exception as err:
-            self.poly.Notices["config"] = f"Invalid typed configuration format: {err}"
-            LOGGER.error("Failed to parse typed params: %s", err)
-            self._set("ST", 2)
-            self._set("GV1", 0)
-            self._set("GV0", 0, 56)
-            return
-
-        if self.config.has_hub:
-            LOGGER.info("Resolved HUB_IP from typed params: %s", self.config.hub_ip)
-            if self.config.ignored_hub_ips:
-                LOGGER.info("Additional HUB_IP values ignored in single-hub mode: %s", self.config.ignored_hub_ips)
-        else:
-            LOGGER.warning("No HUB_IP resolved from typed params payload.")
-
-        if not self.config.has_hub:
-            self.poly.Notices["required"] = "Set the typed Broadlink hub IP address for this PG3 instance."
         elif self.config.ignored_hub_ips:
             self.poly.Notices["config_scope"] = "Only the first configured hub IP is used. Run one PG3 instance per hub."
 
@@ -330,18 +304,28 @@ class BroadlinkController(BaseNode):
         self.reconcile_structure()
 
     def reconcile_structure(self, update_time: bool = True):
+        LOGGER.debug("[reconcile_structure] Starting structure reconciliation")
         self.hub_blueprint = self._build_hub_blueprint()
+        LOGGER.debug("[reconcile_structure] Built hub blueprint: %s", self.hub_blueprint)
+        
         self._sync_node_names_from_db()
+        LOGGER.debug("[reconcile_structure] Synced node names from database")
 
         if self.hub_blueprint is None:
+            LOGGER.info("[reconcile_structure] Hub blueprint is None - no HUB_IP configured")
             self._set("ST", 0)
             self._set("GV0", 0, 56)
             self._set("GV1", 0)
             self.poly.Notices["stage"] = "Single-hub mode active: configure HUB_IP for this node server instance."
             self.poly.Notices.delete("hub_errors")
         else:
+            LOGGER.info("[reconcile_structure] Hub blueprint resolved: ip=%s, connected=%s, model=%s", 
+                       self.hub_blueprint.ip_address, self.hub_blueprint.connected, self.hub_blueprint.model_name)
+            
             status_value = 1 if self.hub_blueprint.connected else 2 if self.hub_blueprint.last_error else 0
             self._set("ST", status_value)
+            LOGGER.debug("[reconcile_structure] Set ST driver to %d", status_value)
+            
             self._set(
                 "GV0",
                 int(self.hub_blueprint.device_type[2:], 16)
@@ -350,22 +334,27 @@ class BroadlinkController(BaseNode):
                 56,
             )
             self._set("GV1", 1 if self.hub_blueprint.connected else 0)
+            LOGGER.debug("[reconcile_structure] Set GV0 and GV1 drivers")
 
             self.node_name_cache[self.address] = self.hub_blueprint.display_name
             self.data_store["node_names"] = dict(self.node_name_cache)
+            LOGGER.debug("[reconcile_structure] Updated node name cache")
 
             if self.hub_blueprint.connected:
+                LOGGER.info("[reconcile_structure] Hub is connected and ready")
                 self.poly.Notices["stage"] = (
                     "Single-hub mode active: this PG3 instance is managing one Broadlink hub. "
                     "IR/RF nodes will be added next."
                 )
                 self.poly.Notices.delete("hub_errors")
             else:
+                LOGGER.warning("[reconcile_structure] Hub not connected, will retry on next poll")
                 self.poly.Notices["stage"] = (
                     "Single-hub mode active: this PG3 instance is reconciling one Broadlink hub. "
                     "IR/RF nodes remain deferred."
                 )
                 if self.hub_blueprint.last_error:
+                    LOGGER.error("[reconcile_structure] Hub error: %s", self.hub_blueprint.last_error)
                     self.poly.Notices["hub_errors"] = (
                         f"{self.hub_blueprint.ip_address}: {self.hub_blueprint.last_error}"
                     )
@@ -374,13 +363,22 @@ class BroadlinkController(BaseNode):
             self._set("TIME", int(time.time()), 151)
 
     def _build_hub_blueprint(self) -> HubBlueprint | None:
+        LOGGER.debug("[_build_hub_blueprint] Building hub blueprint, has_hub=%s", self.config.has_hub)
         if not self.config.has_hub:
+            LOGGER.debug("[_build_hub_blueprint] No HUB_IP configured")
             return None
 
+        LOGGER.info("[_build_hub_blueprint] Creating/reusing hub client for %s", self.config.hub_ip)
         client = self._get_or_create_hub_client(self.config.hub_ip)
+        
+        LOGGER.debug("[_build_hub_blueprint] Identifying hub")
         hub_info, error_text, connected = self._identify_hub(client)
+        LOGGER.debug("[_build_hub_blueprint] Hub identification: connected=%s, error=%s", connected, error_text)
+        
         display_name = self._resolve_node_name(self.address, self._default_hub_name(hub_info))
-        return HubBlueprint(
+        LOGGER.debug("[_build_hub_blueprint] Resolved display name: %s", display_name)
+        
+        blueprint = HubBlueprint(
             ip_address=self.config.hub_ip,
             display_name=display_name,
             mac_address=hub_info.mac_address if hub_info else "",
@@ -389,6 +387,9 @@ class BroadlinkController(BaseNode):
             connected=connected,
             last_error=error_text,
         )
+        LOGGER.info("[_build_hub_blueprint] Hub blueprint built: ip=%s, connected=%s, model=%s", 
+                   blueprint.ip_address, blueprint.connected, blueprint.model_name)
+        return blueprint
 
     def _refresh_hub_connection(self):
         if self.hub_client is not None:
@@ -401,9 +402,12 @@ class BroadlinkController(BaseNode):
 
     def _identify_hub(self, client: BroadlinkHubClient) -> tuple[BroadlinkHubInfo | None, str, bool]:
         try:
+            LOGGER.debug("[_identify_hub] Attempting ensure_connected")
             hub_info = client.ensure_connected()
+            LOGGER.info("[_identify_hub] Hub identified successfully: %s", hub_info.model_name if hub_info else "unknown")
             return hub_info, "", True
         except Exception as err:
+            LOGGER.warning("[_identify_hub] Connection failed: %s", err)
             hub_info = client.hub_info
             return hub_info, str(err), False
 
@@ -427,45 +431,48 @@ class BroadlinkController(BaseNode):
                 return self.node_name_cache[address]
         return default_name
 
-    def _publish_typed_parameters(self):
-        if list(self.typed_parameters) == TYPED_PARAMETER_DEFINITIONS:
-            return
-        self.typed_parameters.load(TYPED_PARAMETER_DEFINITIONS, save=True)
-
     def _publish_profile(self):
+        LOGGER.info("[_publish_profile] Starting profile publish")
         update_json_profile = getattr(self.poly, "updateJsonProfile", None)
         if not callable(update_json_profile):
-            LOGGER.error("Dynamic profile publish is required, but updateJsonProfile is unavailable.")
+            LOGGER.error("[_publish_profile] updateJsonProfile is unavailable")
             self.poly.Notices["profile"] = "Dynamic profile publish failed: updateJsonProfile() is unavailable."
             return
+        LOGGER.debug("[_publish_profile] updateJsonProfile method available")
 
         current_profile_getter = getattr(self.poly, "getJsonProfile", None)
         if callable(current_profile_getter):
             try:
+                LOGGER.debug("[_publish_profile] Attempting to retrieve current profile from IoX")
                 current_profile = current_profile_getter({"waitResponse": True})
-                LOGGER.debug("Current JSON profile from IoX: %s", json.dumps(current_profile, sort_keys=True))
+                LOGGER.debug("[_publish_profile] Current JSON profile from IoX: %s", json.dumps(current_profile, sort_keys=True))
                 if self._profiles_match(current_profile, PROFILE_DEFINITION):
-                    LOGGER.debug("JSON profile already up to date.")
+                    LOGGER.info("[_publish_profile] JSON profile already up to date, skipping publish")
                     return
+                LOGGER.info("[_publish_profile] Profile mismatch detected, will republish")
             except TypeError:
+                LOGGER.debug("[_publish_profile] getJsonProfile does not support waitResponse, trying without")
                 current_profile = current_profile_getter()
-                LOGGER.debug("Current JSON profile from IoX: %s", json.dumps(current_profile, sort_keys=True))
+                LOGGER.debug("[_publish_profile] Current JSON profile from IoX: %s", json.dumps(current_profile, sort_keys=True))
                 if self._profiles_match(current_profile, PROFILE_DEFINITION):
-                    LOGGER.debug("JSON profile already up to date.")
+                    LOGGER.info("[_publish_profile] JSON profile already up to date, skipping publish")
                     return
+                LOGGER.info("[_publish_profile] Profile mismatch detected, will republish")
             except Exception as err:
-                LOGGER.warning("Unable to read existing JSON profile: %s", err)
+                LOGGER.warning("[_publish_profile] Unable to read existing JSON profile: %s", err)
 
         try:
+            LOGGER.debug("[_publish_profile] Publishing profile with waitResponse=True")
             update_json_profile(PROFILE_DEFINITION, {"waitResponse": True})
-            LOGGER.info("Dynamic JSON profile published successfully.")
+            LOGGER.info("[_publish_profile] Dynamic JSON profile published successfully")
             self.poly.Notices.delete("profile")
         except TypeError:
+            LOGGER.debug("[_publish_profile] updateJsonProfile does not support options, publishing without")
             update_json_profile(PROFILE_DEFINITION)
-            LOGGER.info("Dynamic JSON profile published successfully.")
+            LOGGER.info("[_publish_profile] Dynamic JSON profile published successfully")
             self.poly.Notices.delete("profile")
         except Exception as err:
-            LOGGER.error("Dynamic profile publish failed: %s", err)
+            LOGGER.error("[_publish_profile] Dynamic profile publish failed: %s", err)
             self.poly.Notices["profile"] = f"Dynamic profile publish failed: {err}"
 
     def _profiles_match(self, current_profile, expected_profile) -> bool:
