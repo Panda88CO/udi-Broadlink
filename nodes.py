@@ -337,7 +337,7 @@ class BroadlinkController(BaseNode):
             LOGGER.debug("[reconcile_structure] Set GV0 and GV1 drivers")
 
             self.node_name_cache[self.address] = self.hub_blueprint.display_name
-            self.data_store["node_names"] = dict(self.node_name_cache)
+            self._persist_node_name_cache()
             LOGGER.debug("[reconcile_structure] Updated node name cache")
 
             if self.hub_blueprint.connected:
@@ -493,7 +493,13 @@ class BroadlinkController(BaseNode):
             self.name = resolved_name
 
         self.node_name_cache[self.address] = self.name
-        self.data_store["node_names"] = dict(self.node_name_cache)
+        self._persist_node_name_cache()
+
+    def _persist_node_name_cache(self):
+        stored_node_names = self._safe_name_map(self.data_store.get("node_names", {}))
+        desired_node_names = dict(self.node_name_cache)
+        if stored_node_names != desired_node_names:
+            self.data_store["node_names"] = desired_node_names
 
     def _safe_name_map(self, candidate) -> dict[str, str]:
         if not isinstance(candidate, dict):
