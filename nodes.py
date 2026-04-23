@@ -94,12 +94,12 @@ def _build_profile_definition(
     nodedefs = [
         {
             "id": "setup",
+            "name": "Broadlink Hub",
             "nls": "nlssetup",
             "icon": "GenericCtl",
             "properties": setup_properties,
             "cmds": {
                 "accepts": [
-                    {"id": "QUERY", "name": "Query"},
                     {"id": "UPDATE", "name": "Update"},
                 ],
                 "sends": [
@@ -111,6 +111,7 @@ def _build_profile_definition(
         },
         {
             "id": "blirctl",
+            "name": "IR Controller",
             "nls": "nlsirctl",
             "icon": "GenericCtl",
             "properties": [
@@ -122,7 +123,6 @@ def _build_profile_definition(
             "cmds": {
                 "accepts": [
                     {"id": "LEARNCODE", "name": "Learn IR Code"},
-                    {"id": "QUERY", "name": "Query"},
                 ],
                 "sends": [],
             },
@@ -130,6 +130,7 @@ def _build_profile_definition(
         },
         {
             "id": "blrfctl",
+            "name": "RF Controller",
             "nls": "nlsrfctl",
             "icon": "GenericCtl",
             "properties": [
@@ -141,7 +142,6 @@ def _build_profile_definition(
             "cmds": {
                 "accepts": [
                     {"id": "LEARNCODE", "name": "Learn RF Code"},
-                    {"id": "QUERY", "name": "Query"},
                 ],
                 "sends": [],
             },
@@ -149,6 +149,7 @@ def _build_profile_definition(
         },
         {
             "id": "blircode",
+            "name": "IR Code",
             "nls": "nlsircode",
             "icon": "GenericCtl",
             "properties": [
@@ -161,7 +162,6 @@ def _build_profile_definition(
             "cmds": {
                 "accepts": [
                     {"id": "TXCODE", "name": "Send Code"},
-                    {"id": "QUERY", "name": "Query"},
                 ],
                 "sends": [],
             },
@@ -169,6 +169,7 @@ def _build_profile_definition(
         },
         {
             "id": "blrfcode",
+            "name": "RF Code",
             "nls": "nlsrfcode",
             "icon": "GenericCtl",
             "properties": [
@@ -181,7 +182,6 @@ def _build_profile_definition(
             "cmds": {
                 "accepts": [
                     {"id": "TXCODE", "name": "Send Code"},
-                    {"id": "QUERY", "name": "Query"},
                 ],
                 "sends": [],
             },
@@ -325,12 +325,8 @@ class _ControllerNode(BaseNode):
             LOGGER.error("[%s._do_learn] Failed: %s", tag, err)
             self._set("ST", 3)
 
-    def query(self, command=None) -> None:
-        self.start()
-
     commands = {
         "LEARNCODE": learn_code,
-        "QUERY": query,
     }
 
 
@@ -416,12 +412,8 @@ class _CodeNode(BaseNode):
             self._set("GV2", 2, 25)
             self.controller._persist_learned_code(self.address, meta)
 
-    def query(self, command=None) -> None:
-        self.start()
-
     commands = {
         "TXCODE": send_code,
-        "QUERY": query,
     }
 
 
@@ -939,5 +931,4 @@ class BroadlinkController(BaseNode):
 
     commands = {
         "UPDATE": force_update,
-        "QUERY": force_update,
     }
