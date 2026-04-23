@@ -15,6 +15,7 @@ from config_parser import PluginConfig, build_config
 LOGGER = udi_interface.LOGGER
 Custom = udi_interface.Custom
 VERSION = "0.2.0"
+DEFAULT_SETUP_ADDRESS = "setup"
 
 MODEL_INDEX_NAMES = {
     "0": "Unknown",
@@ -95,7 +96,6 @@ def _build_profile_definition(
         {
             "id": "setup",
             "name": "Broadlink Hub",
-            "nls": "nlssetup",
             "icon": "GenericCtl",
             "properties": setup_properties,
             "cmds": {
@@ -112,7 +112,6 @@ def _build_profile_definition(
         {
             "id": "blirctl",
             "name": "IR Controller",
-            "nls": "nlsirctl",
             "icon": "GenericCtl",
             "properties": [
                 {"id": "ST", "name": "Status", "editor": "learn_status"},
@@ -131,7 +130,6 @@ def _build_profile_definition(
         {
             "id": "blrfctl",
             "name": "RF Controller",
-            "nls": "nlsrfctl",
             "icon": "GenericCtl",
             "properties": [
                 {"id": "ST", "name": "Status", "editor": "learn_status"},
@@ -150,7 +148,6 @@ def _build_profile_definition(
         {
             "id": "blircode",
             "name": "IR Code",
-            "nls": "nlsircode",
             "icon": "GenericCtl",
             "properties": [
                 {"id": "ST", "name": "Status", "editor": "tx_status"},
@@ -170,7 +167,6 @@ def _build_profile_definition(
         {
             "id": "blrfcode",
             "name": "RF Code",
-            "nls": "nlsrfcode",
             "icon": "GenericCtl",
             "properties": [
                 {"id": "ST", "name": "Status", "editor": "tx_status"},
@@ -264,7 +260,11 @@ class _ControllerNode(BaseNode):
         self._learn_count: int = 0
 
     def start(self) -> None:
-        existing = [k for k in self.controller.learned_codes if k.startswith(self._code_type + "code")]
+        existing = [
+            meta
+            for meta in self.controller.learned_codes.values()
+            if meta.get("controller_type") == self._code_type
+        ]
         self._learn_count = len(existing)
         self._set("GV1", self._learn_count, 56)
         self._set("GV2", 1 if self.controller.hub_client and self.controller.hub_client.connected else 0)
@@ -460,12 +460,13 @@ class BroadlinkController(BaseNode):
         self.has_humidity_sensor: bool = False
         self.learned_codes: dict[str, dict] = {}
         self._loaded_code_addrs: set[str] = set()
+        self._node_added: bool = False
         self.ir_controller: IRControllerNode | None = None
         self.rf_controller: RFControllerNode | None = None
         LOGGER.debug("[__init__] Initialized instance variables")
 
         LOGGER.debug("[__init__] Subscribing to polyglot events")
-        self.poly.subscribe(self.poly.START, self.start, self.address)
+        self.poly.subscribe(self.poly.START, self.start)
         self.poly.subscribe(self.poly.STOP, self.stop)
         self.poly.subscribe(self.poly.POLL, self.poll)
         self.poly.subscribe(self.poly.CUSTOMPARAMS, self.handle_params)
@@ -479,13 +480,13 @@ class BroadlinkController(BaseNode):
         
         LOGGER.info("[__init__] Signaling polyglot ready")
         self.poly.ready()
-        
-        LOGGER.info("[__init__] Adding node to polyglot")
-        self.poly.addNode(self, conn_status="ST", rename=False)
-        
+
         LOGGER.info("[__init__] BroadlinkController construction complete")
 
     def start(self):
+        if not self._node_added:
+            LOGGER.debug("[start] Ignoring START before setup node is registered")
+            return
         LOGGER.info("[start] Received START event")
         self._set("TIME", int(time.time()), 151)
         LOGGER.debug("[start] Set TIME driver")
@@ -497,6 +498,9 @@ class BroadlinkController(BaseNode):
         LOGGER.info("[start] Startup reconciliation complete")
 
     def stop(self):
+        if not self._node_added:
+            self.poly.stop()
+            return
         # Flush all node names (captures any user renames since last long poll)
         self._sync_all_node_names()
         self._set("ST", 0)
@@ -519,9 +523,10 @@ class BroadlinkController(BaseNode):
         except Exception as err:
             self.poly.Notices["config"] = f"Invalid configuration format: {err}"
             LOGGER.error("[handle_params] Failed to parse custom params: %s", err)
-            self._set("ST", 2)
-            self._set("GV1", 0)
-            self._set("GV0", 0, 56)
+            if self._node_added:
+                self._set("ST", 2)
+                self._set("GV1", 0)
+                self._set("GV0", 0, 56)
             return
 
         if self.config.has_hub:
@@ -554,16 +559,24 @@ class BroadlinkController(BaseNode):
 
     def handle_custom_data(self, custom_data):
         self.data_store.load(custom_data or {})
-        self.node_name_cache = self._safe_name_map(self.data_store.get("node_names", {}))
+        stored_hub_address = self._normalize_hub_address(self.data_store.get("hub_address", ""))
+        if stored_hub_address:
+            self._apply_setup_address(stored_hub_address)
+        self.node_name_cache = self._normalize_node_name_map(self._safe_name_map(self.data_store.get("node_names", {})))
         self.learned_codes = self._safe_code_map(self.data_store.get("learned_codes", {}))
         # Restore last-known sensor state so __init__'s profile publish is accurate on restart
         sensor_state = self.data_store.get("sensor_state") or {}
         self.has_temp_sensor = bool(sensor_state.get("has_temp", False))
         self.has_humidity_sensor = bool(sensor_state.get("has_humidity", False))
         self._sync_setup_driver_definitions()
-        self._sync_node_names_from_db()
+        if self._node_added:
+            self._sync_node_names_from_db()
+        else:
+            self._ensure_setup_node_registered()
 
     def poll(self, poll_type):
+        if not self._node_added:
+            return
         self._set("TIME", int(time.time()), 151)
 
         if poll_type == "shortPoll":
@@ -651,6 +664,14 @@ class BroadlinkController(BaseNode):
         LOGGER.debug("[_build_hub_blueprint] Identifying hub")
         hub_info, error_text, connected = self._identify_hub(client)
         LOGGER.debug("[_build_hub_blueprint] Hub identification: connected=%s, error=%s", connected, error_text)
+
+        resolved_address = self._resolve_setup_address(hub_info)
+        if resolved_address and resolved_address != self.address:
+            self._apply_setup_address(resolved_address)
+        if resolved_address:
+            stored_address = str(self.data_store.get("hub_address", "")).strip().lower()
+            if stored_address != resolved_address:
+                self.data_store["hub_address"] = resolved_address
         
         display_name = self._resolve_node_name(self.address, self._default_hub_name(hub_info))
         LOGGER.debug("[_build_hub_blueprint] Resolved display name: %s", display_name)
@@ -766,6 +787,8 @@ class BroadlinkController(BaseNode):
         return True
 
     def _sync_node_names_from_db(self):
+        if not self._node_added:
+            return
         db_name = self.poly.getNodeNameFromDb(self.address)
         resolved_name = db_name or self.node_name_cache.get(self.address)
         if resolved_name:
@@ -780,6 +803,36 @@ class BroadlinkController(BaseNode):
         if stored_node_names != desired_node_names:
             self.data_store["node_names"] = desired_node_names
 
+    def _normalize_hub_address(self, candidate) -> str:
+        text = "".join(ch for ch in str(candidate or "").lower() if ch in "0123456789abcdef")
+        if len(text) == 12:
+            return text
+        return ""
+
+    def _resolve_setup_address(self, hub_info: BroadlinkHubInfo | None) -> str:
+        if hub_info and hub_info.mac_address:
+            mac_address = self._normalize_hub_address(hub_info.mac_address)
+            if mac_address:
+                return mac_address
+        stored_address = self._normalize_hub_address(self.data_store.get("hub_address", ""))
+        if stored_address:
+            return stored_address
+        return ""
+
+    def _apply_setup_address(self, address: str) -> None:
+        normalized = self._normalize_hub_address(address)
+        if not normalized:
+            return
+        self.address = normalized
+        self.primary = normalized
+
+    def _ensure_setup_node_registered(self) -> None:
+        if self._node_added or not self._normalize_hub_address(self.address):
+            return
+        LOGGER.info("[_ensure_setup_node_registered] Adding setup node with address %s", self.address)
+        self.poly.addNode(self, conn_status="ST", rename=False)
+        self._node_added = True
+
     def _safe_name_map(self, candidate) -> dict[str, str]:
         if not isinstance(candidate, dict):
             return {}
@@ -792,6 +845,32 @@ class BroadlinkController(BaseNode):
                 continue
             parsed[key_text] = value_text
         return parsed
+
+    def _normalize_node_name_map(self, candidate: dict[str, str]) -> dict[str, str]:
+        normalized = dict(candidate)
+        current_setup_addr = self._normalize_hub_address(self.address)
+        legacy_map = {
+            DEFAULT_SETUP_ADDRESS: current_setup_addr,
+            "irctrl": self._controller_address("ir") if current_setup_addr else "",
+            "rfctrl": self._controller_address("rf") if current_setup_addr else "",
+            "setupir": self._controller_address("ir") if current_setup_addr else "",
+            "setuprf": self._controller_address("rf") if current_setup_addr else "",
+            "setup_ir": self._controller_address("ir") if current_setup_addr else "",
+            "setup_rf": self._controller_address("rf") if current_setup_addr else "",
+        }
+        changed = False
+        for legacy_addr, current_addr in legacy_map.items():
+            if not current_addr:
+                continue
+            if legacy_addr in normalized and current_addr not in normalized:
+                normalized[current_addr] = normalized[legacy_addr]
+                changed = True
+            if legacy_addr in normalized:
+                del normalized[legacy_addr]
+                changed = True
+        if changed:
+            self.data_store["node_names"] = normalized
+        return normalized
 
     def _detect_and_apply_sensors(self) -> None:
         """Connect to hub, detect sensor cable, and republish profile if state changed."""
@@ -849,14 +928,20 @@ class BroadlinkController(BaseNode):
 
     def _ensure_controller_nodes(self) -> None:
         """Create IR and RF controller subnodes if they do not already exist."""
+        if not self._node_added:
+            self._ensure_setup_node_registered()
+        if not self._node_added:
+            return
         if self.ir_controller is None:
-            ir_name = self._resolve_node_name("irctrl", "IR Controller")
-            self.ir_controller = IRControllerNode(self.poly, self.address, "irctrl", ir_name, self)
+            ir_addr = self._controller_address("ir")
+            ir_name = self._resolve_node_name(ir_addr, "IR Controller")
+            self.ir_controller = IRControllerNode(self.poly, ir_addr, ir_addr, ir_name, self)
             self.poly.addNode(self.ir_controller)
             LOGGER.info("[_ensure_controller_nodes] Added IRControllerNode")
         if self.rf_controller is None:
-            rf_name = self._resolve_node_name("rfctrl", "RF Controller")
-            self.rf_controller = RFControllerNode(self.poly, self.address, "rfctrl", rf_name, self)
+            rf_addr = self._controller_address("rf")
+            rf_name = self._resolve_node_name(rf_addr, "RF Controller")
+            self.rf_controller = RFControllerNode(self.poly, rf_addr, rf_addr, rf_name, self)
             self.poly.addNode(self.rf_controller)
             LOGGER.info("[_ensure_controller_nodes] Added RFControllerNode")
 
@@ -866,13 +951,14 @@ class BroadlinkController(BaseNode):
             if addr in self._loaded_code_addrs:
                 continue
             code_type = meta.get("controller_type", "ir")
-            ctrl_addr = meta.get("controller_addr", "irctrl")
+            ctrl_addr = self._normalize_controller_addr(meta.get("controller_addr"), code_type)
             name = meta.get("name") or f"{code_type.upper()} Code"
             if code_type == "rf":
                 node: _CodeNode = RFCodeNode(self.poly, ctrl_addr, addr, name, self)
             else:
                 node = IRCodeNode(self.poly, ctrl_addr, addr, name, self)
             node._code_meta = dict(meta)
+            node._code_meta["controller_addr"] = ctrl_addr
             self.poly.addNode(node)
             self._loaded_code_addrs.add(addr)
             LOGGER.info("[_load_learned_codes] Restored %s code node: %s", code_type.upper(), addr)
@@ -889,22 +975,61 @@ class BroadlinkController(BaseNode):
 
     def _next_code_address(self, code_type: str) -> str:
         """Return the next available unique address for a learned code."""
-        prefix = f"{code_type}code"
+        prefix = self._code_address_prefix(code_type)
         existing = [k for k in self.learned_codes if k.startswith(prefix)]
         return f"{prefix}{len(existing) + 1:03d}"
+
+    def _controller_address(self, code_type: str) -> str:
+        suffix = "ir" if code_type == "ir" else "rf"
+        return f"{self.address}{suffix}"
+
+    def _code_address_prefix(self, code_type: str) -> str:
+        suffix = "i" if code_type == "ir" else "r"
+        return f"{self.address[-10:]}{suffix}"
+
+    def _normalize_controller_addr(self, controller_addr: str | None, code_type: str) -> str:
+        current_addr = self._controller_address(code_type)
+        legacy_addrs = {
+            "ir": "irctrl",
+            "rf": "rfctrl",
+        }
+        if controller_addr in (None, "", legacy_addrs.get(code_type), f"{DEFAULT_SETUP_ADDRESS}_{code_type}", f"{DEFAULT_SETUP_ADDRESS}{code_type}"):
+            return current_addr
+        return controller_addr
 
     def _safe_code_map(self, candidate) -> dict[str, dict]:
         """Validate and return the learned_codes structure from customdata."""
         if not isinstance(candidate, dict):
             return {}
-        return {str(k).strip(): v for k, v in candidate.items() if isinstance(k, str) and isinstance(v, dict)}
+
+        parsed: dict[str, dict] = {}
+        changed = False
+        for key, value in candidate.items():
+            if not isinstance(key, str) or not isinstance(value, dict):
+                continue
+            addr = key.strip()
+            if not addr:
+                continue
+            meta = dict(value)
+            code_type = meta.get("controller_type", "ir")
+            normalized_controller_addr = self._normalize_controller_addr(meta.get("controller_addr"), code_type)
+            if meta.get("controller_addr") != normalized_controller_addr:
+                meta["controller_addr"] = normalized_controller_addr
+                changed = True
+            parsed[addr] = meta
+
+        if changed:
+            self.data_store["learned_codes"] = parsed
+        return parsed
 
     def _sync_all_node_names(self) -> None:
         """Flush all managed node names from PG3 DB to customdata (called on stop)."""
+        if not self._node_added:
+            return
         # Setup node
         self._sync_node_names_from_db()
         # IR/RF controller nodes
-        for addr in ("irctrl", "rfctrl"):
+        for addr in (self._controller_address("ir"), self._controller_address("rf")):
             db_name = self.poly.getNodeNameFromDb(addr)
             if db_name:
                 self.node_name_cache[addr] = db_name
