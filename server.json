@@ -3,7 +3,7 @@
     {
       "title": "udi-broadlink",
       "author": "chris",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "date": "2026-04-20",
       "source": "https://github.com/chris/udi_Broadlink"
     }
@@ -15,7 +15,7 @@
   "install": "install.sh",
   "shortPoll": 60,
   "longPoll": 300,
-  "profile_version": "0.2.0",
+  "profile_version": "0.2.1",
   "restart": true,
   "language": "python3"
 }

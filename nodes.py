@@ -14,7 +14,7 @@ from config_parser import PluginConfig, build_config
 
 LOGGER = udi_interface.LOGGER
 Custom = udi_interface.Custom
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 DEFAULT_SETUP_ADDRESS = "setup"
 
 MODEL_INDEX_NAMES = {
@@ -115,7 +115,7 @@ def _build_profile_definition(
             "icon": "GenericCtl",
             "properties": [
                 {"id": "ST", "name": "Status", "editor": "learn_status"},
-                {"id": "GV0", "name": "Last Learn", "editor": "timestamp"},
+                {"id": "TIME", "name": "Last Learn", "editor": "timestamp"},
                 {"id": "GV1", "name": "Learn Count", "editor": "raw_value"},
                 {"id": "GV2", "name": "Hub Connected", "editor": "binary_index"},
             ],
@@ -133,7 +133,7 @@ def _build_profile_definition(
             "icon": "GenericCtl",
             "properties": [
                 {"id": "ST", "name": "Status", "editor": "learn_status"},
-                {"id": "GV0", "name": "Last Learn", "editor": "timestamp"},
+                {"id": "TIME", "name": "Last Learn", "editor": "timestamp"},
                 {"id": "GV1", "name": "Learn Count", "editor": "raw_value"},
                 {"id": "GV2", "name": "Hub Connected", "editor": "binary_index"},
             ],
@@ -151,7 +151,7 @@ def _build_profile_definition(
             "icon": "GenericCtl",
             "properties": [
                 {"id": "ST", "name": "Status", "editor": "tx_status"},
-                {"id": "GV0", "name": "Created", "editor": "timestamp"},
+                {"id": "TIME", "name": "Created", "editor": "timestamp"},
                 {"id": "GV1", "name": "Last Sent", "editor": "timestamp"},
                 {"id": "GV2", "name": "Last Result", "editor": "tx_result"},
                 {"id": "GV3", "name": "TX Count", "editor": "raw_value"},
@@ -170,7 +170,7 @@ def _build_profile_definition(
             "icon": "GenericCtl",
             "properties": [
                 {"id": "ST", "name": "Status", "editor": "tx_status"},
-                {"id": "GV0", "name": "Created", "editor": "timestamp"},
+                {"id": "TIME", "name": "Created", "editor": "timestamp"},
                 {"id": "GV1", "name": "Last Sent", "editor": "timestamp"},
                 {"id": "GV2", "name": "Last Result", "editor": "tx_result"},
                 {"id": "GV3", "name": "TX Count", "editor": "raw_value"},
@@ -248,7 +248,7 @@ class _ControllerNode(BaseNode):
 
     drivers = [
         {"driver": "ST", "value": 0, "uom": 25},
-        {"driver": "GV0", "value": 0, "uom": 151},
+        {"driver": "TIME", "value": 0, "uom": 151},
         {"driver": "GV1", "value": 0, "uom": 56},
         {"driver": "GV2", "value": 0, "uom": 25},
     ]
@@ -315,7 +315,7 @@ class _ControllerNode(BaseNode):
 
             self._learn_count += 1
             self._set("ST", 2)  # Learned OK
-            self._set("GV0", int(time.time()), 151)
+            self._set("TIME", int(time.time()), 151)
             self._set("GV1", self._learn_count, 56)
             LOGGER.info("[%s._do_learn] Learned OK, stored as %s", tag, addr)
         except TimeoutError:
@@ -355,7 +355,7 @@ class _CodeNode(BaseNode):
 
     drivers = [
         {"driver": "ST", "value": 0, "uom": 25},
-        {"driver": "GV0", "value": 0, "uom": 151},
+        {"driver": "TIME", "value": 0, "uom": 151},
         {"driver": "GV1", "value": 0, "uom": 151},
         {"driver": "GV2", "value": 0, "uom": 25},
         {"driver": "GV3", "value": 0, "uom": 56},
@@ -368,7 +368,7 @@ class _CodeNode(BaseNode):
 
     def start(self) -> None:
         meta = self._code_meta
-        self._set("GV0", meta.get("created_at", 0), 151)
+        self._set("TIME", meta.get("created_at", 0), 151)
         self._set("GV1", meta.get("last_sent", 0), 151)
         self._set("GV2", meta.get("last_send_success", 0), 25)
         self._set("GV3", meta.get("tx_count", 0), 56)
