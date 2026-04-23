@@ -451,6 +451,9 @@ class BroadlinkController(BaseNode):
     def __init__(self, polyglot, primary, address, name):
         LOGGER.info("[__init__] Constructing BroadlinkController")
         super().__init__(polyglot, primary, address, name)
+        # Keep an instance-local driver definition so dynamic sensor drivers can
+        # be added/removed without mutating the class-level defaults.
+        self.drivers = [dict(driver) for driver in type(self).drivers]
         self.poly = polyglot
         self.config = PluginConfig()
         self.parameters = Custom(self.poly, "customparams")
@@ -541,6 +544,7 @@ class BroadlinkController(BaseNode):
         self.temp_unit = _parse_temp_unit(custom_params)
         if self.temp_unit != prev_temp_unit:
             LOGGER.info("[handle_params] TEMP_UNIT changed from %s to %s", prev_temp_unit, self.temp_unit)
+            self._sync_setup_driver_definitions()
 
         if not self.config.has_hub:
             self.poly.Notices["required"] = "Set HUB_IP to the IP address for this Broadlink hub instance."
@@ -564,6 +568,7 @@ class BroadlinkController(BaseNode):
         sensor_state = self.data_store.get("sensor_state") or {}
         self.has_temp_sensor = bool(sensor_state.get("has_temp", False))
         self.has_humidity_sensor = bool(sensor_state.get("has_humidity", False))
+        self._sync_setup_driver_definitions()
         self._sync_node_names_from_db()
 
     def poll(self, poll_type):
@@ -812,6 +817,7 @@ class BroadlinkController(BaseNode):
                 )
                 self.has_temp_sensor = new_has_temp
                 self.has_humidity_sensor = new_has_humidity
+                self._sync_setup_driver_definitions()
                 # Persist sensor state so next startup's initial profile publish is correct
                 self.data_store["sensor_state"] = {"has_temp": new_has_temp, "has_humidity": new_has_humidity}
                 self._publish_profile()
@@ -829,11 +835,25 @@ class BroadlinkController(BaseNode):
             if sensor_data.has_temperature:
                 temp_c = sensor_data.temperature_c
                 display_val = round((temp_c * 9 / 5) + 32, 1) if self.temp_unit == "F" else round(temp_c, 1)
-                self._set("GV2", display_val)
+                self._set("GV2", display_val, 4 if self.temp_unit == "F" else 17)
             if sensor_data.has_humidity:
-                self._set("GV3", round(sensor_data.humidity, 1))
+                self._set("GV3", round(sensor_data.humidity, 1), 22)
         except Exception as err:
             LOGGER.debug("[_refresh_sensor_readings] Sensor query failed: %s", err)
+
+    def _sync_setup_driver_definitions(self) -> None:
+        """Align setup-node drivers with detected sensor capabilities."""
+        base_drivers = [
+            {"driver": "ST", "value": 0, "uom": 25},
+            {"driver": "GV0", "value": 0, "uom": 25},
+            {"driver": "GV1", "value": 0, "uom": 25},
+            {"driver": "TIME", "value": int(time.time()), "uom": 151},
+        ]
+        if self.has_temp_sensor:
+            base_drivers.append({"driver": "GV2", "value": 0, "uom": 4 if self.temp_unit == "F" else 17})
+        if self.has_humidity_sensor:
+            base_drivers.append({"driver": "GV3", "value": 0, "uom": 22})
+        self.drivers = base_drivers
 
     def _ensure_controller_nodes(self) -> None:
         """Create IR and RF controller subnodes if they do not already exist."""
