@@ -779,7 +779,7 @@ class BroadlinkController(BaseNode):
         self.poly.subscribe(self.poly.CUSTOMDATA, self.handle_custom_data)
         self.poly.subscribe(self.poly.LOGLEVEL, self.handle_log_level)
         self.poly.subscribe(self.poly.DISCOVER, self.discover)
-        self.poly.subscribe(self.poly.NODEDONE, self.node_done)
+        self.poly.subscribe(self.poly.ADDNODEDONE, self.node_done)
         self.poly.subscribe(self.poly.CONFIGDONE, self.config_done)
         LOGGER.debug("[__init__] Event subscriptions registered")
 
