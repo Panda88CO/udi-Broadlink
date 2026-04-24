@@ -745,7 +745,7 @@ class HubNode(BaseNode):
 
 
 
-class HubNode(BaseNode):
+class BroadlinkController(BaseNode):
     """Coordinator primary node for all configured Broadlink hubs."""
 
     id = "setup"
@@ -762,35 +762,13 @@ class HubNode(BaseNode):
         self.poly = polyglot
         self.config = PluginConfig()
         self.parameters = Custom(self.poly, "customparams")
-        self.typed_data = Custom(self.poly, "customtypeddata")
         self.data_store = Custom(self.poly, "customdata")
         self.heartbeat_state = 0
-        self.hub_blueprint: HubBlueprint | None = None
-        self.hub_client: BroadlinkHubClient | None = None
+        self.hub_nodes: dict[str, "HubNode"] = {}   # keyed by hub IP
         self.node_name_cache: dict[str, str] = {}
         self.temp_unit: str = "C"
-        self.has_temp_sensor: bool = False
-        self.has_humidity_sensor: bool = False
-        self.learned_codes: dict[str, dict] = {}
-        self._loaded_code_addrs: set[str] = set()
         self._node_added: bool = False
-        self.ir_controller: IRControllerNode | None = None
-        self.rf_controller: RFControllerNode | None = None
         LOGGER.debug("[__init__] Initialized instance variables")
-    LOGGER.info("[__init__] Constructing BroadlinkController")
-    super().__init__(polyglot, primary, address, name)
-    self.drivers = [dict(driver) for driver in type(self).drivers]
-    self.poly = polyglot
-    self.config = PluginConfig()
-    self.parameters = Custom(self.poly, "customparams")
-    self.typed_data = Custom(self.poly, "customtypeddata")
-    self.data_store = Custom(self.poly, "customdata")
-    self.heartbeat_state = 0
-    self.hub_nodes: dict[str, "HubNode"] = {}   # keyed by hub IP
-    self.node_name_cache: dict[str, str] = {}
-    self.temp_unit: str = "C"
-    self._node_added: bool = False
-    LOGGER.debug("[__init__] Initialized instance variables")
 
         LOGGER.debug("[__init__] Subscribing to polyglot events")
         self.poly.subscribe(self.poly.START, self.start)
