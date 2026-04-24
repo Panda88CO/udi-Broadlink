@@ -3,8 +3,8 @@
     {
       "title": "udi-broadlink",
       "author": "Panda88CO",
-      "version": "0.2.1",
-      "date": "2026-04-20",
+      "version": "0.2.3",
+      "date": "2026-04-24",
       "source": "https://github.com/Panda88CO/udi_Broadlink"
     }
   ],
@@ -15,7 +15,7 @@
   "install": "install.sh",
   "shortPoll": 60,
   "longPoll": 300,
-  "profile_version": "0.2.1",
+  "profile_version": "0.2.3",
   "restart": true,
   "language": "python3"
 }

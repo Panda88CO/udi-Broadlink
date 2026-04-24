@@ -14,7 +14,7 @@ from config_parser import PluginConfig, build_config
 
 LOGGER = udi_interface.LOGGER
 Custom = udi_interface.Custom
-VERSION = "0.2.2"
+VERSION = "0.2.3"
 DEFAULT_SETUP_ADDRESS = "setup"
 
 MODEL_INDEX_NAMES = {
@@ -885,6 +885,7 @@ class BroadlinkController(BaseNode):
             for hub_node in list(self.hub_nodes.values()):
                 hub_node.poll_long()
             self._sync_node_names_from_db()
+            self._cleanup_deleted_codes()
             self._update_overall_status()
 
     def discover(self, *_) -> None:
@@ -1113,6 +1114,29 @@ class BroadlinkController(BaseNode):
             if addr:
                 parsed[addr] = dict(value)
         return parsed
+
+    def _cleanup_deleted_codes(self) -> None:
+        """Remove learned codes from customdata if their nodes have been deleted."""
+        if not self._node_added:
+            return
+        try:
+            existing_nodes = self.poly.getNodes()
+            existing_addrs = {node.address for node in existing_nodes}
+            all_codes = self._safe_code_map(self.data_store.get("learned_codes", {}))
+            to_remove = [addr for addr in all_codes if addr not in existing_addrs]
+            if to_remove:
+                updated_codes = {k: v for k, v in all_codes.items() if k not in to_remove}
+                self.data_store["learned_codes"] = updated_codes
+                # Update in-memory copies in hub nodes
+                for hub_node in self.hub_nodes.values():
+                    hub_node.learned_codes = {
+                        addr: meta
+                        for addr, meta in hub_node.learned_codes.items()
+                        if addr not in to_remove
+                    }
+                LOGGER.info("[_cleanup_deleted_codes] Cleaned up deleted code nodes: %s", to_remove)
+        except Exception as err:
+            LOGGER.warning("[_cleanup_deleted_codes] Failed: %s", err)
 
     def force_update(self, command=None) -> None:
         self._reconcile_hub_nodes()
