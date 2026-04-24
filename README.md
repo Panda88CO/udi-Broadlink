@@ -127,12 +127,8 @@ Learned codes and node names are persisted to PG3 `customdata`. On restart:
 - All previously learned IR and RF code nodes are restored from `customdata` before the IR/RF controller nodes are added.
 - Sensor state (has_temperature / has_humidity) is restored from `customdata` so the profile can be published correctly before the first sensor poll.
 
-## Install
 
-### Local test
-```bash
-pip install -r requirements.txt
-python udibroadlink.py
+
 ```
 
 ### PG3 install script
