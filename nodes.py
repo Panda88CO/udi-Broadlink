@@ -745,7 +745,7 @@ class BroadlinkController(BaseNode):
             try:
                 LOGGER.debug("[_publish_profile] Attempting to retrieve current profile from IoX")
                 current_profile = current_profile_getter({"waitResponse": True})
-                LOGGER.debug("[_publish_profile] Current JSON profile from IoX: %s", json.dumps(current_profile, sort_keys=True), indent=2, separators=(",", ": "))
+                LOGGER.debug("[_publish_profile] Current JSON profile from IoX: %s", json.dumps(current_profile, sort_keys=True, indent=2, separators=(",", ": ")))
                 if self._profiles_match(current_profile, profile):
                     LOGGER.info("[_publish_profile] JSON profile already up to date, skipping publish")
                     return
@@ -753,7 +753,7 @@ class BroadlinkController(BaseNode):
             except TypeError:
                 LOGGER.debug("[_publish_profile] getJsonProfile does not support waitResponse, trying without")
                 current_profile = current_profile_getter()
-                LOGGER.debug("[_publish_profile] Current JSON profile from IoX: %s", json.dumps(current_profile, sort_keys=True), indent=2, separators=(",", ": "))
+                LOGGER.debug("[_publish_profile] Current JSON profile from IoX: %s", json.dumps(current_profile, sort_keys=True, indent=2, separators=(",", ": ")))
                 if self._profiles_match(current_profile, profile):
                     LOGGER.info("[_publish_profile] JSON profile already up to date, skipping publish")
                     return
