@@ -768,6 +768,7 @@ class BroadlinkController(BaseNode):
         self.node_name_cache: dict[str, str] = {}
         self.temp_unit: str = "C"
         self._node_added: bool = False
+        self._ready_signaled: bool = False
         LOGGER.debug("[__init__] Initialized instance variables")
 
         LOGGER.debug("[__init__] Subscribing to polyglot events")
@@ -778,14 +779,13 @@ class BroadlinkController(BaseNode):
         self.poly.subscribe(self.poly.CUSTOMDATA, self.handle_custom_data)
         self.poly.subscribe(self.poly.LOGLEVEL, self.handle_log_level)
         self.poly.subscribe(self.poly.DISCOVER, self.discover)
+        self.poly.subscribe(self.poly.NODEDONE, self.node_done)
+        self.poly.subscribe(self.poly.CONFIGDONE, self.config_done)
         LOGGER.debug("[__init__] Event subscriptions registered")
 
         LOGGER.info("[__init__] Publishing JSON profile")
         self._publish_profile()
         
-        LOGGER.info("[__init__] Signaling polyglot ready")
-        self.poly.ready()
-
         LOGGER.info("[__init__] BroadlinkController construction complete")
 
     def start(self) -> None:
@@ -797,6 +797,13 @@ class BroadlinkController(BaseNode):
         for hub_node in list(self.hub_nodes.values()):
             hub_node.start()
         self._update_overall_status()
+        # Wait for all nodes to be done
+        while self.poly.node_queue:
+            time.sleep(0.1)
+        if not self._ready_signaled:
+            LOGGER.info("[start] Signaling polyglot ready after startup reconciliation")
+            self.poly.ready()
+            self._ready_signaled = True
         LOGGER.info("[start] Startup reconciliation complete")
 
     def stop(self) -> None:
@@ -811,6 +818,12 @@ class BroadlinkController(BaseNode):
     def handle_log_level(self, level) -> None:
         if isinstance(level, dict) and "level" in level:
             LOGGER.info("New log level: %s", level["level"])
+
+    def node_done(self, node) -> None:
+        LOGGER.debug("[node_done] Node %s is done", node.address)
+
+    def config_done(self, config) -> None:
+        LOGGER.debug("[config_done] Configuration done")
 
     def handle_params(self, custom_params) -> None:
         LOGGER.info("[handle_params] CUSTOMPARAMS event received")
