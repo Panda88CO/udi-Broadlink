@@ -2,10 +2,10 @@
   "credits": [
     {
       "title": "udi-broadlink",
-      "author": "chris",
+      "author": "Panda88CO",
       "version": "0.2.1",
       "date": "2026-04-20",
-      "source": "https://github.com/chris/udi_Broadlink"
+      "source": "https://github.com/Panda88CO/udi_Broadlink"
     }
   ],
   "name": "Broadlink Remote",

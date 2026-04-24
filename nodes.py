@@ -14,7 +14,7 @@ from config_parser import PluginConfig, build_config
 
 LOGGER = udi_interface.LOGGER
 Custom = udi_interface.Custom
-VERSION = "0.2.1"
+VERSION = "0.2.2"
 DEFAULT_SETUP_ADDRESS = "setup"
 
 MODEL_INDEX_NAMES = {
@@ -34,13 +34,19 @@ def _build_profile_definition(
 ) -> dict:
     """Build the dynamic JSON profile definition.
 
-    Conditionally includes temperature (GV2) and humidity (GV3) drivers on the
-    setup node based on detected sensor cable state. Temperature UOM is chosen
-    based on temp_unit: 'C' → UOM 17 (°C), 'F' → UOM 4 (°F).
+    ``has_temp`` / ``has_humidity`` indicate whether *any* configured hub has a
+    sensor cable attached.  When true the ``blhub`` nodedef gains GV2/GV3.
+    Temperature UOM follows ``temp_unit``: 'C' → UOM 17 (°C), 'F' → UOM 4 (°F).
     """
     temp_editor_id = "temp_f" if temp_unit == "F" else "temp_c"
 
     editors = [
+        {
+            "id": "hub_status",
+            "ranges": [{"uom": "25", "subset": "0-3", "names": {
+                "0": "No Hubs Configured", "1": "All Online", "2": "Partial", "3": "None Online",
+            }}],
+        },
         {
             "id": "status_index",
             "ranges": [{"uom": "25", "subset": "0-2", "names": {"0": "Not Configured", "1": "Online", "2": "Error"}}],
@@ -81,23 +87,27 @@ def _build_profile_definition(
     if has_humidity:
         editors.append({"id": "humidity_pct", "ranges": [{"uom": "22", "min": 0, "max": 100, "prec": 1}]})
 
-    setup_properties = [
+    blhub_properties = [
         {"id": "ST", "name": "Status", "editor": "status_index"},
         {"id": "GV0", "name": "Model", "editor": "model_index"},
         {"id": "GV1", "name": "Connected", "editor": "binary_index"},
         {"id": "TIME", "name": "Last Update", "editor": "timestamp"},
     ]
     if has_temp:
-        setup_properties.append({"id": "GV2", "name": "Temperature", "editor": temp_editor_id})
+        blhub_properties.append({"id": "GV2", "name": "Temperature", "editor": temp_editor_id})
     if has_humidity:
-        setup_properties.append({"id": "GV3", "name": "Humidity", "editor": "humidity_pct"})
+        blhub_properties.append({"id": "GV3", "name": "Humidity", "editor": "humidity_pct"})
 
     nodedefs = [
         {
             "id": "setup",
-            "name": "Broadlink Hub",
+            "name": "Broadlink",
             "icon": "GenericCtl",
-            "properties": setup_properties,
+            "properties": [
+                {"id": "ST", "name": "Status", "editor": "hub_status"},
+                {"id": "GV0", "name": "Hub Count", "editor": "raw_value"},
+                {"id": "TIME", "name": "Last Update", "editor": "timestamp"},
+            ],
             "cmds": {
                 "accepts": [
                     {"id": "UPDATE", "name": "Update"},
@@ -106,6 +116,19 @@ def _build_profile_definition(
                     {"id": "DON", "name": "Heartbeat On"},
                     {"id": "DOF", "name": "Heartbeat Off"},
                 ],
+            },
+            "links": {"ctl": [], "rsp": []},
+        },
+        {
+            "id": "blhub",
+            "name": "Broadlink Hub",
+            "icon": "GenericCtl",
+            "properties": blhub_properties,
+            "cmds": {
+                "accepts": [
+                    {"id": "UPDATE", "name": "Update"},
+                ],
+                "sends": [],
             },
             "links": {"ctl": [], "rsp": []},
         },
@@ -429,22 +452,312 @@ class RFCodeNode(_CodeNode):
     id = "blrfcode"
 
 
-class BroadlinkController(BaseNode):
-    """Primary node representing one configured Broadlink hub."""
+class HubNode(BaseNode):
+    """Node representing one Broadlink hub (type ``blhub``).
+
+    One instance is created per configured hub IP.  It owns the IR/RF controller
+    nodes and all learned code nodes beneath it.  Hub-specific logic (client
+    connection, sensor detection, code persistence) lives here so
+    ``BroadlinkController`` can remain a thin coordinator.
+    """
+
+    id = "blhub"
+    drivers = [
+        {"driver": "ST",   "value": 0, "uom": 25},   # status_index
+        {"driver": "GV0",  "value": 0, "uom": 25},   # model_index
+        {"driver": "GV1",  "value": 0, "uom": 25},   # binary_index
+        {"driver": "TIME", "value": 0, "uom": 151},
+    ]
+
+    def __init__(self, polyglot, primary, address, name, controller, hub_ip: str) -> None:
+        super().__init__(polyglot, primary, address, name)
+        self.poly = polyglot
+        self.controller = controller        # BroadlinkController
+        self.hub_ip = hub_ip
+        self.hub_client: BroadlinkHubClient | None = None
+        self.hub_blueprint: HubBlueprint | None = None
+        self.ir_controller: IRControllerNode | None = None
+        self.rf_controller: RFControllerNode | None = None
+        self.learned_codes: dict[str, dict] = {}
+        self._loaded_code_addrs: set[str] = set()
+        self.has_temp_sensor: bool = False
+        self.has_humidity_sensor: bool = False
+        self.drivers = [dict(d) for d in type(self).drivers]
+
+    @property
+    def hub_mac(self) -> str:
+        """MAC-derived node address for this hub."""
+        return self.address
+
+    # ------------------------------------------------------------------ lifecycle
+
+    def start(self) -> None:
+        self._detect_and_apply_sensors()
+        self.reconcile()
+
+    def reconcile(self, update_time: bool = True) -> None:
+        """Connect to hub, update drivers, and ensure child nodes exist."""
+        blueprint = self._build_blueprint()
+        self.hub_blueprint = blueprint
+
+        if blueprint is None:
+            self._set("ST", 0)
+            return
+
+        self._set("ST", 1 if blueprint.connected else 2 if blueprint.last_error else 0)
+        self._set("GV0", _model_index(blueprint.model_name), 25)
+        self._set("GV1", 1 if blueprint.connected else 0)
+
+        self.controller.node_name_cache[self.address] = blueprint.display_name
+        self.controller._persist_node_name_cache()
+
+        if blueprint.connected:
+            self.controller._remove_hub_error_notice(self.hub_mac)
+            self._ensure_controller_nodes()
+            self._load_learned_codes()
+        else:
+            if blueprint.last_error:
+                self.controller._add_hub_error_notice(self.hub_mac, self.hub_ip, blueprint.last_error)
+
+        if update_time:
+            self._set("TIME", int(time.time()), 151)
+
+    def poll_short(self, temp_unit: str) -> None:
+        self._set("TIME", int(time.time()), 151)
+        if self.has_temp_sensor or self.has_humidity_sensor:
+            self._refresh_sensor_readings(temp_unit)
+
+    def poll_long(self) -> None:
+        if self.hub_client:
+            self.hub_client.refresh()
+        self.reconcile(update_time=False)
+
+    # ------------------------------------------------------------------ hub connection
+
+    def _build_blueprint(self) -> HubBlueprint | None:
+        if not self.hub_ip:
+            return None
+        client = self._get_or_create_client()
+        hub_info, error_text, connected = self._identify(client)
+
+        if hub_info and hub_info.mac_address:
+            mac = self.controller._normalize_hub_address(hub_info.mac_address)
+            if mac:
+                stored_macs = dict(self.controller.data_store.get("hub_macs") or {})
+                if stored_macs.get(self.hub_ip) != mac:
+                    stored_macs[self.hub_ip] = mac
+                    self.controller.data_store["hub_macs"] = stored_macs
+
+        display_name = self.controller._resolve_node_name(
+            self.address, self._default_name(hub_info)
+        )
+        return HubBlueprint(
+            ip_address=self.hub_ip,
+            display_name=display_name,
+            mac_address=hub_info.mac_address if hub_info else "",
+            device_type=hub_info.device_type if hub_info else "unknown",
+            model_name=hub_info.model_name if hub_info else "unknown",
+            connected=connected,
+            last_error=error_text,
+        )
+
+    def _get_or_create_client(self) -> BroadlinkHubClient:
+        if self.hub_client is None or self.hub_client.hub_ip != self.hub_ip:
+            self.hub_client = BroadlinkHubClient(hub_ip=self.hub_ip)
+        return self.hub_client
+
+    def _identify(self, client: BroadlinkHubClient) -> tuple[BroadlinkHubInfo | None, str, bool]:
+        try:
+            hub_info = client.ensure_connected()
+            return hub_info, "", True
+        except Exception as err:
+            return client.hub_info, str(err), False
+
+    def _default_name(self, hub_info: BroadlinkHubInfo | None) -> str:
+        if hub_info is None:
+            return f"Broadlink Hub ({self.hub_ip})"
+        model_name = hub_info.model_name or "Broadlink Hub"
+        mac_suffix = hub_info.mac_address[-6:] if hub_info.mac_address else ""
+        return f"{model_name} {mac_suffix.upper()}" if mac_suffix else f"{model_name} ({self.hub_ip})"
+
+    # ------------------------------------------------------------------ sensors
+
+    def _detect_and_apply_sensors(self) -> None:
+        if not self.hub_ip:
+            return
+        client = self._get_or_create_client()
+        try:
+            sensor_data = client.check_sensors()
+            new_has_temp = sensor_data.has_temperature
+            new_has_humidity = sensor_data.has_humidity
+            if new_has_temp != self.has_temp_sensor or new_has_humidity != self.has_humidity_sensor:
+                self.has_temp_sensor = new_has_temp
+                self.has_humidity_sensor = new_has_humidity
+                self._sync_driver_definitions()
+                self._persist_sensor_state()
+                self.controller._refresh_publish_profile()
+        except Exception as err:
+            LOGGER.debug("[HubNode._detect_and_apply_sensors] %s: %s", self.hub_ip, err)
+
+    def _refresh_sensor_readings(self, temp_unit: str) -> None:
+        if not self.hub_client:
+            return
+        try:
+            sensor_data = self.hub_client.check_sensors()
+            if sensor_data.has_temperature:
+                temp_c = sensor_data.temperature_c
+                display_val = round((temp_c * 9 / 5) + 32, 1) if temp_unit == "F" else round(temp_c, 1)
+                self._set("GV2", display_val, 4 if temp_unit == "F" else 17)
+            if sensor_data.has_humidity:
+                self._set("GV3", round(sensor_data.humidity, 1), 22)
+        except Exception as err:
+            LOGGER.debug("[HubNode._refresh_sensor_readings] %s: %s", self.hub_ip, err)
+
+    def _sync_driver_definitions(self) -> None:
+        base_drivers = [
+            {"driver": "ST",   "value": 0, "uom": 25},
+            {"driver": "GV0",  "value": 0, "uom": 25},
+            {"driver": "GV1",  "value": 0, "uom": 25},
+            {"driver": "TIME", "value": int(time.time()), "uom": 151},
+        ]
+        if self.has_temp_sensor:
+            temp_uom = 4 if self.controller.temp_unit == "F" else 17
+            base_drivers.append({"driver": "GV2", "value": 0, "uom": temp_uom})
+        if self.has_humidity_sensor:
+            base_drivers.append({"driver": "GV3", "value": 0, "uom": 22})
+        self.drivers = base_drivers
+
+    def _persist_sensor_state(self) -> None:
+        sensor_states = dict(self.controller.data_store.get("sensor_states") or {})
+        new_state = {"has_temp": self.has_temp_sensor, "has_humidity": self.has_humidity_sensor}
+        if sensor_states.get(self.hub_mac) != new_state:
+            sensor_states[self.hub_mac] = new_state
+            self.controller.data_store["sensor_states"] = sensor_states
+
+    # ------------------------------------------------------------------ child nodes
+
+    def _ensure_controller_nodes(self) -> None:
+        if self.ir_controller is None:
+            ir_addr = self._controller_address("ir")
+            ir_name = self.controller._resolve_node_name(ir_addr, "IR Controller")
+            self.ir_controller = IRControllerNode(self.poly, self.address, ir_addr, ir_name, self)
+            self.poly.addNode(self.ir_controller)
+            LOGGER.info("[HubNode] Added IRControllerNode %s", ir_addr)
+        if self.rf_controller is None:
+            rf_addr = self._controller_address("rf")
+            rf_name = self.controller._resolve_node_name(rf_addr, "RF Controller")
+            self.rf_controller = RFControllerNode(self.poly, self.address, rf_addr, rf_name, self)
+            self.poly.addNode(self.rf_controller)
+            LOGGER.info("[HubNode] Added RFControllerNode %s", rf_addr)
+
+    def _load_learned_codes(self) -> None:
+        for addr, meta in self.learned_codes.items():
+            if addr in self._loaded_code_addrs:
+                continue
+            code_type = meta.get("controller_type", "ir")
+            ctrl_addr = self._normalize_controller_addr(meta.get("controller_addr"), code_type)
+            hub_display = self.hub_blueprint.display_name if self.hub_blueprint else self.hub_ip
+            default_name = f"{hub_display} {code_type.upper()} Code"
+            name = meta.get("name") or default_name
+            if code_type == "rf":
+                node: _CodeNode = RFCodeNode(self.poly, ctrl_addr, addr, name, self)
+            else:
+                node = IRCodeNode(self.poly, ctrl_addr, addr, name, self)
+            node._code_meta = dict(meta)
+            node._code_meta["controller_addr"] = ctrl_addr
+            self.poly.addNode(node)
+            self._loaded_code_addrs.add(addr)
+            LOGGER.info("[HubNode] Restored %s code node %s", code_type.upper(), addr)
+
+    # ------------------------------------------------------------------ persistence
+
+    def _persist_learned_code(self, addr: str, metadata: dict) -> None:
+        updated = dict(self.learned_codes)
+        updated[addr] = dict(metadata)
+        self.learned_codes = updated
+        self._loaded_code_addrs.add(addr)
+        all_codes = dict(self.controller.data_store.get("learned_codes") or {})
+        all_codes[addr] = dict(metadata)
+        stored = self.controller.data_store.get("learned_codes") or {}
+        if stored != all_codes:
+            self.controller.data_store["learned_codes"] = all_codes
+
+    def _next_code_address(self, code_type: str) -> str:
+        prefix = self._code_address_prefix(code_type)
+        existing = [k for k in self.learned_codes if k.startswith(prefix)]
+        return f"{prefix}{len(existing) + 1:03d}"
+
+    def _controller_address(self, code_type: str) -> str:
+        suffix = "ir" if code_type == "ir" else "rf"
+        return f"{self.address}{suffix}"
+
+    def _code_address_prefix(self, code_type: str) -> str:
+        suffix = "i" if code_type == "ir" else "r"
+        return f"{self.address[-10:]}{suffix}"
+
+    def _normalize_controller_addr(self, controller_addr: str | None, code_type: str) -> str:
+        current_addr = self._controller_address(code_type)
+        legacy_addrs = {"ir": "irctrl", "rf": "rfctrl"}
+        if controller_addr in (None, "", legacy_addrs.get(code_type),
+                               f"{DEFAULT_SETUP_ADDRESS}_{code_type}",
+                               f"{DEFAULT_SETUP_ADDRESS}{code_type}"):
+            return current_addr
+        return controller_addr
+
+    def _sync_node_names_from_db(self) -> None:
+        db_name = self.poly.getNodeNameFromDb(self.address)
+        if db_name:
+            self.name = db_name
+        self.controller.node_name_cache[self.address] = self.name
+        self.controller._persist_node_name_cache()
+
+    def sync_all_node_names(self) -> None:
+        """Flush hub and all child node names to cache (called on stop)."""
+        self._sync_node_names_from_db()
+        for addr in (self._controller_address("ir"), self._controller_address("rf")):
+            db_name = self.poly.getNodeNameFromDb(addr)
+            if db_name:
+                self.controller.node_name_cache[addr] = db_name
+        codes_changed = False
+        updated_codes = dict(self.learned_codes)
+        for addr in list(self.learned_codes.keys()):
+            db_name = self.poly.getNodeNameFromDb(addr)
+            if db_name:
+                self.controller.node_name_cache[addr] = db_name
+                if updated_codes[addr].get("name") != db_name:
+                    updated_codes[addr] = dict(updated_codes[addr])
+                    updated_codes[addr]["name"] = db_name
+                    codes_changed = True
+        if codes_changed:
+            self.learned_codes = updated_codes
+            all_codes = dict(self.controller.data_store.get("learned_codes") or {})
+            all_codes.update(updated_codes)
+            stored = self.controller.data_store.get("learned_codes") or {}
+            if stored != all_codes:
+                self.controller.data_store["learned_codes"] = all_codes
+        self.controller._persist_node_name_cache()
+
+    def force_update(self, command=None) -> None:
+        self._detect_and_apply_sensors()
+        self.reconcile()
+
+    commands = {"UPDATE": force_update}
+
+
+
+class HubNode(BaseNode):
+    """Coordinator primary node for all configured Broadlink hubs."""
 
     id = "setup"
     drivers = [
-        {"driver": "ST", "value": 0, "uom": 25},
-        {"driver": "GV0", "value": 0, "uom": 25},
-        {"driver": "GV1", "value": 0, "uom": 25},
+        {"driver": "ST", "value": 0, "uom": 25},    # hub_status: 0=none configured, 1=all online, 2=partial, 3=none online
+        {"driver": "GV0", "value": 0, "uom": 56},   # hub count
         {"driver": "TIME", "value": int(time.time()), "uom": 151},
     ]
 
     def __init__(self, polyglot, primary, address, name):
         LOGGER.info("[__init__] Constructing BroadlinkController")
         super().__init__(polyglot, primary, address, name)
-        # Keep an instance-local driver definition so dynamic sensor drivers can
-        # be added/removed without mutating the class-level defaults.
         self.drivers = [dict(driver) for driver in type(self).drivers]
         self.poly = polyglot
         self.config = PluginConfig()
@@ -464,6 +777,20 @@ class BroadlinkController(BaseNode):
         self.ir_controller: IRControllerNode | None = None
         self.rf_controller: RFControllerNode | None = None
         LOGGER.debug("[__init__] Initialized instance variables")
+    LOGGER.info("[__init__] Constructing BroadlinkController")
+    super().__init__(polyglot, primary, address, name)
+    self.drivers = [dict(driver) for driver in type(self).drivers]
+    self.poly = polyglot
+    self.config = PluginConfig()
+    self.parameters = Custom(self.poly, "customparams")
+    self.typed_data = Custom(self.poly, "customtypeddata")
+    self.data_store = Custom(self.poly, "customdata")
+    self.heartbeat_state = 0
+    self.hub_nodes: dict[str, "HubNode"] = {}   # keyed by hub IP
+    self.node_name_cache: dict[str, str] = {}
+    self.temp_unit: str = "C"
+    self._node_added: bool = False
+    LOGGER.debug("[__init__] Initialized instance variables")
 
         LOGGER.debug("[__init__] Subscribing to polyglot events")
         self.poly.subscribe(self.poly.START, self.start)
@@ -483,241 +810,279 @@ class BroadlinkController(BaseNode):
 
         LOGGER.info("[__init__] BroadlinkController construction complete")
 
-    def start(self):
+    def start(self) -> None:
         if not self._node_added:
             LOGGER.debug("[start] Ignoring START before setup node is registered")
             return
         LOGGER.info("[start] Received START event")
         self._set("TIME", int(time.time()), 151)
-        LOGGER.debug("[start] Set TIME driver")
-
-        # Detect sensor cable before reconcile so profile can include sensor drivers
-        self._detect_and_apply_sensors()
-
-        self.reconcile_structure()
+        for hub_node in list(self.hub_nodes.values()):
+            hub_node.start()
+        self._update_overall_status()
         LOGGER.info("[start] Startup reconciliation complete")
 
-    def stop(self):
+    def stop(self) -> None:
         if not self._node_added:
             self.poly.stop()
             return
-        # Flush all node names (captures any user renames since last long poll)
-        self._sync_all_node_names()
+        for hub_node in list(self.hub_nodes.values()):
+            hub_node.sync_all_node_names()
         self._set("ST", 0)
-        self._set("GV1", 0)
         self.poly.stop()
 
-    def handle_log_level(self, level):
+    def handle_log_level(self, level) -> None:
         if isinstance(level, dict) and "level" in level:
             LOGGER.info("New log level: %s", level["level"])
 
-    def handle_params(self, custom_params):
+    def handle_params(self, custom_params) -> None:
         LOGGER.info("[handle_params] CUSTOMPARAMS event received")
         self.parameters.load(custom_params)
         self.poly.Notices.clear()
-        LOGGER.debug("[handle_params] Received CUSTOMPARAMS keys: %s", sorted((custom_params or {}).keys()))
-        LOGGER.debug("[handle_params] CUSTOMPARAMS payload: %s", custom_params)
 
+        prev_temp_unit = self.temp_unit
         try:
             self.config = build_config(custom_params)
         except Exception as err:
             self.poly.Notices["config"] = f"Invalid configuration format: {err}"
             LOGGER.error("[handle_params] Failed to parse custom params: %s", err)
             if self._node_added:
-                self._set("ST", 2)
-                self._set("GV1", 0)
-                self._set("GV0", 0, 56)
+                self._set("ST", 0)
+                self._set("GV0", 0)
             return
 
-        if self.config.has_hub:
-            LOGGER.info("[handle_params] *** HUB_IP RESOLVED FROM CUSTOMPARAMS: %s ***", self.config.hub_ip)
-            if self.config.ignored_hub_ips:
-                LOGGER.info("[handle_params] Additional HUB_IP values ignored in single-hub mode: %s", self.config.ignored_hub_ips)
-        else:
-            LOGGER.warning("[handle_params] No HUB_IP resolved from custom params payload.")
-
-        # Parse TEMP_UNIT: republish profile if unit changed while sensor is present
-        prev_temp_unit = self.temp_unit
         self.temp_unit = _parse_temp_unit(custom_params)
-        if self.temp_unit != prev_temp_unit:
-            LOGGER.info("[handle_params] TEMP_UNIT changed from %s to %s", prev_temp_unit, self.temp_unit)
-            self._sync_setup_driver_definitions()
 
         if not self.config.has_hub:
-            self.poly.Notices["required"] = "Set HUB_IP to the IP address for this Broadlink hub instance."
-        elif self.config.ignored_hub_ips:
-            self.poly.Notices["config_scope"] = "Only the first configured hub IP is used. Run one PG3 instance per hub."
+            self.poly.Notices["required"] = (
+                "Set HUB_IP to the IP address(es) of your Broadlink hub(s). "
+                "Separate multiple IPs with commas."
+            )
+            if self._node_added:
+                self._set("ST", 0)
+                self._set("GV0", 0)
+            return
 
-        # Detect sensors (may republish profile with sensor drivers)
-        if self.config.has_hub:
-            self._detect_and_apply_sensors()
-        # Republish if only temp_unit changed (sensor state unchanged, detect_and_apply skipped republish)
-        if self.temp_unit != prev_temp_unit and self.has_temp_sensor:
-            self._publish_profile()
+        LOGGER.info("[handle_params] Configured hub IPs: %s", self.config.hub_ips)
+        if self._node_added:
+            self._set("GV0", len(self.config.hub_ips))
 
-        self.reconcile_structure()
+        if self.temp_unit != prev_temp_unit:
+            LOGGER.info("[handle_params] TEMP_UNIT changed from %s to %s", prev_temp_unit, self.temp_unit)
+            for hub_node in self.hub_nodes.values():
+                if hub_node.has_temp_sensor:
+                    hub_node._sync_driver_definitions()
 
-    def handle_custom_data(self, custom_data):
+        self._reconcile_hub_nodes()
+        self._refresh_publish_profile()
+
+    def handle_custom_data(self, custom_data) -> None:
         self.data_store.load(custom_data or {})
-        stored_hub_address = self._normalize_hub_address(self.data_store.get("hub_address", ""))
-        if stored_hub_address:
-            self._apply_setup_address(stored_hub_address)
-        self.node_name_cache = self._normalize_node_name_map(self._safe_name_map(self.data_store.get("node_names", {})))
-        self.learned_codes = self._safe_code_map(self.data_store.get("learned_codes", {}))
-        # Restore last-known sensor state so __init__'s profile publish is accurate on restart
-        sensor_state = self.data_store.get("sensor_state") or {}
-        self.has_temp_sensor = bool(sensor_state.get("has_temp", False))
-        self.has_humidity_sensor = bool(sensor_state.get("has_humidity", False))
-        self._sync_setup_driver_definitions()
+        self.node_name_cache = self._safe_name_map(self.data_store.get("node_names", {}))
+        self._migrate_legacy_data()
+        self._ensure_registered()
+        # Restore hub nodes for IPs where the MAC is already known from storage
+        hub_macs = self._safe_hub_macs()
+        for ip in self.config.hub_ips:
+            mac = hub_macs.get(ip)
+            if mac and ip not in self.hub_nodes:
+                node = self._create_hub_node(ip, mac)
+                if node:
+                    self._restore_hub_node_data(node)
         if self._node_added:
             self._sync_node_names_from_db()
-        else:
-            self._ensure_setup_node_registered()
 
-    def poll(self, poll_type):
+    def poll(self, poll_type) -> None:
         if not self._node_added:
             return
         self._set("TIME", int(time.time()), 151)
-
         if poll_type == "shortPoll":
             self.heartbeat_state = 1 - self.heartbeat_state
             if self.heartbeat_state:
                 self.reportCmd("DON", 2)
             else:
                 self.reportCmd("DOF", 2)
-            if self.has_temp_sensor or self.has_humidity_sensor:
-                self._refresh_sensor_readings()
+            for hub_node in list(self.hub_nodes.values()):
+                hub_node.poll_short(self.temp_unit)
+        else:
+            for hub_node in list(self.hub_nodes.values()):
+                hub_node.poll_long()
+            self._sync_node_names_from_db()
+            self._update_overall_status()
+
+    def discover(self, *_) -> None:
+        self._reconcile_hub_nodes()
+
+    # ------------------------------------------------------------------ hub node management
+
+    def _ensure_registered(self) -> None:
+        """Add the BroadlinkController node to poly if not yet registered."""
+        if not self._node_added:
+            self.poly.addNode(self, conn_status="ST", rename=False)
+            self._node_added = True
+
+    def _reconcile_hub_nodes(self) -> None:
+        """Ensure a HubNode exists for every configured IP and trigger reconcile."""
+        hub_macs = self._safe_hub_macs()
+        for ip in self.config.hub_ips:
+            if ip not in self.hub_nodes:
+                mac = hub_macs.get(ip)
+                if mac:
+                    node = self._create_hub_node(ip, mac)
+                else:
+                    node = self._connect_and_create_hub_node(ip)
+                if node:
+                    self._restore_hub_node_data(node)
+            if ip in self.hub_nodes:
+                self.hub_nodes[ip].reconcile()
+        self._update_overall_status()
+
+    def _connect_and_create_hub_node(self, ip: str) -> "HubNode | None":
+        """Connect to hub at ``ip`` to obtain its MAC, then create and register a HubNode."""
+        try:
+            client = BroadlinkHubClient(hub_ip=ip)
+            hub_info = client.ensure_connected()
+            if hub_info and hub_info.mac_address:
+                mac = self._normalize_hub_address(hub_info.mac_address)
+                if mac:
+                    hub_macs = dict(self.data_store.get("hub_macs") or {})
+                    if hub_macs.get(ip) != mac:
+                        hub_macs[ip] = mac
+                        self.data_store["hub_macs"] = hub_macs
+                    node = self._create_hub_node(ip, mac)
+                    if node:
+                        node.hub_client = client
+                    return node
+        except Exception as err:
+            LOGGER.warning("[_connect_and_create_hub_node] Failed for %s: %s", ip, err)
+            self.poly.Notices[f"hub_connect_{ip.replace('.', '_')}"] = (
+                f"Could not connect to hub at {ip}: {err}"
+            )
+        return None
+
+    def _create_hub_node(self, ip: str, mac: str) -> "HubNode | None":
+        """Instantiate a HubNode and add it to poly (idempotent by IP)."""
+        if ip in self.hub_nodes:
+            return self.hub_nodes[ip]
+        if not self._normalize_hub_address(mac):
+            return None
+        name = self._resolve_node_name(mac, f"Broadlink Hub ({ip})")
+        hub_node = HubNode(self.poly, "setup", mac, name, self, ip)
+        self.poly.addNode(hub_node)
+        self.hub_nodes[ip] = hub_node
+        LOGGER.info("[_create_hub_node] Added HubNode ip=%s mac=%s", ip, mac)
+        return hub_node
+
+    def _restore_hub_node_data(self, hub_node: "HubNode") -> None:
+        """Load persisted sensor state and learned codes into a HubNode."""
+        mac = hub_node.hub_mac
+        sensor_states = self.data_store.get("sensor_states") or {}
+        sensor_state = sensor_states.get(mac) or {}
+        hub_node.has_temp_sensor = bool(sensor_state.get("has_temp", False))
+        hub_node.has_humidity_sensor = bool(sensor_state.get("has_humidity", False))
+        hub_node._sync_driver_definitions()
+        all_codes = self._safe_code_map(self.data_store.get("learned_codes", {}))
+        hub_node.learned_codes = {
+            addr: meta
+            for addr, meta in all_codes.items()
+            if addr.startswith(mac[-10:])
+        }
+
+    def _update_overall_status(self) -> None:
+        if not self.hub_nodes:
+            self._set("ST", 0)
+            return
+        connected = sum(
+            1 for n in self.hub_nodes.values()
+            if n.hub_blueprint and n.hub_blueprint.connected
+        )
+        total = len(self.hub_nodes)
+        self._set("ST", 1 if connected == total else 2 if connected > 0 else 3)
+
+    def _add_hub_error_notice(self, mac: str, ip: str, error: str) -> None:
+        self.poly.Notices[f"hub_err_{mac}"] = f"Hub {ip}: {error}"
+
+    def _remove_hub_error_notice(self, mac: str) -> None:
+        self.poly.Notices.delete(f"hub_err_{mac}")
+
+    # ------------------------------------------------------------------ data helpers
+
+    def _safe_hub_macs(self) -> dict[str, str]:
+        """Return the IP→MAC mapping from customdata, migrating legacy single-hub data."""
+        hub_macs = self.data_store.get("hub_macs") or {}
+        if not isinstance(hub_macs, dict):
+            hub_macs = {}
+        # Legacy migration: if old hub_address exists map it to the first configured IP
+        legacy_mac = self._normalize_hub_address(self.data_store.get("hub_address", ""))
+        if legacy_mac and self.config.hub_ips:
+            for ip in self.config.hub_ips:
+                if ip not in hub_macs:
+                    hub_macs = dict(hub_macs)
+                    hub_macs[ip] = legacy_mac
+                    stored = self.data_store.get("hub_macs")
+                    if stored != hub_macs:
+                        self.data_store["hub_macs"] = hub_macs
+                    break
+        return {k: v for k, v in hub_macs.items() if isinstance(k, str) and isinstance(v, str)}
+
+    def _migrate_legacy_data(self) -> None:
+        """Migrate old single-hub customdata keys to multi-hub structure (one-time)."""
+        old_sensor_state = self.data_store.get("sensor_state")
+        if old_sensor_state and not self.data_store.get("sensor_states"):
+            legacy_mac = self._normalize_hub_address(self.data_store.get("hub_address", ""))
+            if legacy_mac and isinstance(old_sensor_state, dict):
+                self.data_store["sensor_states"] = {legacy_mac: old_sensor_state}
+
+    def _refresh_publish_profile(self) -> None:
+        """Republish profile based on current sensor state across all hubs."""
+        any_has_temp = any(n.has_temp_sensor for n in self.hub_nodes.values())
+        any_has_humidity = any(n.has_humidity_sensor for n in self.hub_nodes.values())
+        self._publish_profile(any_has_temp, any_has_humidity)
+
+    def _publish_profile(self, has_temp: bool = False, has_humidity: bool = False) -> None:
+        update_json_profile = getattr(self.poly, "updateJsonProfile", None)
+        if not callable(update_json_profile):
+            LOGGER.error("[_publish_profile] updateJsonProfile is unavailable")
+            self.poly.Notices["profile"] = "Dynamic profile publish failed: updateJsonProfile() is unavailable."
             return
 
-        self._refresh_hub_connection()
-        self._sync_node_names_from_db()
-        self.reconcile_structure(update_time=False)
+        profile = _build_profile_definition(has_temp, has_humidity, self.temp_unit)
 
-    def discover(self, *_):
-        self.reconcile_structure()
+        current_profile_getter = getattr(self.poly, "getJsonProfile", None)
+        if callable(current_profile_getter):
+            try:
+                current_profile = current_profile_getter({"waitResponse": True})
+                if self._profiles_match(current_profile, profile):
+                    LOGGER.info("[_publish_profile] Profile already up to date, skipping publish")
+                    return
+            except TypeError:
+                current_profile = current_profile_getter()
+                if self._profiles_match(current_profile, profile):
+                    LOGGER.info("[_publish_profile] Profile already up to date, skipping publish")
+                    return
+            except Exception as err:
+                LOGGER.warning("[_publish_profile] Unable to read existing profile: %s", err)
 
-    def reconcile_structure(self, update_time: bool = True):
-        LOGGER.debug("[reconcile_structure] Starting structure reconciliation")
-        self.hub_blueprint = self._build_hub_blueprint()
-        LOGGER.debug("[reconcile_structure] Built hub blueprint: %s", self.hub_blueprint)
-        
-        self._sync_node_names_from_db()
-        LOGGER.debug("[reconcile_structure] Synced node names from database")
-
-        if self.hub_blueprint is None:
-            LOGGER.info("[reconcile_structure] Hub blueprint is None - no HUB_IP configured")
-            self._set("ST", 0)
-            self._set("GV0", 0, 25)
-            self._set("GV1", 0)
-            self.poly.Notices["stage"] = "Single-hub mode active: configure HUB_IP for this node server instance."
-            self.poly.Notices.delete("hub_errors")
-        else:
-            LOGGER.info("[reconcile_structure] Hub blueprint resolved: ip=%s, connected=%s, model=%s", 
-                       self.hub_blueprint.ip_address, self.hub_blueprint.connected, self.hub_blueprint.model_name)
-            
-            status_value = 1 if self.hub_blueprint.connected else 2 if self.hub_blueprint.last_error else 0
-            self._set("ST", status_value)
-            LOGGER.debug("[reconcile_structure] Set ST driver to %d", status_value)
-            
-            self._set(
-                "GV0",
-                _model_index(self.hub_blueprint.model_name),
-                25,
-            )
-            self._set("GV1", 1 if self.hub_blueprint.connected else 0)
-            LOGGER.debug("[reconcile_structure] Set GV0 and GV1 drivers")
-
-            self.node_name_cache[self.address] = self.hub_blueprint.display_name
-            self._persist_node_name_cache()
-            LOGGER.debug("[reconcile_structure] Updated node name cache")
-
-            if self.hub_blueprint.connected:
-                LOGGER.info("[reconcile_structure] Hub is connected and ready")
-                self.poly.Notices.delete("stage")
-                self.poly.Notices.delete("hub_errors")
-                self._ensure_controller_nodes()
-                self._load_learned_codes()
-            else:
-                LOGGER.warning("[reconcile_structure] Hub not connected, will retry on next poll")
-                self.poly.Notices["stage"] = (
-                    "Single-hub mode active: this PG3 instance is reconciling one Broadlink hub. "
-                    "IR/RF nodes remain deferred."
-                )
-                if self.hub_blueprint.last_error:
-                    LOGGER.error("[reconcile_structure] Hub error: %s", self.hub_blueprint.last_error)
-                    self.poly.Notices["hub_errors"] = (
-                        f"{self.hub_blueprint.ip_address}: {self.hub_blueprint.last_error}"
-                    )
-
-        if update_time:
-            self._set("TIME", int(time.time()), 151)
-
-    def _build_hub_blueprint(self) -> HubBlueprint | None:
-        LOGGER.debug("[_build_hub_blueprint] Building hub blueprint, has_hub=%s", self.config.has_hub)
-        if not self.config.has_hub:
-            LOGGER.debug("[_build_hub_blueprint] No HUB_IP configured")
-            return None
-
-        LOGGER.info("[_build_hub_blueprint] Creating/reusing hub client for %s", self.config.hub_ip)
-        client = self._get_or_create_hub_client(self.config.hub_ip)
-        
-        LOGGER.debug("[_build_hub_blueprint] Identifying hub")
-        hub_info, error_text, connected = self._identify_hub(client)
-        LOGGER.debug("[_build_hub_blueprint] Hub identification: connected=%s, error=%s", connected, error_text)
-
-        resolved_address = self._resolve_setup_address(hub_info)
-        if resolved_address and resolved_address != self.address:
-            self._apply_setup_address(resolved_address)
-        if resolved_address:
-            stored_address = str(self.data_store.get("hub_address", "")).strip().lower()
-            if stored_address != resolved_address:
-                self.data_store["hub_address"] = resolved_address
-        
-        display_name = self._resolve_node_name(self.address, self._default_hub_name(hub_info))
-        LOGGER.debug("[_build_hub_blueprint] Resolved display name: %s", display_name)
-        
-        blueprint = HubBlueprint(
-            ip_address=self.config.hub_ip,
-            display_name=display_name,
-            mac_address=hub_info.mac_address if hub_info else "",
-            device_type=hub_info.device_type if hub_info else "unknown",
-            model_name=hub_info.model_name if hub_info else "unknown",
-            connected=connected,
-            last_error=error_text,
-        )
-        LOGGER.info("[_build_hub_blueprint] Hub blueprint built: ip=%s, connected=%s, model=%s", 
-                   blueprint.ip_address, blueprint.connected, blueprint.model_name)
-        return blueprint
-
-    def _refresh_hub_connection(self):
-        if self.hub_client is not None:
-            self.hub_client.refresh()
-
-    def _get_or_create_hub_client(self, ip_address: str) -> BroadlinkHubClient:
-        if self.hub_client is None or self.hub_client.hub_ip != ip_address:
-            self.hub_client = BroadlinkHubClient(hub_ip=ip_address)
-        return self.hub_client
-
-    def _identify_hub(self, client: BroadlinkHubClient) -> tuple[BroadlinkHubInfo | None, str, bool]:
         try:
-            LOGGER.debug("[_identify_hub] Attempting ensure_connected")
-            hub_info = client.ensure_connected()
-            LOGGER.info("[_identify_hub] Hub identified successfully: %s", hub_info.model_name if hub_info else "unknown")
-            return hub_info, "", True
+            LOGGER.debug("[_publish_profile] Publishing profile: %s",
+                         json.dumps(profile, sort_keys=True, indent=2, separators=(",", ": ")))
+            update_json_profile(profile, {"waitResponse": True})
+            LOGGER.info("[_publish_profile] Dynamic JSON profile published successfully")
+            self.poly.Notices.delete("profile")
+        except TypeError:
+            update_json_profile(profile)
+            LOGGER.info("[_publish_profile] Dynamic JSON profile published successfully")
+            self.poly.Notices.delete("profile")
         except Exception as err:
-            LOGGER.warning("[_identify_hub] Connection failed: %s", err)
-            hub_info = client.hub_info
-            return hub_info, str(err), False
+            LOGGER.error("[_publish_profile] Profile publish failed: %s", err)
+            self.poly.Notices["profile"] = f"Dynamic profile publish failed: {err}"
 
-    def _default_hub_name(self, hub_info: BroadlinkHubInfo | None) -> str:
-        if hub_info is None:
-            return self.name or "Broadlink Hub"
-
-        model_name = hub_info.model_name or "Broadlink Hub"
-        mac_suffix = hub_info.mac_address[-6:] if hub_info.mac_address else ""
-        if mac_suffix:
-            return f"{model_name} {mac_suffix.upper()}"
-        return model_name
+    def _profiles_match(self, current_profile, expected_profile) -> bool:
+        if not isinstance(current_profile, dict) or not isinstance(expected_profile, dict):
+            return False
+        return all(
+            current_profile.get(k, []) == expected_profile.get(k, [])
+            for k in ("editors", "nodedefs", "linkdefs")
+        )
 
     def _resolve_node_name(self, address: str, default_name: str) -> str:
         if address:
@@ -729,332 +1094,49 @@ class BroadlinkController(BaseNode):
                 return self.node_name_cache[address]
         return default_name
 
-    def _publish_profile(self):
-        LOGGER.info("[_publish_profile] Starting profile publish")
-        update_json_profile = getattr(self.poly, "updateJsonProfile", None)
-        if not callable(update_json_profile):
-            LOGGER.error("[_publish_profile] updateJsonProfile is unavailable")
-            self.poly.Notices["profile"] = "Dynamic profile publish failed: updateJsonProfile() is unavailable."
-            return
-        LOGGER.debug("[_publish_profile] updateJsonProfile method available")
-
-        profile = _build_profile_definition(self.has_temp_sensor, self.has_humidity_sensor, self.temp_unit)
-
-        current_profile_getter = getattr(self.poly, "getJsonProfile", None)
-        if callable(current_profile_getter):
-            try:
-                LOGGER.debug("[_publish_profile] Attempting to retrieve current profile from IoX")
-                current_profile = current_profile_getter({"waitResponse": True})
-                LOGGER.debug("[_publish_profile] Current JSON profile from IoX: %s", json.dumps(current_profile, sort_keys=True, indent=2, separators=(",", ": ")))
-                if self._profiles_match(current_profile, profile):
-                    LOGGER.info("[_publish_profile] JSON profile already up to date, skipping publish")
-                    return
-                LOGGER.info("[_publish_profile] Profile mismatch detected, will republish")
-            except TypeError:
-                LOGGER.debug("[_publish_profile] getJsonProfile does not support waitResponse, trying without")
-                current_profile = current_profile_getter()
-                LOGGER.debug("[_publish_profile] Current JSON profile from IoX: %s", json.dumps(current_profile, sort_keys=True, indent=2, separators=(",", ": ")))
-                if self._profiles_match(current_profile, profile):
-                    LOGGER.info("[_publish_profile] JSON profile already up to date, skipping publish")
-                    return
-                LOGGER.info("[_publish_profile] Profile mismatch detected, will republish")
-            except Exception as err:
-                LOGGER.warning("[_publish_profile] Unable to read existing JSON profile: %s", err)
-
-        try:
-            LOGGER.debug("[_publish_profile] Publishing profile with waitResponse=True")
-            LOGGER.debug("[_publish_profile] New JSON profile to publish: %s", json.dumps(profile, sort_keys=True, indent=2, separators=(",", ": ")))
-            update_json_profile(profile, {"waitResponse": True})
-            LOGGER.info("[_publish_profile] Dynamic JSON profile published successfully")
-            self.poly.Notices.delete("profile")
-        except TypeError:
-            LOGGER.debug("[_publish_profile] updateJsonProfile does not support options, publishing without")
-            update_json_profile(profile)
-            LOGGER.info("[_publish_profile] Dynamic JSON profile published successfully")
-            self.poly.Notices.delete("profile")
-        except Exception as err:
-            LOGGER.error("[_publish_profile] Dynamic profile publish failed: %s", err)
-            self.poly.Notices["profile"] = f"Dynamic profile publish failed: {err}"
-
-    def _profiles_match(self, current_profile, expected_profile) -> bool:
-        if not isinstance(current_profile, dict):
-            return False
-        if not isinstance(expected_profile, dict):
-            return False
-
-        for key in ("editors", "nodedefs", "linkdefs"):
-            if current_profile.get(key, []) != expected_profile.get(key, []):
-                return False
-        return True
-
-    def _sync_node_names_from_db(self):
+    def _sync_node_names_from_db(self) -> None:
         if not self._node_added:
             return
         db_name = self.poly.getNodeNameFromDb(self.address)
         resolved_name = db_name or self.node_name_cache.get(self.address)
         if resolved_name:
             self.name = resolved_name
-
         self.node_name_cache[self.address] = self.name
         self._persist_node_name_cache()
 
-    def _persist_node_name_cache(self):
-        stored_node_names = self._safe_name_map(self.data_store.get("node_names", {}))
-        desired_node_names = dict(self.node_name_cache)
-        if stored_node_names != desired_node_names:
-            self.data_store["node_names"] = desired_node_names
+    def _persist_node_name_cache(self) -> None:
+        stored = self._safe_name_map(self.data_store.get("node_names", {}))
+        desired = dict(self.node_name_cache)
+        if stored != desired:
+            self.data_store["node_names"] = desired
 
     def _normalize_hub_address(self, candidate) -> str:
         text = "".join(ch for ch in str(candidate or "").lower() if ch in "0123456789abcdef")
-        if len(text) == 12:
-            return text
-        return ""
-
-    def _resolve_setup_address(self, hub_info: BroadlinkHubInfo | None) -> str:
-        if hub_info and hub_info.mac_address:
-            mac_address = self._normalize_hub_address(hub_info.mac_address)
-            if mac_address:
-                return mac_address
-        stored_address = self._normalize_hub_address(self.data_store.get("hub_address", ""))
-        if stored_address:
-            return stored_address
-        return ""
-
-    def _apply_setup_address(self, address: str) -> None:
-        normalized = self._normalize_hub_address(address)
-        if not normalized:
-            return
-        self.address = normalized
-        self.primary = normalized
-
-    def _ensure_setup_node_registered(self) -> None:
-        if self._node_added or not self._normalize_hub_address(self.address):
-            return
-        LOGGER.info("[_ensure_setup_node_registered] Adding setup node with address %s", self.address)
-        self.poly.addNode(self, conn_status="ST", rename=False)
-        self._node_added = True
+        return text if len(text) == 12 else ""
 
     def _safe_name_map(self, candidate) -> dict[str, str]:
         if not isinstance(candidate, dict):
             return {}
-
         parsed: dict[str, str] = {}
         for key, value in candidate.items():
-            key_text = str(key).strip()
-            value_text = str(value).strip()
-            if not key_text or not value_text:
-                continue
-            parsed[key_text] = value_text
+            k, v = str(key).strip(), str(value).strip()
+            if k and v:
+                parsed[k] = v
         return parsed
 
-    def _normalize_node_name_map(self, candidate: dict[str, str]) -> dict[str, str]:
-        normalized = dict(candidate)
-        current_setup_addr = self._normalize_hub_address(self.address)
-        legacy_map = {
-            DEFAULT_SETUP_ADDRESS: current_setup_addr,
-            "irctrl": self._controller_address("ir") if current_setup_addr else "",
-            "rfctrl": self._controller_address("rf") if current_setup_addr else "",
-            "setupir": self._controller_address("ir") if current_setup_addr else "",
-            "setuprf": self._controller_address("rf") if current_setup_addr else "",
-            "setup_ir": self._controller_address("ir") if current_setup_addr else "",
-            "setup_rf": self._controller_address("rf") if current_setup_addr else "",
-        }
-        changed = False
-        for legacy_addr, current_addr in legacy_map.items():
-            if not current_addr:
-                continue
-            if legacy_addr in normalized and current_addr not in normalized:
-                normalized[current_addr] = normalized[legacy_addr]
-                changed = True
-            if legacy_addr in normalized:
-                del normalized[legacy_addr]
-                changed = True
-        if changed:
-            self.data_store["node_names"] = normalized
-        return normalized
-
-    def _detect_and_apply_sensors(self) -> None:
-        """Connect to hub, detect sensor cable, and republish profile if state changed."""
-        if not self.config.has_hub:
-            return
-        client = self._get_or_create_hub_client(self.config.hub_ip)
-        try:
-            sensor_data = client.check_sensors()
-            new_has_temp = sensor_data.has_temperature
-            new_has_humidity = sensor_data.has_humidity
-            if new_has_temp != self.has_temp_sensor or new_has_humidity != self.has_humidity_sensor:
-                LOGGER.info(
-                    "[_detect_and_apply_sensors] Sensor state changed: temp=%s, humidity=%s",
-                    new_has_temp, new_has_humidity,
-                )
-                self.has_temp_sensor = new_has_temp
-                self.has_humidity_sensor = new_has_humidity
-                self._sync_setup_driver_definitions()
-                # Persist sensor state so next startup's initial profile publish is correct
-                self.data_store["sensor_state"] = {"has_temp": new_has_temp, "has_humidity": new_has_humidity}
-                self._publish_profile()
-        except Exception as err:
-            LOGGER.debug(
-                "[_detect_and_apply_sensors] Sensor check skipped (no cable or unsupported): %s", err
-            )
-
-    def _refresh_sensor_readings(self) -> None:
-        """Query hub for current temperature/humidity and update setup node drivers."""
-        if not self.hub_client:
-            return
-        try:
-            sensor_data = self.hub_client.check_sensors()
-            if sensor_data.has_temperature:
-                temp_c = sensor_data.temperature_c
-                display_val = round((temp_c * 9 / 5) + 32, 1) if self.temp_unit == "F" else round(temp_c, 1)
-                self._set("GV2", display_val, 4 if self.temp_unit == "F" else 17)
-            if sensor_data.has_humidity:
-                self._set("GV3", round(sensor_data.humidity, 1), 22)
-        except Exception as err:
-            LOGGER.debug("[_refresh_sensor_readings] Sensor query failed: %s", err)
-
-    def _sync_setup_driver_definitions(self) -> None:
-        """Align setup-node drivers with detected sensor capabilities."""
-        base_drivers = [
-            {"driver": "ST", "value": 0, "uom": 25},
-            {"driver": "GV0", "value": 0, "uom": 25},
-            {"driver": "GV1", "value": 0, "uom": 25},
-            {"driver": "TIME", "value": int(time.time()), "uom": 151},
-        ]
-        if self.has_temp_sensor:
-            base_drivers.append({"driver": "GV2", "value": 0, "uom": 4 if self.temp_unit == "F" else 17})
-        if self.has_humidity_sensor:
-            base_drivers.append({"driver": "GV3", "value": 0, "uom": 22})
-        self.drivers = base_drivers
-
-    def _ensure_controller_nodes(self) -> None:
-        """Create IR and RF controller subnodes if they do not already exist."""
-        if not self._node_added:
-            self._ensure_setup_node_registered()
-        if not self._node_added:
-            return
-        if self.ir_controller is None:
-            ir_addr = self._controller_address("ir")
-            ir_name = self._resolve_node_name(ir_addr, "IR Controller")
-            self.ir_controller = IRControllerNode(self.poly, ir_addr, ir_addr, ir_name, self)
-            self.poly.addNode(self.ir_controller)
-            LOGGER.info("[_ensure_controller_nodes] Added IRControllerNode")
-        if self.rf_controller is None:
-            rf_addr = self._controller_address("rf")
-            rf_name = self._resolve_node_name(rf_addr, "RF Controller")
-            self.rf_controller = RFControllerNode(self.poly, rf_addr, rf_addr, rf_name, self)
-            self.poly.addNode(self.rf_controller)
-            LOGGER.info("[_ensure_controller_nodes] Added RFControllerNode")
-
-    def _load_learned_codes(self) -> None:
-        """Recreate code subnodes from persisted metadata (idempotent)."""
-        for addr, meta in self.learned_codes.items():
-            if addr in self._loaded_code_addrs:
-                continue
-            code_type = meta.get("controller_type", "ir")
-            ctrl_addr = self._normalize_controller_addr(meta.get("controller_addr"), code_type)
-            name = meta.get("name") or f"{code_type.upper()} Code"
-            if code_type == "rf":
-                node: _CodeNode = RFCodeNode(self.poly, ctrl_addr, addr, name, self)
-            else:
-                node = IRCodeNode(self.poly, ctrl_addr, addr, name, self)
-            node._code_meta = dict(meta)
-            node._code_meta["controller_addr"] = ctrl_addr
-            self.poly.addNode(node)
-            self._loaded_code_addrs.add(addr)
-            LOGGER.info("[_load_learned_codes] Restored %s code node: %s", code_type.upper(), addr)
-
-    def _persist_learned_code(self, addr: str, metadata: dict) -> None:
-        """Persist a single learned code's metadata to customdata (diff-safe)."""
-        updated = dict(self.learned_codes)
-        updated[addr] = dict(metadata)
-        self.learned_codes = updated
-        self._loaded_code_addrs.add(addr)
-        stored = self.data_store.get("learned_codes") or {}
-        if stored != updated:
-            self.data_store["learned_codes"] = updated
-
-    def _next_code_address(self, code_type: str) -> str:
-        """Return the next available unique address for a learned code."""
-        prefix = self._code_address_prefix(code_type)
-        existing = [k for k in self.learned_codes if k.startswith(prefix)]
-        return f"{prefix}{len(existing) + 1:03d}"
-
-    def _controller_address(self, code_type: str) -> str:
-        suffix = "ir" if code_type == "ir" else "rf"
-        return f"{self.address}{suffix}"
-
-    def _code_address_prefix(self, code_type: str) -> str:
-        suffix = "i" if code_type == "ir" else "r"
-        return f"{self.address[-10:]}{suffix}"
-
-    def _normalize_controller_addr(self, controller_addr: str | None, code_type: str) -> str:
-        current_addr = self._controller_address(code_type)
-        legacy_addrs = {
-            "ir": "irctrl",
-            "rf": "rfctrl",
-        }
-        if controller_addr in (None, "", legacy_addrs.get(code_type), f"{DEFAULT_SETUP_ADDRESS}_{code_type}", f"{DEFAULT_SETUP_ADDRESS}{code_type}"):
-            return current_addr
-        return controller_addr
-
     def _safe_code_map(self, candidate) -> dict[str, dict]:
-        """Validate and return the learned_codes structure from customdata."""
         if not isinstance(candidate, dict):
             return {}
-
         parsed: dict[str, dict] = {}
-        changed = False
         for key, value in candidate.items():
             if not isinstance(key, str) or not isinstance(value, dict):
                 continue
             addr = key.strip()
-            if not addr:
-                continue
-            meta = dict(value)
-            code_type = meta.get("controller_type", "ir")
-            normalized_controller_addr = self._normalize_controller_addr(meta.get("controller_addr"), code_type)
-            if meta.get("controller_addr") != normalized_controller_addr:
-                meta["controller_addr"] = normalized_controller_addr
-                changed = True
-            parsed[addr] = meta
-
-        if changed:
-            self.data_store["learned_codes"] = parsed
+            if addr:
+                parsed[addr] = dict(value)
         return parsed
 
-    def _sync_all_node_names(self) -> None:
-        """Flush all managed node names from PG3 DB to customdata (called on stop)."""
-        if not self._node_added:
-            return
-        # Setup node
-        self._sync_node_names_from_db()
-        # IR/RF controller nodes
-        for addr in (self._controller_address("ir"), self._controller_address("rf")):
-            db_name = self.poly.getNodeNameFromDb(addr)
-            if db_name:
-                self.node_name_cache[addr] = db_name
-        # Code nodes — also update name in learned_codes metadata
-        codes_changed = False
-        updated_codes = dict(self.learned_codes)
-        for addr in list(self.learned_codes.keys()):
-            db_name = self.poly.getNodeNameFromDb(addr)
-            if db_name:
-                self.node_name_cache[addr] = db_name
-                if updated_codes[addr].get("name") != db_name:
-                    updated_codes[addr] = dict(updated_codes[addr])
-                    updated_codes[addr]["name"] = db_name
-                    codes_changed = True
-        if codes_changed:
-            self.learned_codes = updated_codes
-            stored = self.data_store.get("learned_codes") or {}
-            if stored != updated_codes:
-                self.data_store["learned_codes"] = updated_codes
-        self._persist_node_name_cache()
+    def force_update(self, command=None) -> None:
+        self._reconcile_hub_nodes()
 
-    def force_update(self, command=None):
-        self.reconcile_structure()
-
-    commands = {
-        "UPDATE": force_update,
-    }
+    commands = {"UPDATE": force_update}

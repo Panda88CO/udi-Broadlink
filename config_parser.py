@@ -10,12 +10,21 @@ import json
 class PluginConfig:
     """Runtime configuration loaded from PG3 custom parameters."""
 
-    hub_ip: str = ""
-    ignored_hub_ips: list[str] = field(default_factory=list)
+    hub_ips: list[str] = field(default_factory=list)
 
     @property
     def has_hub(self) -> bool:
-        return bool(self.hub_ip)
+        return bool(self.hub_ips)
+
+    @property
+    def hub_ip(self) -> str:
+        """First configured hub IP (backwards-compat accessor)."""
+        return self.hub_ips[0] if self.hub_ips else ""
+
+    @property
+    def ignored_hub_ips(self) -> list[str]:
+        """Additional hub IPs beyond the first (backwards-compat accessor)."""
+        return self.hub_ips[1:]
 
 
 def parse_ip_list(raw_value) -> list[str]:
@@ -118,7 +127,4 @@ def build_config(custom_params: dict | None) -> PluginConfig:
     raw_hubs = _extract_typed_value(raw_hubs)
 
     hub_ips = parse_ip_list(raw_hubs)
-    return PluginConfig(
-        hub_ip=hub_ips[0] if hub_ips else "",
-        ignored_hub_ips=hub_ips[1:],
-    )
+    return PluginConfig(hub_ips=hub_ips)
