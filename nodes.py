@@ -763,6 +763,7 @@ class BroadlinkController(BaseNode):
 
         try:
             LOGGER.debug("[_publish_profile] Publishing profile with waitResponse=True")
+            LOGGER.debug("[_publish_profile] New JSON profile to publish: %s", json.dumps(profile, sort_keys=True))
             update_json_profile(profile, {"waitResponse": True})
             LOGGER.info("[_publish_profile] Dynamic JSON profile published successfully")
             self.poly.Notices.delete("profile")
