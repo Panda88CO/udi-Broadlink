@@ -782,12 +782,16 @@ class BroadlinkController(BaseNode):
         self.poly.subscribe(self.poly.CONFIGDONE, self.config_done)
         LOGGER.debug("[__init__] Event subscriptions registered")
 
+        # Register setup node immediately so startup does not depend on
+        # CUSTOMDATA/CUSTOMPARAMS event ordering.
+        self._ensure_registered()
+
         LOGGER.info("[__init__] Publishing JSON profile")
         self._publish_profile()
         
         LOGGER.info("[__init__] BroadlinkController construction complete")
 
-    def start(self) -> None:
+    def start(self, *_args, **_kwargs) -> None:
         if not self._node_added:
             # START can arrive before CUSTOMDATA; ensure the setup node exists.
             self._ensure_registered()
@@ -797,7 +801,8 @@ class BroadlinkController(BaseNode):
             hub_node.start()
         self._update_overall_status()
         # Wait for all nodes to be done
-        while self.poly.node_queue:
+        node_queue = getattr(self.poly, "node_queue", [])
+        while node_queue:
             time.sleep(0.1)
         if not self._ready_signaled:
             LOGGER.info("[start] Signaling polyglot ready after startup reconciliation")
@@ -805,7 +810,7 @@ class BroadlinkController(BaseNode):
             self._ready_signaled = True
         LOGGER.info("[start] Startup reconciliation complete")
 
-    def stop(self) -> None:
+    def stop(self, *_args, **_kwargs) -> None:
         if not self._node_added:
             self.poly.stop()
             return
@@ -819,9 +824,12 @@ class BroadlinkController(BaseNode):
             LOGGER.info("New log level: %s", level["level"])
 
     def node_done(self, node) -> None:
-        LOGGER.debug("[node_done] Node %s is done", node.address)
+        address = getattr(node, "address", None)
+        if address is None and isinstance(node, dict):
+            address = node.get("address") or node.get("node")
+        LOGGER.debug("[node_done] Node %s is done", address or "unknown")
 
-    def config_done(self, config) -> None:
+    def config_done(self, _config=None, *_args, **_kwargs) -> None:
         LOGGER.debug("[config_done] Configuration done")
 
     def handle_params(self, custom_params) -> None:
@@ -882,11 +890,12 @@ class BroadlinkController(BaseNode):
         if self._node_added:
             self._sync_node_names_from_db()
 
-    def poll(self, poll_type) -> None:
+    def poll(self, poll_type=None, *_args, **_kwargs) -> None:
         if not self._node_added:
             return
+        poll_name = poll_type if isinstance(poll_type, str) else "longPoll"
         self._set("TIME", int(time.time()), 151)
-        if poll_type == "shortPoll":
+        if poll_name == "shortPoll":
             self.heartbeat_state = 1 - self.heartbeat_state
             if self.heartbeat_state:
                 self.reportCmd("DON", 2)
