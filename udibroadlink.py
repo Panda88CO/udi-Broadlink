@@ -25,7 +25,7 @@ if __name__ == "__main__":
         LOGGER.info("Setting custom params documentation")
         
         LOGGER.info("Constructing BroadlinkController node")
-        BroadlinkController(polyglot, "setup", "setup", "Broadlink Hub")
+        BroadlinkController(polyglot, "setup", "setup", "Broadlink Setup")
         LOGGER.info("BroadlinkController constructed successfully")
         
         LOGGER.info("Entering polyglot runForever() loop")
