@@ -768,6 +768,7 @@ class BroadlinkController(BaseNode):
         self.temp_unit: str = "C"
         self._node_added: bool = False
         self._ready_signaled: bool = False
+        self._bootstrap_applied: bool = False
         LOGGER.debug("[__init__] Initialized instance variables")
 
         LOGGER.debug("[__init__] Subscribing to polyglot events")
@@ -775,7 +776,13 @@ class BroadlinkController(BaseNode):
         self.poly.subscribe(self.poly.STOP, self.stop)
         self.poly.subscribe(self.poly.POLL, self.poll)
         self.poly.subscribe(self.poly.CUSTOMPARAMS, self.handle_params)
+        typed_params_event = getattr(self.poly, "CUSTOMTYPEDPARAMS", None)
+        if typed_params_event is not None:
+            self.poly.subscribe(typed_params_event, self.handle_params)
         self.poly.subscribe(self.poly.CUSTOMDATA, self.handle_custom_data)
+        typed_data_event = getattr(self.poly, "CUSTOMTYPEDDATA", None)
+        if typed_data_event is not None:
+            self.poly.subscribe(typed_data_event, self.handle_custom_data)
         self.poly.subscribe(self.poly.LOGLEVEL, self.handle_log_level)
         self.poly.subscribe(self.poly.DISCOVER, self.discover)
         self.poly.subscribe(self.poly.ADDNODEDONE, self.node_done)
@@ -795,8 +802,11 @@ class BroadlinkController(BaseNode):
         if not self._node_added:
             # START can arrive before CUSTOMDATA; ensure the setup node exists.
             self._ensure_registered()
+        self._bootstrap_config_if_needed()
         LOGGER.info("[start] Received START event")
         self._set("TIME", int(time.time()), 151)
+        if self.config.has_hub and not self.hub_nodes:
+            self._reconcile_hub_nodes()
         for hub_node in list(self.hub_nodes.values()):
             hub_node.start()
         self._update_overall_status()
@@ -834,6 +844,7 @@ class BroadlinkController(BaseNode):
 
     def handle_params(self, custom_params) -> None:
         LOGGER.info("[handle_params] CUSTOMPARAMS event received")
+        self._bootstrap_applied = True
         self._ensure_registered()
         self.parameters.load(custom_params)
         self.poly.Notices.clear()
@@ -920,6 +931,51 @@ class BroadlinkController(BaseNode):
         if not self._node_added:
             self.poly.addNode(self, conn_status="ST", rename=False)
             self._node_added = True
+
+    def _bootstrap_config_if_needed(self) -> None:
+        """Best-effort load of existing config when CUSTOMPARAMS callbacks are absent."""
+        if self._bootstrap_applied or self.config.has_hub:
+            return
+        payload = self._get_bootstrap_param_payload()
+        if not payload:
+            return
+        LOGGER.info("[_bootstrap_config_if_needed] Applying startup configuration from interface payload")
+        self.handle_params(payload)
+
+    def _get_bootstrap_param_payload(self) -> dict:
+        """Return a candidate config payload from interface state/getter methods."""
+        sources = []
+        for attr_name in ("polyConfig", "polyconfig", "config", "Config"):
+            value = getattr(self.poly, attr_name, None)
+            if isinstance(value, dict):
+                sources.append(value)
+
+        get_config = getattr(self.poly, "getConfig", None)
+        if callable(get_config):
+            try:
+                value = get_config()
+                if isinstance(value, dict):
+                    sources.append(value)
+            except Exception as err:
+                LOGGER.debug("[_get_bootstrap_param_payload] getConfig failed: %s", err)
+
+        for source in sources:
+            for key in (
+                "customparams",
+                "customParams",
+                "params",
+                "customtypedparams",
+                "customTypedParams",
+                "typedparams",
+                "typed_parameters",
+                "customtypeddata",
+                "customTypedData",
+                "typed_data",
+            ):
+                candidate = source.get(key)
+                if isinstance(candidate, (dict, list)) and candidate:
+                    return {key: candidate}
+        return {}
 
     def _reconcile_hub_nodes(self) -> None:
         """Ensure a HubNode exists for every configured IP and trigger reconcile."""
