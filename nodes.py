@@ -14,7 +14,7 @@ from config_parser import PluginConfig, build_config
 
 LOGGER = udi_interface.LOGGER
 Custom = udi_interface.Custom
-VERSION = "0.2.3"
+VERSION = "0.2.4"
 DEFAULT_SETUP_ADDRESS = "setup"
 
 MODEL_INDEX_NAMES = {
@@ -577,8 +577,7 @@ class HubNode(BaseNode):
         if hub_info is None:
             return f"Broadlink Hub ({self.hub_ip})"
         model_name = hub_info.model_name or "Broadlink Hub"
-        mac_suffix = hub_info.mac_address[-6:] if hub_info.mac_address else ""
-        return f"{model_name} {mac_suffix.upper()}" if mac_suffix else f"{model_name} ({self.hub_ip})"
+        return f"{model_name} ({self.hub_ip})"
 
     # ------------------------------------------------------------------ sensors
 
@@ -790,8 +789,8 @@ class BroadlinkController(BaseNode):
 
     def start(self) -> None:
         if not self._node_added:
-            LOGGER.debug("[start] Ignoring START before setup node is registered")
-            return
+            # START can arrive before CUSTOMDATA; ensure the setup node exists.
+            self._ensure_registered()
         LOGGER.info("[start] Received START event")
         self._set("TIME", int(time.time()), 151)
         for hub_node in list(self.hub_nodes.values()):
@@ -827,6 +826,7 @@ class BroadlinkController(BaseNode):
 
     def handle_params(self, custom_params) -> None:
         LOGGER.info("[handle_params] CUSTOMPARAMS event received")
+        self._ensure_registered()
         self.parameters.load(custom_params)
         self.poly.Notices.clear()
 

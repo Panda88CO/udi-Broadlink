@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import json
+import re
 
 
 @dataclass(slots=True)
@@ -52,7 +53,8 @@ def parse_ip_list(raw_value) -> list[str]:
                 stripped = line.strip()
                 if not stripped or stripped.startswith("#"):
                     continue
-                candidates.extend(part.strip() for part in stripped.split(","))
+                # Accept comma and/or whitespace separated values in plain text.
+                candidates.extend(part.strip() for part in re.split(r"[\s,]+", stripped))
 
     parsed: list[str] = []
     seen: set[str] = set()
