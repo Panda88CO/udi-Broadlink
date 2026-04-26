@@ -558,6 +558,10 @@ class HubNode(BaseNode):
             self.controller._remove_hub_error_notice(self.hub_mac)
             LOGGER.debug("[HubNode.reconcile][%s] Hub connected, ensuring child nodes for ip=%s", trace, self.hub_ip)
             self._ensure_controller_nodes(trace)
+            # Detect sensor capability live so the optional sensor node is
+            # created even when HubNode.start() was never called (e.g. when
+            # START event is not delivered by PG3).
+            self._detect_and_apply_sensors()
             self._ensure_sensor_node(trace)
             self._load_learned_codes(trace)
             self._refresh_sensor_readings(self.controller.temp_unit)
@@ -722,13 +726,31 @@ class HubNode(BaseNode):
 
     def _load_learned_codes(self, trace_id: str = "") -> None:
         trace = trace_id or "none"
+        total = len(self.learned_codes)
+        already = len(self._loaded_code_addrs)
         LOGGER.debug(
             "[HubNode._load_learned_codes][%s] Preparing to restore code nodes for ip=%s total_cached=%d already_loaded=%d",
             trace,
             self.hub_ip,
-            len(self.learned_codes),
-            len(self._loaded_code_addrs),
+            total,
+            already,
         )
+        if total:
+            lines = []
+            for addr, meta in self.learned_codes.items():
+                code_type = meta.get("controller_type", "ir")
+                name = meta.get("name") or "(unnamed)"
+                has_data = bool(meta.get("code") or meta.get("data"))
+                status = "loaded" if addr in self._loaded_code_addrs else "pending"
+                lines.append(f"  {addr:<20} type={code_type:<4} name={name:<30} has_code={has_data} status={status}")
+            LOGGER.debug(
+                "[HubNode._load_learned_codes][%s] Cached codes for ip=%s:\n%s",
+                trace,
+                self.hub_ip,
+                "\n".join(lines),
+            )
+        else:
+            LOGGER.debug("[HubNode._load_learned_codes][%s] No cached codes for ip=%s", trace, self.hub_ip)
         for addr, meta in self.learned_codes.items():
             if addr in self._loaded_code_addrs:
                 continue
@@ -737,13 +759,15 @@ class HubNode(BaseNode):
             hub_display = self.hub_blueprint.display_name if self.hub_blueprint else self.hub_ip
             default_name = f"{hub_display} {code_type.upper()} Code"
             name = meta.get("name") or default_name
+            raw_keys = [k for k in meta if k != "code"]
             LOGGER.debug(
-                "[HubNode._load_learned_codes][%s] Restoring %s code addr=%s ctrl=%s name=%s",
+                "[HubNode._load_learned_codes][%s] Restoring %s code addr=%s ctrl=%s name=%s meta_keys=%s",
                 trace,
                 code_type.upper(),
                 addr,
                 ctrl_addr,
                 name,
+                raw_keys,
             )
             if code_type == "rf":
                 node: _CodeNode = RFCodeNode(self.poly, ctrl_addr, addr, name, self)
@@ -872,9 +896,6 @@ class BroadlinkController(BaseNode):
         self.poly.subscribe(self.poly.STOP, self.stop)
         self.poly.subscribe(self.poly.POLL, self.poll)
         self.poly.subscribe(self.poly.CUSTOMPARAMS, self.handle_params)
-        typed_params_event = getattr(self.poly, "CUSTOMTYPEDPARAMS", None)
-        if typed_params_event is not None:
-            self.poly.subscribe(typed_params_event, self.handle_params)
         self.poly.subscribe(self.poly.CUSTOMDATA, self.handle_custom_data)
         typed_data_event = getattr(self.poly, "CUSTOMTYPEDDATA", None)
         if typed_data_event is not None:

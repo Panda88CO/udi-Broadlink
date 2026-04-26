@@ -83,8 +83,38 @@ class BroadlinkHubClient:
                     device_type=_normalize_device_type(getattr(device, "devtype", None)),
                     model_name=type(device).__name__,
                 )
-                LOGGER.info("[connect] Connected to %s, model=%s, mac=%s", 
-                           self.hub_ip, self._hub_info.model_name, self._hub_info.mac_address)
+                LOGGER.info("[connect] Connected to %s, model=%s, mac=%s",
+                            self.hub_ip, self._hub_info.model_name, self._hub_info.mac_address)
+                # Log all raw device attributes for diagnostics
+                raw_attrs = {
+                    "ip":          getattr(device, "host", (self.hub_ip, None))[0]
+                                   if isinstance(getattr(device, "host", None), tuple)
+                                   else getattr(device, "host", self.hub_ip),
+                    "mac":         self._hub_info.mac_address,
+                    "devtype":     hex(getattr(device, "devtype", 0)),
+                    "model":       type(device).__name__,
+                    "manufacturer":getattr(device, "manufacturer", "unknown"),
+                    "is_locked":   getattr(device, "is_locked", "unknown"),
+                    "timeout":     getattr(device, "timeout", "unknown"),
+                }
+                LOGGER.debug(
+                    "[connect] Raw device attributes for %s:\n"
+                    "  ip          : %s\n"
+                    "  mac         : %s\n"
+                    "  devtype     : %s\n"
+                    "  model       : %s\n"
+                    "  manufacturer: %s\n"
+                    "  is_locked   : %s\n"
+                    "  timeout     : %s",
+                    self.hub_ip,
+                    raw_attrs["ip"],
+                    raw_attrs["mac"],
+                    raw_attrs["devtype"],
+                    raw_attrs["model"],
+                    raw_attrs["manufacturer"],
+                    raw_attrs["is_locked"],
+                    raw_attrs["timeout"],
+                )
                 return True
             except Exception as err:
                 LOGGER.error("[connect] Connection failed: %s", err)
@@ -175,6 +205,12 @@ class BroadlinkHubClient:
             if self._device is None:
                 self.connect()
             data = self._device.check_sensors()
+            # Log full raw sensor dict from device before any processing
+            if data:
+                formatted = "\n".join(f"  {k:<20}: {v}" for k, v in sorted(data.items()))
+                LOGGER.debug("[check_sensors] Raw sensor data from %s:\n%s", self.hub_ip, formatted)
+            else:
+                LOGGER.debug("[check_sensors] Raw sensor data from %s: <empty>", self.hub_ip)
             temp = data.get("temperature")
             humidity = data.get("humidity")
             return SensorData(
