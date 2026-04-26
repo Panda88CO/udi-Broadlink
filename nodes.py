@@ -525,14 +525,27 @@ class HubNode(BaseNode):
         self._detect_and_apply_sensors()
         self.reconcile()
 
-    def reconcile(self, update_time: bool = True) -> None:
+    def reconcile(self, update_time: bool = True, trace_id: str = "") -> None:
         """Connect to hub, update drivers, and ensure child nodes exist."""
+        trace = trace_id or "direct"
+        LOGGER.debug("[HubNode.reconcile][%s] Starting reconcile for ip=%s addr=%s", trace, self.hub_ip, self.address)
         blueprint = self._build_blueprint()
         self.hub_blueprint = blueprint
 
         if blueprint is None:
+            LOGGER.debug("[HubNode.reconcile][%s] No blueprint available for ip=%s", trace, self.hub_ip)
             self._set("ST", 0)
             return
+
+        LOGGER.debug(
+            "[HubNode.reconcile][%s] Blueprint resolved ip=%s connected=%s model=%s mac=%s error=%s",
+            trace,
+            self.hub_ip,
+            blueprint.connected,
+            blueprint.model_name,
+            blueprint.mac_address,
+            blueprint.last_error,
+        )
 
         self._set("ST", 1 if blueprint.connected else 2 if blueprint.last_error else 0)
         self._set("GV0", _model_index(blueprint.model_name), 25)
@@ -543,9 +556,10 @@ class HubNode(BaseNode):
 
         if blueprint.connected:
             self.controller._remove_hub_error_notice(self.hub_mac)
-            self._ensure_controller_nodes()
-            self._ensure_sensor_node()
-            self._load_learned_codes()
+            LOGGER.debug("[HubNode.reconcile][%s] Hub connected, ensuring child nodes for ip=%s", trace, self.hub_ip)
+            self._ensure_controller_nodes(trace)
+            self._ensure_sensor_node(trace)
+            self._load_learned_codes(trace)
             self._refresh_sensor_readings(self.controller.temp_unit)
         else:
             if blueprint.last_error:
@@ -618,9 +632,16 @@ class HubNode(BaseNode):
             return
         client = self._get_or_create_client()
         try:
+            LOGGER.debug("[HubNode._detect_and_apply_sensors] Retrieving sensor capability for ip=%s", self.hub_ip)
             sensor_data = client.check_sensors()
             new_has_temp = sensor_data.has_temperature
             new_has_humidity = sensor_data.has_humidity
+            LOGGER.debug(
+                "[HubNode._detect_and_apply_sensors] Retrieved capability ip=%s has_temp=%s has_humidity=%s",
+                self.hub_ip,
+                new_has_temp,
+                new_has_humidity,
+            )
             if new_has_temp != self.has_temp_sensor or new_has_humidity != self.has_humidity_sensor:
                 self.has_temp_sensor = new_has_temp
                 self.has_humidity_sensor = new_has_humidity
@@ -646,13 +667,23 @@ class HubNode(BaseNode):
             self.sensor_node._set("ST", 2)
             LOGGER.debug("[HubNode._refresh_sensor_readings] %s: %s", self.hub_ip, err)
 
-    def _ensure_sensor_node(self) -> None:
+    def _ensure_sensor_node(self, trace_id: str = "") -> None:
+        trace = trace_id or "none"
         if not (self.has_temp_sensor or self.has_humidity_sensor):
+            LOGGER.debug("[HubNode._ensure_sensor_node][%s] Skipping sensor node for ip=%s (no sensor capability)", trace, self.hub_ip)
             return
         if self.sensor_node is not None:
+            LOGGER.debug("[HubNode._ensure_sensor_node][%s] Sensor node already exists for ip=%s", trace, self.hub_ip)
             return
         sensor_addr = self._sensor_address()
         sensor_name = self.controller._resolve_node_name(sensor_addr, f"Sensor ({self.hub_ip})")
+        LOGGER.debug(
+            "[HubNode._ensure_sensor_node][%s] Creating optional sensor node ip=%s addr=%s name=%s",
+            trace,
+            self.hub_ip,
+            sensor_addr,
+            sensor_name,
+        )
         self.sensor_node = HubSensorNode(self.poly, self.address, sensor_addr, sensor_name, self)
         self.poly.addNode(self.sensor_node)
         LOGGER.info("[HubNode] Added HubSensorNode %s", sensor_addr)
@@ -666,21 +697,38 @@ class HubNode(BaseNode):
 
     # ------------------------------------------------------------------ child nodes
 
-    def _ensure_controller_nodes(self) -> None:
+    def _ensure_controller_nodes(self, trace_id: str = "") -> None:
+        trace = trace_id or "none"
+        LOGGER.debug(
+            "[HubNode._ensure_controller_nodes][%s] Ensuring IR/RF controllers for ip=%s addr=%s",
+            trace,
+            self.hub_ip,
+            self.address,
+        )
         if self.ir_controller is None:
             ir_addr = self._controller_address("ir")
             ir_name = self.controller._resolve_node_name(ir_addr, "IR Controller")
+            LOGGER.debug("[HubNode._ensure_controller_nodes][%s] Creating IR controller addr=%s name=%s", trace, ir_addr, ir_name)
             self.ir_controller = IRControllerNode(self.poly, self.address, ir_addr, ir_name, self)
             self.poly.addNode(self.ir_controller)
             LOGGER.info("[HubNode] Added IRControllerNode %s", ir_addr)
         if self.rf_controller is None:
             rf_addr = self._controller_address("rf")
             rf_name = self.controller._resolve_node_name(rf_addr, "RF Controller")
+            LOGGER.debug("[HubNode._ensure_controller_nodes][%s] Creating RF controller addr=%s name=%s", trace, rf_addr, rf_name)
             self.rf_controller = RFControllerNode(self.poly, self.address, rf_addr, rf_name, self)
             self.poly.addNode(self.rf_controller)
             LOGGER.info("[HubNode] Added RFControllerNode %s", rf_addr)
 
-    def _load_learned_codes(self) -> None:
+    def _load_learned_codes(self, trace_id: str = "") -> None:
+        trace = trace_id or "none"
+        LOGGER.debug(
+            "[HubNode._load_learned_codes][%s] Preparing to restore code nodes for ip=%s total_cached=%d already_loaded=%d",
+            trace,
+            self.hub_ip,
+            len(self.learned_codes),
+            len(self._loaded_code_addrs),
+        )
         for addr, meta in self.learned_codes.items():
             if addr in self._loaded_code_addrs:
                 continue
@@ -689,6 +737,14 @@ class HubNode(BaseNode):
             hub_display = self.hub_blueprint.display_name if self.hub_blueprint else self.hub_ip
             default_name = f"{hub_display} {code_type.upper()} Code"
             name = meta.get("name") or default_name
+            LOGGER.debug(
+                "[HubNode._load_learned_codes][%s] Restoring %s code addr=%s ctrl=%s name=%s",
+                trace,
+                code_type.upper(),
+                addr,
+                ctrl_addr,
+                name,
+            )
             if code_type == "rf":
                 node: _CodeNode = RFCodeNode(self.poly, ctrl_addr, addr, name, self)
             else:
@@ -807,6 +863,7 @@ class BroadlinkController(BaseNode):
         self._node_added: bool = False
         self._ready_signaled: bool = False
         self._bootstrap_applied: bool = False
+        self._reconcile_seq: int = 0
         LOGGER.debug("[__init__] Initialized instance variables")
 
         LOGGER.debug("[__init__] Subscribing to polyglot events")
@@ -1009,38 +1066,60 @@ class BroadlinkController(BaseNode):
 
     def _reconcile_hub_nodes(self) -> None:
         """Connect all configured hubs first, then create/reconcile hub nodes."""
+        self._reconcile_seq += 1
+        trace_id = f"rec-{self._reconcile_seq:06d}"
         hub_macs = self._safe_hub_macs()
         pending: dict[str, tuple[str, BroadlinkHubClient | None]] = {}
+        LOGGER.debug(
+            "[_reconcile_hub_nodes][%s] Begin retrieval/config pass configured_hubs=%s known_hub_macs=%s",
+            trace_id,
+            self.config.hub_ips,
+            hub_macs,
+        )
 
         # Pass 1: establish identity/connectivity for all missing hubs.
         for ip in self.config.hub_ips:
             if ip in self.hub_nodes:
+                LOGGER.debug("[_reconcile_hub_nodes][%s] Hub node already exists for ip=%s", trace_id, ip)
                 continue
             mac = hub_macs.get(ip)
             if mac:
+                LOGGER.debug("[_reconcile_hub_nodes][%s] Using stored MAC for ip=%s mac=%s", trace_id, ip, mac)
                 pending[ip] = (mac, None)
                 continue
-            connected_mac, client = self._connect_hub_identity(ip)
+            LOGGER.debug("[_reconcile_hub_nodes][%s] No stored MAC for ip=%s, connecting for identity", trace_id, ip)
+            connected_mac, client = self._connect_hub_identity(ip, trace_id)
             if connected_mac:
+                LOGGER.debug("[_reconcile_hub_nodes][%s] Retrieved identity ip=%s mac=%s", trace_id, ip, connected_mac)
                 pending[ip] = (connected_mac, client)
+            else:
+                LOGGER.debug("[_reconcile_hub_nodes][%s] Identity retrieval failed for ip=%s", trace_id, ip)
+
+        LOGGER.debug("[_reconcile_hub_nodes][%s] Retrieval pass complete pending_new_nodes=%s", trace_id, list(pending.keys()))
 
         # Pass 2: create nodes only after connection pass completes.
         for ip, (mac, client) in pending.items():
-            node = self._create_hub_node(ip, mac)
+            LOGGER.debug("[_reconcile_hub_nodes][%s] Creating/retrieving HubNode for ip=%s mac=%s", trace_id, ip, mac)
+            node = self._create_hub_node(ip, mac, trace_id)
             if not node:
+                LOGGER.debug("[_reconcile_hub_nodes][%s] HubNode creation skipped for ip=%s mac=%s", trace_id, ip, mac)
                 continue
             if client is not None:
+                LOGGER.debug("[_reconcile_hub_nodes][%s] Attaching active client to node ip=%s", trace_id, ip)
                 node.hub_client = client
-            self._restore_hub_node_data(node)
+            LOGGER.debug("[_reconcile_hub_nodes][%s] Restoring persisted data before child creation ip=%s", trace_id, ip)
+            self._restore_hub_node_data(node, trace_id)
 
         for ip in self.config.hub_ips:
             if ip in self.hub_nodes:
-                self.hub_nodes[ip].reconcile()
+                self.hub_nodes[ip].reconcile(trace_id=trace_id)
         self._update_overall_status()
 
-    def _connect_hub_identity(self, ip: str) -> tuple[str, BroadlinkHubClient | None]:
+    def _connect_hub_identity(self, ip: str, trace_id: str = "") -> tuple[str, BroadlinkHubClient | None]:
         """Connect to a hub and return its normalized MAC with active client."""
+        trace = trace_id or "none"
         try:
+            LOGGER.debug("[_connect_hub_identity][%s] Connecting to hub ip=%s for identity retrieval", trace, ip)
             client = BroadlinkHubClient(hub_ip=ip)
             hub_info = client.ensure_connected()
             if hub_info and hub_info.mac_address:
@@ -1050,41 +1129,67 @@ class BroadlinkController(BaseNode):
                     if hub_macs.get(ip) != mac:
                         hub_macs[ip] = mac
                         self.data_store["hub_macs"] = hub_macs
+                    LOGGER.debug(
+                        "[_connect_hub_identity][%s] Retrieved hub identity ip=%s mac=%s model=%s",
+                        trace,
+                        ip,
+                        mac,
+                        hub_info.model_name,
+                    )
                     return mac, client
+            LOGGER.debug("[_connect_hub_identity][%s] No MAC returned from hub identity ip=%s", trace, ip)
         except Exception as err:
-            LOGGER.warning("[_connect_hub_identity] Failed for %s: %s", ip, err)
+            LOGGER.warning("[_connect_hub_identity][%s] Failed for %s: %s", trace, ip, err)
             self.poly.Notices[f"hub_connect_{ip.replace('.', '_')}"] = (
                 f"Could not connect to hub at {ip}: {err}"
             )
         return "", None
 
-    def _create_hub_node(self, ip: str, mac: str) -> "HubNode | None":
+    def _create_hub_node(self, ip: str, mac: str, trace_id: str = "") -> "HubNode | None":
         """Instantiate a HubNode and add it to poly (idempotent by IP)."""
+        trace = trace_id or "none"
         if ip in self.hub_nodes:
             return self.hub_nodes[ip]
         if not self._normalize_hub_address(mac):
+            LOGGER.debug("[_create_hub_node][%s] Invalid MAC for ip=%s mac=%s", trace, ip, mac)
             return None
         name = self._resolve_node_name(mac, f"Broadlink Hub ({ip})")
+        LOGGER.debug("[_create_hub_node][%s] Creating HubNode ip=%s mac=%s name=%s", trace, ip, mac, name)
         hub_node = HubNode(self.poly, "setup", mac, name, self, ip)
         self.poly.addNode(hub_node)
         self.hub_nodes[ip] = hub_node
         LOGGER.info("[_create_hub_node] Added HubNode ip=%s mac=%s", ip, mac)
         return hub_node
 
-    def _restore_hub_node_data(self, hub_node: "HubNode") -> None:
+    def _restore_hub_node_data(self, hub_node: "HubNode", trace_id: str = "") -> None:
         """Load persisted sensor state and learned codes into a HubNode."""
+        trace = trace_id or "none"
         mac = hub_node.hub_mac
+        LOGGER.debug("[_restore_hub_node_data][%s] Retrieving persisted data for hub mac=%s ip=%s", trace, mac, hub_node.hub_ip)
         sensor_states = self.data_store.get("sensor_states") or {}
         sensor_state = sensor_states.get(mac) or {}
         hub_node.has_temp_sensor = bool(sensor_state.get("has_temp", False))
         hub_node.has_humidity_sensor = bool(sensor_state.get("has_humidity", False))
-        hub_node._ensure_sensor_node()
+        LOGGER.debug(
+            "[_restore_hub_node_data][%s] Restored sensor options mac=%s has_temp=%s has_humidity=%s",
+            trace,
+            mac,
+            hub_node.has_temp_sensor,
+            hub_node.has_humidity_sensor,
+        )
+        hub_node._ensure_sensor_node(trace)
         all_codes = self._safe_code_map(self.data_store.get("learned_codes", {}))
         hub_node.learned_codes = {
             addr: meta
             for addr, meta in all_codes.items()
             if addr.startswith(mac[-10:])
         }
+        LOGGER.debug(
+            "[_restore_hub_node_data][%s] Restored learned code metadata mac=%s code_count=%d",
+            trace,
+            mac,
+            len(hub_node.learned_codes),
+        )
 
     def _update_overall_status(self) -> None:
         if not self.hub_nodes:
