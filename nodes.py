@@ -574,7 +574,8 @@ class HubNode(BaseNode):
 
     def poll_short(self, temp_unit: str) -> None:
         self._set("TIME", int(time.time()), 151)
-        if self.has_temp_sensor or self.has_humidity_sensor:
+        # If a sensor node exists, keep its readings fresh on each short poll.
+        if self.sensor_node is not None:
             self._refresh_sensor_readings(temp_unit)
 
     def poll_long(self) -> None:
@@ -711,18 +712,41 @@ class HubNode(BaseNode):
         )
         if self.ir_controller is None:
             ir_addr = self._controller_address("ir")
-            ir_name = self.controller._resolve_node_name(ir_addr, "IR Controller")
+            ir_name = self._resolve_controller_node_name(ir_addr, "ir")
             LOGGER.debug("[HubNode._ensure_controller_nodes][%s] Creating IR controller addr=%s name=%s", trace, ir_addr, ir_name)
             self.ir_controller = IRControllerNode(self.poly, self.address, ir_addr, ir_name, self)
             self.poly.addNode(self.ir_controller)
             LOGGER.info("[HubNode] Added IRControllerNode %s", ir_addr)
         if self.rf_controller is None:
             rf_addr = self._controller_address("rf")
-            rf_name = self.controller._resolve_node_name(rf_addr, "RF Controller")
+            rf_name = self._resolve_controller_node_name(rf_addr, "rf")
             LOGGER.debug("[HubNode._ensure_controller_nodes][%s] Creating RF controller addr=%s name=%s", trace, rf_addr, rf_name)
             self.rf_controller = RFControllerNode(self.poly, self.address, rf_addr, rf_name, self)
             self.poly.addNode(self.rf_controller)
             LOGGER.info("[HubNode] Added RFControllerNode %s", rf_addr)
+
+    def _resolve_controller_node_name(self, controller_addr: str, code_type: str) -> str:
+        default_name = f"{code_type.upper()} Controller ({self.hub_ip})"
+        legacy_names = {"IR Controller"} if code_type == "ir" else {"RF Controller", "RF Contrller"}
+
+        db_name = self.poly.getNodeNameFromDb(controller_addr)
+        if db_name:
+            if db_name in legacy_names:
+                self.controller.node_name_cache[controller_addr] = default_name
+                self.controller._persist_node_name_cache()
+                return default_name
+            self.controller.node_name_cache[controller_addr] = db_name
+            return db_name
+
+        cached_name = self.controller.node_name_cache.get(controller_addr)
+        if cached_name:
+            if cached_name in legacy_names:
+                self.controller.node_name_cache[controller_addr] = default_name
+                self.controller._persist_node_name_cache()
+                return default_name
+            return cached_name
+
+        return default_name
 
     def _load_learned_codes(self, trace_id: str = "") -> None:
         trace = trace_id or "none"
@@ -1217,7 +1241,9 @@ class BroadlinkController(BaseNode):
             hub_node.has_temp_sensor,
             hub_node.has_humidity_sensor,
         )
-        hub_node._ensure_sensor_node(trace)
+        # Do not create optional sensor nodes from cached state alone.
+        # Live detection in HubNode.reconcile() decides whether a sensor
+        # node should exist for this runtime.
         all_codes = self._safe_code_map(self.data_store.get("learned_codes", {}))
         hub_node.learned_codes = {
             addr: meta
@@ -1301,8 +1327,8 @@ class BroadlinkController(BaseNode):
                 LOGGER.warning("[_publish_profile] Unable to read existing profile: %s", err)
 
         try:
-            LOGGER.debug("[_publish_profile] Publishing profile: %s",
-                         json.dumps(profile, sort_keys=True, indent=2, separators=(",", ": ")))
+            #LOGGER.debug("[_publish_profile] Publishing profile: %s",
+            #             json.dumps(profile, sort_keys=True, indent=2, separators=(",", ": ")))
             update_json_profile(profile, {"waitResponse": True})
             LOGGER.info("[_publish_profile] Dynamic JSON profile published successfully")
             self.poly.Notices.delete("profile")

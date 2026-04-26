@@ -85,6 +85,7 @@ class BroadlinkHubClient:
                 )
                 LOGGER.info("[connect] Connected to %s, model=%s, mac=%s",
                             self.hub_ip, self._hub_info.model_name, self._hub_info.mac_address)
+                LOGGER.debug("[connect] Raw Hub data : {}", self._hub_info )
                 # Log all raw device attributes for diagnostics
                 raw_attrs = {
                     "ip":          getattr(device, "host", (self.hub_ip, None))[0]
@@ -156,6 +157,7 @@ class BroadlinkHubClient:
                             model_name=type(self._device).__name__,
                         )
                     LOGGER.info("[refresh] Re-auth successful")
+
                     return True
                 except Exception as auth_err:
                     LOGGER.error("[refresh] Re-auth failed: %s, clearing device", auth_err)
@@ -206,6 +208,7 @@ class BroadlinkHubClient:
                 self.connect()
             data = self._device.check_sensors()
             # Log full raw sensor dict from device before any processing
+            LOGGER.debug("[check_sensors] Raw sensor data type from {}}:{}", self.hub_ip, data)
             if data:
                 formatted = "\n".join(f"  {k:<20}: {v}" for k, v in sorted(data.items()))
                 LOGGER.debug("[check_sensors] Raw sensor data from %s:\n%s", self.hub_ip, formatted)
