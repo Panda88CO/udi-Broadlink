@@ -83,9 +83,9 @@ class BroadlinkHubClient:
                     device_type=_normalize_device_type(getattr(device, "devtype", None)),
                     model_name=type(device).__name__,
                 )
+                LOGGER.debug("[connect] Raw hub_info payload for %s: %r", self.hub_ip, self._hub_info)
                 LOGGER.info("[connect] Connected to %s, model=%s, mac=%s",
                             self.hub_ip, self._hub_info.model_name, self._hub_info.mac_address)
-                LOGGER.debug("[connect] Raw Hub data : {}", self._hub_info )
                 # Log all raw device attributes for diagnostics
                 raw_attrs = {
                     "ip":          getattr(device, "host", (self.hub_ip, None))[0]
@@ -207,8 +207,8 @@ class BroadlinkHubClient:
             if self._device is None:
                 self.connect()
             data = self._device.check_sensors()
+            LOGGER.debug("[check_sensors] Raw sensor payload from %s: %r", self.hub_ip, data)
             # Log full raw sensor dict from device before any processing
-            LOGGER.debug("[check_sensors] Raw sensor data type from {}}:{}", self.hub_ip, data)
             if data:
                 formatted = "\n".join(f"  {k:<20}: {v}" for k, v in sorted(data.items()))
                 LOGGER.debug("[check_sensors] Raw sensor data from %s:\n%s", self.hub_ip, formatted)
