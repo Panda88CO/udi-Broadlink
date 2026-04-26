@@ -863,6 +863,7 @@ class BroadlinkController(BaseNode):
         self._node_added: bool = False
         self._ready_signaled: bool = False
         self._bootstrap_applied: bool = False
+        self._startup_completed: bool = False
         self._reconcile_seq: int = 0
         LOGGER.debug("[__init__] Initialized instance variables")
 
@@ -890,15 +891,30 @@ class BroadlinkController(BaseNode):
 
         LOGGER.info("[__init__] Publishing JSON profile")
         self._publish_profile()
-        
+
+        # Signal PG3 that the node server is ready. PG3 will then send
+        # CUSTOMPARAMS, CUSTOMDATA, and START. Without this call the START
+        # event is never delivered (deadlock).
+        LOGGER.info("[__init__] Calling poly.ready() to signal PG3")
+        self.poly.ready()
+        self._ready_signaled = True
+
         LOGGER.info("[__init__] BroadlinkController construction complete")
 
     def start(self, *_args, **_kwargs) -> None:
+        LOGGER.info("[start] Received START event")
+        self._run_startup_once("START")
+
+    def _run_startup_once(self, source: str) -> None:
+        """Execute startup initialization once, even if START was missed."""
+        if self._startup_completed:
+            return
+        if source != "START":
+            LOGGER.warning("[_run_startup_once] START event not observed, running startup via %s", source)
         if not self._node_added:
             # START can arrive before CUSTOMDATA; ensure the setup node exists.
             self._ensure_registered()
         self._bootstrap_config_if_needed()
-        LOGGER.info("[start] Received START event")
         self._set("TIME", int(time.time()), 151)
         if self.config.has_hub and not self.hub_nodes:
             self._reconcile_hub_nodes()
@@ -910,10 +926,11 @@ class BroadlinkController(BaseNode):
         while node_queue:
             time.sleep(0.1)
         if not self._ready_signaled:
-            LOGGER.info("[start] Signaling polyglot ready after startup reconciliation")
+            LOGGER.info("[_run_startup_once] Signaling polyglot ready (late fallback)")
             self.poly.ready()
             self._ready_signaled = True
-        LOGGER.info("[start] Startup reconciliation complete")
+        self._startup_completed = True
+        LOGGER.info("[_run_startup_once] Startup reconciliation complete via %s", source)
 
     def stop(self, *_args, **_kwargs) -> None:
         if not self._node_added:
@@ -991,6 +1008,8 @@ class BroadlinkController(BaseNode):
     def poll(self, poll_type=None, *_args, **_kwargs) -> None:
         if not self._node_added:
             return
+        if not self._startup_completed:
+            self._run_startup_once("POLL")
         poll_name = poll_type if isinstance(poll_type, str) else "longPoll"
         self._set("TIME", int(time.time()), 151)
         if poll_name == "shortPoll":
@@ -1340,7 +1359,12 @@ class BroadlinkController(BaseNode):
             return
         try:
             existing_nodes = self.poly.getNodes()
-            existing_addrs = {node.address for node in existing_nodes}
+            # getNodes() returns a dict {address: node} in udi_interface 3.x;
+            # fall back gracefully if it ever returns a list.
+            if isinstance(existing_nodes, dict):
+                existing_addrs = set(existing_nodes.keys())
+            else:
+                existing_addrs = {node.address for node in existing_nodes}
             all_codes = self._safe_code_map(self.data_store.get("learned_codes", {}))
             to_remove = [addr for addr in all_codes if addr not in existing_addrs]
             if to_remove:
