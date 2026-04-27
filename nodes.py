@@ -995,6 +995,13 @@ class BroadlinkController(BaseNode):
         if address is None and isinstance(node, dict):
             address = node.get("address") or node.get("node")
         LOGGER.debug("[node_done] Node %s is done", address or "unknown")
+        # If PG3 just confirmed a hub node, trigger its reconcile now so
+        # child nodes (IR/RF/Sensor) are created after the parent is confirmed.
+        for hub_node in self.hub_nodes.values():
+            if hub_node.address == address:
+                LOGGER.debug("[node_done] Hub node %s confirmed by PG3, triggering reconcile", address)
+                hub_node.reconcile(trace_id="node_done")
+                break
 
     def config_done(self, _config=None, *_args, **_kwargs) -> None:
         LOGGER.debug("[config_done] Configuration done")
