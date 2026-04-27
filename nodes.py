@@ -1045,7 +1045,24 @@ class BroadlinkController(BaseNode):
         self._publish_profile()
 
     def handle_custom_data(self, custom_data) -> None:
-        self.data_store.load(custom_data or {})
+        # PG3 can emit empty custom payload callbacks (e.g. customtypeddata),
+        # and loading {} would wipe persisted learned_codes.
+        if custom_data is None:
+            LOGGER.debug("[handle_custom_data] Ignoring None custom_data payload")
+            return
+        if isinstance(custom_data, dict) and not custom_data:
+            LOGGER.debug("[handle_custom_data] Ignoring empty custom_data payload to preserve persisted state")
+            return
+
+        if isinstance(custom_data, dict):
+            # Merge onto existing data so partial payloads don't drop keys like
+            # learned_codes/sensor_states/hub_macs.
+            merged = dict(self.data_store or {})
+            merged.update(custom_data)
+            self.data_store.load(merged)
+        else:
+            # Fallback for unexpected payload types.
+            self.data_store.load(custom_data)
         self.node_name_cache = self._safe_name_map(self.data_store.get("node_names", {}))
         self._migrate_legacy_data()
         self._ensure_registered()
@@ -1355,7 +1372,10 @@ class BroadlinkController(BaseNode):
         current_profile_getter = getattr(self.poly, "getJsonProfile", None)
         if callable(current_profile_getter):
             try:
-                current_profile = current_profile_getter({"waitResponse": True})
+                # Do not block startup waiting on profile response; this method
+                # is called before poly.ready(), and synchronous waits can delay
+                # CUSTOMPARAMS/START delivery and make startup appear stuck.
+                current_profile = current_profile_getter({"waitResponse": False})
                 if self._profiles_match(current_profile, profile):
                     LOGGER.info("[_publish_profile] Profile already up to date, skipping publish")
                     return
@@ -1370,7 +1390,7 @@ class BroadlinkController(BaseNode):
         try:
             #LOGGER.debug("[_publish_profile] Publishing profile: %s",
             #             json.dumps(profile, sort_keys=True, indent=2, separators=(",", ": ")))
-            update_json_profile(profile, {"waitResponse": True})
+            update_json_profile(profile, {"waitResponse": False})
             LOGGER.info("[_publish_profile] Dynamic JSON profile published successfully")
             self.poly.Notices.delete("profile")
         except TypeError:
