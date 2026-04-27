@@ -1162,12 +1162,18 @@ class BroadlinkController(BaseNode):
         LOGGER.debug("[_reconcile_hub_nodes][%s] Retrieval pass complete pending_new_nodes=%s", trace_id, list(pending.keys()))
 
         # Pass 2: create nodes only after connection pass completes.
+        # Track which IPs are newly added so we can skip their first reconcile.
+        # Child nodes must not be added until PG3 has acknowledged the parent
+        # hub node (ADDNODEDONE / START).  Newly-created hub nodes will receive
+        # their first reconcile from HubNode.start() once PG3 confirms them.
+        newly_added_ips: set[str] = set()
         for ip, (mac, client) in pending.items():
             LOGGER.debug("[_reconcile_hub_nodes][%s] Creating/retrieving HubNode for ip=%s mac=%s", trace_id, ip, mac)
             node = self._create_hub_node(ip, mac, trace_id)
             if not node:
                 LOGGER.debug("[_reconcile_hub_nodes][%s] HubNode creation skipped for ip=%s mac=%s", trace_id, ip, mac)
                 continue
+            newly_added_ips.add(ip)
             if client is not None:
                 LOGGER.debug("[_reconcile_hub_nodes][%s] Attaching active client to node ip=%s", trace_id, ip)
                 node.hub_client = client
@@ -1175,8 +1181,16 @@ class BroadlinkController(BaseNode):
             self._restore_hub_node_data(node, trace_id)
 
         for ip in self.config.hub_ips:
-            if ip in self.hub_nodes:
+            if ip in self.hub_nodes and ip not in newly_added_ips:
+                # Only reconcile hub nodes that PG3 has already confirmed.
+                # New nodes will be reconciled via HubNode.start().
                 self.hub_nodes[ip].reconcile(trace_id=trace_id)
+            elif ip in newly_added_ips:
+                LOGGER.debug(
+                    "[_reconcile_hub_nodes][%s] Skipping immediate reconcile for newly-added hub ip=%s "
+                    "(will reconcile after PG3 confirms node via START)",
+                    trace_id, ip,
+                )
         self._update_overall_status()
 
     def _connect_hub_identity(self, ip: str, trace_id: str = "") -> tuple[str, BroadlinkHubClient | None]:
