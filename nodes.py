@@ -247,6 +247,10 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
             "links": {"ctl": [], "rsp": []},
         },
     ]
+
+    return {"editors": editors, "nodedefs": nodedefs, "linkdefs": []}
+
+
 def _parse_temp_unit(custom_params: dict) -> str:
     """Extract and normalize TEMP_UNIT from custom params. Returns 'C' or 'F'."""
     raw = str((custom_params or {}).get("TEMP_UNIT", "")).strip().upper()
