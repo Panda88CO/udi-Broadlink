@@ -14,7 +14,7 @@ from config_parser import PluginConfig, build_config
 
 LOGGER = udi_interface.LOGGER
 Custom = udi_interface.Custom
-VERSION = "0.2.4"
+VERSION = "0.2.5"
 DEFAULT_SETUP_ADDRESS = "setup"
 
 MODEL_INDEX_NAMES = {
@@ -25,6 +25,37 @@ MODEL_INDEX_NAMES = {
     "4": "RM Mini",
     "5": "RM2",
     "6": "Other Broadlink",
+}
+
+IR_LEARN_STATUS_NAMES = {
+    "0": "Idle",
+    "1": "Start Learning: press the IR button you want to learn",
+    "2": "Check Packet Data: keep remote aimed at hub",
+    "3": "Learned",
+    "4": "Failed",
+}
+
+RF_LEARN_STATUS_NAMES = {
+    "0": "Idle",
+    "1": "When LED blinks first time long press button you want to learn",
+    "2": "When LED blinks short press button you want to learn",
+    "3": "Check Packet Data: wait while hub captures RF code",
+    "4": "Learned",
+    "5": "Failed",
+}
+
+LEARN_STATUS_BY_EVENT = {
+    "ir": {
+        "ir_enter_learning": 1,
+        "ir_check_data": 2,
+    },
+    "rf": {
+        "rf_sweep_frequency": 1,
+        "rf_check_frequency": 1,
+        "rf_find_packet": 2,
+        "rf_check_data": 3,
+        "rf_fallback_enter_learning": 2,
+    },
 }
 
 def _build_profile_definition(temp_unit: str = "C") -> dict:
@@ -62,8 +93,12 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
             "ranges": [{"uom": "151", "min": 0, "max": 4294967295, "prec": 0}],
         },
         {
-            "id": "learn_status",
-            "ranges": [{"uom": "25", "subset": "0-3", "names": {"0": "Idle", "1": "Learning", "2": "Learned OK", "3": "Failed"}}],
+            "id": "ir_learn_status",
+            "ranges": [{"uom": "25", "subset": "0-4", "names": IR_LEARN_STATUS_NAMES}],
+        },
+        {
+            "id": "rf_learn_status",
+            "ranges": [{"uom": "25", "subset": "0-5", "names": RF_LEARN_STATUS_NAMES}],
         },
         {
             "id": "tx_status",
@@ -124,7 +159,7 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
             "name": "IR Controller",
             "icon": "GenericCtl",
             "properties": [
-                {"id": "ST", "name": "Status", "editor": "learn_status"},
+                {"id": "ST", "name": "Status", "editor": "ir_learn_status"},
                 {"id": "TIME", "name": "Last Learn", "editor": "timestamp"},
                 {"id": "GV1", "name": "Learn Count", "editor": "raw_value"},
                 {"id": "GV2", "name": "Hub Connected", "editor": "binary_index"},
@@ -142,7 +177,7 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
             "name": "RF Controller",
             "icon": "GenericCtl",
             "properties": [
-                {"id": "ST", "name": "Status", "editor": "learn_status"},
+                {"id": "ST", "name": "Status", "editor": "rf_learn_status"},
                 {"id": "TIME", "name": "Last Learn", "editor": "timestamp"},
                 {"id": "GV1", "name": "Learn Count", "editor": "raw_value"},
                 {"id": "GV2", "name": "Hub Connected", "editor": "binary_index"},
@@ -211,11 +246,6 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
             },
             "links": {"ctl": [], "rsp": []},
         },
-    ]
-
-    return {"editors": editors, "nodedefs": nodedefs, "linkdefs": []}
-
-
 def _parse_temp_unit(custom_params: dict) -> str:
     """Extract and normalize TEMP_UNIT from custom params. Returns 'C' or 'F'."""
     raw = str((custom_params or {}).get("TEMP_UNIT", "")).strip().upper()
@@ -302,11 +332,16 @@ class _ControllerNode(BaseNode):
         if self._learn_thread and self._learn_thread.is_alive():
             LOGGER.warning("[%s] Learn already in progress, ignoring command", type(self).__name__)
             return
-        self._set("ST", 1)  # Learning
+        self._set("ST", 0)
         self._learn_thread = threading.Thread(
             target=self._do_learn, daemon=True, name=f"{self._code_type}-learn"
         )
         self._learn_thread.start()
+
+    def _handle_learn_progress(self, event: str) -> None:
+        state = LEARN_STATUS_BY_EVENT.get(self._code_type, {}).get(event)
+        if state is not None:
+            self._set("ST", state)
 
     def _do_learn(self) -> None:
         tag = type(self).__name__
@@ -315,9 +350,15 @@ class _ControllerNode(BaseNode):
                 raise RuntimeError("Hub client not available")
             LOGGER.info("[%s._do_learn] Starting %s learn (%ds window)", tag, self._code_type.upper(), self._learn_timeout)
             if self._code_type == "rf":
-                packet = self.controller.hub_client.learn_rf(timeout_sec=self._learn_timeout)
+                packet = self.controller.hub_client.learn_rf(
+                    timeout_sec=self._learn_timeout,
+                    progress_callback=self._handle_learn_progress,
+                )
             else:
-                packet = self.controller.hub_client.learn_ir(timeout_sec=self._learn_timeout)
+                packet = self.controller.hub_client.learn_ir(
+                    timeout_sec=self._learn_timeout,
+                    progress_callback=self._handle_learn_progress,
+                )
 
             code_hex = packet.hex()
             addr = self.controller._next_code_address(self._code_type)
@@ -342,16 +383,16 @@ class _ControllerNode(BaseNode):
             self.poly.addNode(code_node)
 
             self._learn_count += 1
-            self._set("ST", 2)  # Learned OK
+            self._set("ST", 4 if self._code_type == "rf" else 3)
             self._set("TIME", int(time.time()), 151)
             self._set("GV1", self._learn_count, 56)
             LOGGER.info("[%s._do_learn] Learned OK, stored as %s", tag, addr)
         except TimeoutError:
             LOGGER.warning("[%s._do_learn] Learn timed out after %ds", tag, self._learn_timeout)
-            self._set("ST", 3)
+            self._set("ST", 5 if self._code_type == "rf" else 4)
         except Exception as err:
             LOGGER.error("[%s._do_learn] Failed: %s", tag, err)
-            self._set("ST", 3)
+            self._set("ST", 5 if self._code_type == "rf" else 4)
 
     commands = {
         "LEARNCODE": learn_code,

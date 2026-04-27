@@ -10,11 +10,14 @@ import base64
 from dataclasses import dataclass
 from threading import RLock
 import time
+from typing import Callable
 
 import broadlink
 import udi_interface
 
 LOGGER = udi_interface.LOGGER
+
+LearnProgressCallback = Callable[[str], None]
 
 
 @dataclass(slots=True)
@@ -236,16 +239,33 @@ class BroadlinkHubClient:
                 humidity=humidity_val,
             )
 
-    def learn_ir(self, timeout_sec: int = 30, poll_interval: float = 1.0) -> bytes:
+    def learn_ir(
+        self,
+        timeout_sec: int = 30,
+        poll_interval: float = 1.0,
+        progress_callback: LearnProgressCallback | None = None,
+    ) -> bytes:
         """Learn a single IR packet and return raw Broadlink bytes."""
         with self._lock:
             if self._device is None:
                 self.connect()
 
+            if progress_callback:
+                progress_callback("ir_enter_learning")
             self._device.enter_learning()
-            return self._wait_for_learned_packet(timeout_sec=timeout_sec, poll_interval=poll_interval)
+            return self._wait_for_learned_packet(
+                timeout_sec=timeout_sec,
+                poll_interval=poll_interval,
+                progress_callback=progress_callback,
+                waiting_event="ir_check_data",
+            )
 
-    def learn_rf(self, timeout_sec: int = 45, poll_interval: float = 1.0) -> bytes:
+    def learn_rf(
+        self,
+        timeout_sec: int = 45,
+        poll_interval: float = 1.0,
+        progress_callback: LearnProgressCallback | None = None,
+    ) -> bytes:
         """Learn a single RF packet and return raw Broadlink bytes.
 
         For devices that support RF sweep APIs we use sweep->check_frequency->find_rf_packet.
@@ -256,12 +276,18 @@ class BroadlinkHubClient:
                 self.connect()
 
             if hasattr(self._device, "sweep_frequency") and hasattr(self._device, "check_frequency"):
+                if progress_callback:
+                    progress_callback("rf_sweep_frequency")
                 self._device.sweep_frequency()
                 start = time.time()
                 found = False
                 frequency = None
+                announced_check_frequency = False
 
                 while (time.time() - start) < timeout_sec:
+                    if progress_callback and not announced_check_frequency:
+                        progress_callback("rf_check_frequency")
+                        announced_check_frequency = True
                     time.sleep(poll_interval)
                     try:
                         found, frequency = self._device.check_frequency()
@@ -277,17 +303,41 @@ class BroadlinkHubClient:
                         pass
                     raise TimeoutError("RF frequency sweep timed out")
 
+                if progress_callback:
+                    progress_callback("rf_find_packet")
                 self._device.find_rf_packet(frequency)
-                return self._wait_for_learned_packet(timeout_sec=timeout_sec, poll_interval=poll_interval)
+                return self._wait_for_learned_packet(
+                    timeout_sec=timeout_sec,
+                    poll_interval=poll_interval,
+                    progress_callback=progress_callback,
+                    waiting_event="rf_check_data",
+                )
 
             # Some remote models learn RF through the same generic IR flow.
+            if progress_callback:
+                progress_callback("rf_fallback_enter_learning")
             self._device.enter_learning()
-            return self._wait_for_learned_packet(timeout_sec=timeout_sec, poll_interval=poll_interval)
+            return self._wait_for_learned_packet(
+                timeout_sec=timeout_sec,
+                poll_interval=poll_interval,
+                progress_callback=progress_callback,
+                waiting_event="rf_check_data",
+            )
 
-    def _wait_for_learned_packet(self, timeout_sec: int = 30, poll_interval: float = 1.0) -> bytes:
+    def _wait_for_learned_packet(
+        self,
+        timeout_sec: int = 30,
+        poll_interval: float = 1.0,
+        progress_callback: LearnProgressCallback | None = None,
+        waiting_event: str = "check_data",
+    ) -> bytes:
         """Poll the hub until a learned packet is available."""
         start = time.time()
+        announced_wait = False
         while (time.time() - start) < timeout_sec:
+            if progress_callback and not announced_wait:
+                progress_callback(waiting_event)
+                announced_wait = True
             time.sleep(poll_interval)
             try:
                 packet = self._device.check_data()
