@@ -37,9 +37,9 @@ IR_LEARN_STATUS_NAMES = {
 
 RF_LEARN_STATUS_NAMES = {
     "0": "Idle",
-    "1": "When LED ON first time long press button you want to learn",
-    "2": "When LED ON short press button you want to learn",
-    "3": "Check Packet Data: wait while hub captures RF code",
+    "1": "When LED ON press long on button to learn",
+    "2": "When LED ON press short on button to learn",
+    "3": "Hub learning code - may need to press again",
     "4": "Learned",
     "5": "Failed",
 }
