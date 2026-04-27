@@ -714,14 +714,18 @@ class HubNode(BaseNode):
             ir_addr = self._controller_address("ir")
             ir_name = self._resolve_controller_node_name(ir_addr, "ir")
             LOGGER.debug("[HubNode._ensure_controller_nodes][%s] Creating IR controller addr=%s name=%s", trace, ir_addr, ir_name)
-            self.ir_controller = IRControllerNode(self.poly, self.address, ir_addr, ir_name, self)
+            # Controller nodes must be top-level primaries so learned code
+            # nodes can be their only direct children.
+            self.ir_controller = IRControllerNode(self.poly, ir_addr, ir_addr, ir_name, self)
             self.poly.addNode(self.ir_controller)
             LOGGER.info("[HubNode] Added IRControllerNode %s", ir_addr)
         if self.rf_controller is None:
             rf_addr = self._controller_address("rf")
             rf_name = self._resolve_controller_node_name(rf_addr, "rf")
             LOGGER.debug("[HubNode._ensure_controller_nodes][%s] Creating RF controller addr=%s name=%s", trace, rf_addr, rf_name)
-            self.rf_controller = RFControllerNode(self.poly, self.address, rf_addr, rf_name, self)
+            # Controller nodes must be top-level primaries so learned code
+            # nodes can be their only direct children.
+            self.rf_controller = RFControllerNode(self.poly, rf_addr, rf_addr, rf_name, self)
             self.poly.addNode(self.rf_controller)
             LOGGER.info("[HubNode] Added RFControllerNode %s", rf_addr)
 
@@ -1254,7 +1258,9 @@ class BroadlinkController(BaseNode):
             return None
         name = self._resolve_node_name(mac, f"Broadlink Hub ({ip})")
         LOGGER.debug("[_create_hub_node][%s] Creating HubNode ip=%s mac=%s name=%s", trace, ip, mac, name)
-        hub_node = HubNode(self.poly, "setup", mac, name, self, ip)
+        # Hub nodes must be top-level primaries so the optional sensor node
+        # can be their only direct child.
+        hub_node = HubNode(self.poly, mac, mac, name, self, ip)
         self.poly.addNode(hub_node)
         self.hub_nodes[ip] = hub_node
         LOGGER.info("[_create_hub_node] Added HubNode ip=%s mac=%s", ip, mac)
