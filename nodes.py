@@ -995,13 +995,6 @@ class BroadlinkController(BaseNode):
         if address is None and isinstance(node, dict):
             address = node.get("address") or node.get("node")
         LOGGER.debug("[node_done] Node %s is done", address or "unknown")
-        # If PG3 just confirmed a hub node, trigger its reconcile now so
-        # child nodes (IR/RF/Sensor) are created after the parent is confirmed.
-        for hub_node in self.hub_nodes.values():
-            if hub_node.address == address:
-                LOGGER.debug("[node_done] Hub node %s confirmed by PG3, triggering reconcile", address)
-                hub_node.reconcile(trace_id="node_done")
-                break
 
     def config_done(self, _config=None, *_args, **_kwargs) -> None:
         LOGGER.debug("[config_done] Configuration done")
@@ -1135,69 +1128,90 @@ class BroadlinkController(BaseNode):
                     return {key: candidate}
         return {}
 
+    def _wait_for_node_confirmed(self, address: str, timeout: float = 15.0) -> bool:
+        """Block until PG3 sends ADDNODEDONE for *address*, or timeout expires.
+
+        This is the ``wait_for_node_ready`` pattern: after calling
+        ``poly.addNode(hub_node)`` we must not add child nodes until PG3 has
+        confirmed the parent.  PG3 signals confirmation via the ``addnode``
+        response message which udi_interface publishes as ADDNODEDONE.
+        """
+        event = threading.Event()
+
+        def _handler(node):
+            node_addr = node.get("address") if isinstance(node, dict) else getattr(node, "address", None)
+            if node_addr == address:
+                event.set()
+
+        self.poly.subscribe(self.poly.ADDNODEDONE, _handler)
+        confirmed = event.wait(timeout=timeout)
+        self.poly.unsubscribe(self.poly.ADDNODEDONE, _handler)
+        if not confirmed:
+            LOGGER.warning("[_wait_for_node_confirmed] Timeout waiting for PG3 to confirm node %s", address)
+        else:
+            LOGGER.debug("[_wait_for_node_confirmed] PG3 confirmed node %s", address)
+        return confirmed
+
     def _reconcile_hub_nodes(self) -> None:
-        """Connect all configured hubs first, then create/reconcile hub nodes."""
+        """Connect each hub, add its node, wait for PG3 confirmation, then add children.
+
+        Hubs are processed one at a time (serial) so that each parent hub node
+        is confirmed by PG3 before child IR/RF/Sensor nodes are created.
+        """
         self._reconcile_seq += 1
         trace_id = f"rec-{self._reconcile_seq:06d}"
         hub_macs = self._safe_hub_macs()
-        pending: dict[str, tuple[str, BroadlinkHubClient | None]] = {}
         LOGGER.debug(
-            "[_reconcile_hub_nodes][%s] Begin retrieval/config pass configured_hubs=%s known_hub_macs=%s",
+            "[_reconcile_hub_nodes][%s] Begin pass configured_hubs=%s known_hub_macs=%s",
             trace_id,
             self.config.hub_ips,
             hub_macs,
         )
 
-        # Pass 1: establish identity/connectivity for all missing hubs.
         for ip in self.config.hub_ips:
             if ip in self.hub_nodes:
-                LOGGER.debug("[_reconcile_hub_nodes][%s] Hub node already exists for ip=%s", trace_id, ip)
+                # Hub node already confirmed in a previous run — just reconcile.
+                LOGGER.debug("[_reconcile_hub_nodes][%s] Hub node already exists for ip=%s, reconciling", trace_id, ip)
+                self.hub_nodes[ip].reconcile(trace_id=trace_id)
                 continue
+
+            # New hub: get identity, add node, wait for PG3 confirmation, then children.
             mac = hub_macs.get(ip)
-            if mac:
-                LOGGER.debug("[_reconcile_hub_nodes][%s] Using stored MAC for ip=%s mac=%s", trace_id, ip, mac)
-                pending[ip] = (mac, None)
-                continue
-            LOGGER.debug("[_reconcile_hub_nodes][%s] No stored MAC for ip=%s, connecting for identity", trace_id, ip)
-            connected_mac, client = self._connect_hub_identity(ip, trace_id)
-            if connected_mac:
-                LOGGER.debug("[_reconcile_hub_nodes][%s] Retrieved identity ip=%s mac=%s", trace_id, ip, connected_mac)
-                pending[ip] = (connected_mac, client)
+            client = None
+            if not mac:
+                LOGGER.debug("[_reconcile_hub_nodes][%s] No stored MAC for ip=%s, connecting for identity", trace_id, ip)
+                connected_mac, client = self._connect_hub_identity(ip, trace_id)
+                if not connected_mac:
+                    LOGGER.warning("[_reconcile_hub_nodes][%s] Identity retrieval failed for ip=%s, skipping", trace_id, ip)
+                    continue
+                mac = connected_mac
             else:
-                LOGGER.debug("[_reconcile_hub_nodes][%s] Identity retrieval failed for ip=%s", trace_id, ip)
+                LOGGER.debug("[_reconcile_hub_nodes][%s] Using stored MAC for ip=%s mac=%s", trace_id, ip, mac)
 
-        LOGGER.debug("[_reconcile_hub_nodes][%s] Retrieval pass complete pending_new_nodes=%s", trace_id, list(pending.keys()))
-
-        # Pass 2: create nodes only after connection pass completes.
-        # Track which IPs are newly added so we can skip their first reconcile.
-        # Child nodes must not be added until PG3 has acknowledged the parent
-        # hub node (ADDNODEDONE / START).  Newly-created hub nodes will receive
-        # their first reconcile from HubNode.start() once PG3 confirms them.
-        newly_added_ips: set[str] = set()
-        for ip, (mac, client) in pending.items():
-            LOGGER.debug("[_reconcile_hub_nodes][%s] Creating/retrieving HubNode for ip=%s mac=%s", trace_id, ip, mac)
             node = self._create_hub_node(ip, mac, trace_id)
             if not node:
                 LOGGER.debug("[_reconcile_hub_nodes][%s] HubNode creation skipped for ip=%s mac=%s", trace_id, ip, mac)
                 continue
-            newly_added_ips.add(ip)
+
             if client is not None:
                 LOGGER.debug("[_reconcile_hub_nodes][%s] Attaching active client to node ip=%s", trace_id, ip)
                 node.hub_client = client
-            LOGGER.debug("[_reconcile_hub_nodes][%s] Restoring persisted data before child creation ip=%s", trace_id, ip)
             self._restore_hub_node_data(node, trace_id)
 
-        for ip in self.config.hub_ips:
-            if ip in self.hub_nodes and ip not in newly_added_ips:
-                # Only reconcile hub nodes that PG3 has already confirmed.
-                # New nodes will be reconciled via HubNode.start().
-                self.hub_nodes[ip].reconcile(trace_id=trace_id)
-            elif ip in newly_added_ips:
-                LOGGER.debug(
-                    "[_reconcile_hub_nodes][%s] Skipping immediate reconcile for newly-added hub ip=%s "
-                    "(will reconcile after PG3 confirms node via START)",
+            # Wait for PG3 to confirm the hub node before adding children.
+            LOGGER.debug(
+                "[_reconcile_hub_nodes][%s] Waiting for PG3 to confirm hub node ip=%s addr=%s",
+                trace_id, ip, node.address,
+            )
+            if self._wait_for_node_confirmed(node.address, timeout=15.0):
+                LOGGER.debug("[_reconcile_hub_nodes][%s] Hub confirmed, reconciling children for ip=%s", trace_id, ip)
+                node.reconcile(trace_id=trace_id)
+            else:
+                LOGGER.warning(
+                    "[_reconcile_hub_nodes][%s] PG3 did not confirm hub ip=%s within timeout — children not created",
                     trace_id, ip,
                 )
+
         self._update_overall_status()
 
     def _connect_hub_identity(self, ip: str, trace_id: str = "") -> tuple[str, BroadlinkHubClient | None]:
