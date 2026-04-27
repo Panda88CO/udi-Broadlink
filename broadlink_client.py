@@ -250,14 +250,14 @@ class BroadlinkHubClient:
             if self._device is None:
                 self.connect()
 
-            if progress_callback:
-                progress_callback("ir_enter_learning")
             self._device.enter_learning()
+            if progress_callback:
+                progress_callback("ir_enter_learning_completed")
             return self._wait_for_learned_packet(
                 timeout_sec=timeout_sec,
                 poll_interval=poll_interval,
                 progress_callback=progress_callback,
-                waiting_event="ir_check_data",
+                waiting_event="",
             )
 
     def learn_rf(
@@ -276,18 +276,14 @@ class BroadlinkHubClient:
                 self.connect()
 
             if hasattr(self._device, "sweep_frequency") and hasattr(self._device, "check_frequency"):
-                if progress_callback:
-                    progress_callback("rf_sweep_frequency")
                 self._device.sweep_frequency()
+                if progress_callback:
+                    progress_callback("rf_sweep_completed")
                 start = time.time()
                 found = False
                 frequency = None
-                announced_check_frequency = False
 
                 while (time.time() - start) < timeout_sec:
-                    if progress_callback and not announced_check_frequency:
-                        progress_callback("rf_check_frequency")
-                        announced_check_frequency = True
                     time.sleep(poll_interval)
                     try:
                         found, frequency = self._device.check_frequency()
@@ -303,14 +299,14 @@ class BroadlinkHubClient:
                         pass
                     raise TimeoutError("RF frequency sweep timed out")
 
-                if progress_callback:
-                    progress_callback("rf_find_packet")
                 self._device.find_rf_packet(frequency)
+                if progress_callback:
+                    progress_callback("rf_find_packet_completed")
                 return self._wait_for_learned_packet(
                     timeout_sec=timeout_sec,
                     poll_interval=poll_interval,
                     progress_callback=progress_callback,
-                    waiting_event="rf_check_data",
+                    waiting_event="",
                 )
 
             # Some remote models learn RF through the same generic IR flow.
@@ -335,7 +331,7 @@ class BroadlinkHubClient:
         start = time.time()
         announced_wait = False
         while (time.time() - start) < timeout_sec:
-            if progress_callback and not announced_wait:
+            if progress_callback and waiting_event and not announced_wait:
                 progress_callback(waiting_event)
                 announced_wait = True
             time.sleep(poll_interval)

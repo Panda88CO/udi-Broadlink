@@ -37,8 +37,8 @@ IR_LEARN_STATUS_NAMES = {
 
 RF_LEARN_STATUS_NAMES = {
     "0": "Idle",
-    "1": "When LED blinks first time long press button you want to learn",
-    "2": "When LED blinks short press button you want to learn",
+    "1": "When LED ON first time long press button you want to learn",
+    "2": "When LED ON short press button you want to learn",
     "3": "Check Packet Data: wait while hub captures RF code",
     "4": "Learned",
     "5": "Failed",
@@ -46,15 +46,14 @@ RF_LEARN_STATUS_NAMES = {
 
 LEARN_STATUS_BY_EVENT = {
     "ir": {
-        "ir_enter_learning": 1,
+        "ir_enter_learning_completed": 2,
         "ir_check_data": 2,
     },
     "rf": {
-        "rf_sweep_frequency": 1,
-        "rf_check_frequency": 1,
-        "rf_find_packet": 2,
-        "rf_check_data": 3,
+        "rf_sweep_completed": 2,
+        "rf_find_packet_completed": 3,
         "rf_fallback_enter_learning": 2,
+        "rf_check_data": 3,
     },
 }
 
@@ -337,7 +336,7 @@ class _ControllerNode(BaseNode):
         if self._learn_thread and self._learn_thread.is_alive():
             LOGGER.warning("[%s] Learn already in progress, ignoring command", type(self).__name__)
             return
-        self._set("ST", 0)
+        self._set("ST", 1)
         self._learn_thread = threading.Thread(
             target=self._do_learn, daemon=True, name=f"{self._code_type}-learn"
         )
@@ -359,11 +358,13 @@ class _ControllerNode(BaseNode):
                     timeout_sec=self._learn_timeout,
                     progress_callback=self._handle_learn_progress,
                 )
+                self._set("ST", 4)
             else:
                 packet = self.controller.hub_client.learn_ir(
                     timeout_sec=self._learn_timeout,
                     progress_callback=self._handle_learn_progress,
                 )
+                self._set("ST", 3)
 
             code_hex = packet.hex()
             addr = self.controller._next_code_address(self._code_type)
@@ -388,9 +389,11 @@ class _ControllerNode(BaseNode):
             self.poly.addNode(code_node)
 
             self._learn_count += 1
-            self._set("ST", 4 if self._code_type == "rf" else 3)
             self._set("TIME", int(time.time()), 151)
             self._set("GV1", self._learn_count, 56)
+            if self._code_type in ("rf", "ir"):
+                time.sleep(3)
+                self._set("ST", 0)
             LOGGER.info("[%s._do_learn] Learned OK, stored as %s", tag, addr)
         except TimeoutError:
             LOGGER.warning("[%s._do_learn] Learn timed out after %ds", tag, self._learn_timeout)
@@ -1029,6 +1032,7 @@ class BroadlinkController(BaseNode):
         LOGGER.info("[_run_startup_once] Startup reconciliation complete via %s", source)
 
     def stop(self, *_args, **_kwargs) -> None:
+        self.poly.Notices.clear()
         if not self._node_added:
             self.poly.stop()
             return
