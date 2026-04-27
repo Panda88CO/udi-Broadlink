@@ -917,6 +917,7 @@ class BroadlinkController(BaseNode):
         self._bootstrap_applied: bool = False
         self._startup_completed: bool = False
         self._reconcile_seq: int = 0
+        self._confirmed_node_addresses: set[str] = set()
         LOGGER.debug("[__init__] Initialized instance variables")
 
         LOGGER.debug("[__init__] Subscribing to polyglot events")
@@ -998,6 +999,8 @@ class BroadlinkController(BaseNode):
         address = getattr(node, "address", None)
         if address is None and isinstance(node, dict):
             address = node.get("address") or node.get("node")
+        if address:
+            self._confirmed_node_addresses.add(address)
         LOGGER.debug("[node_done] Node %s is done", address or "unknown")
 
     def config_done(self, _config=None, *_args, **_kwargs) -> None:
@@ -1157,6 +1160,10 @@ class BroadlinkController(BaseNode):
         confirmed the parent.  PG3 signals confirmation via the ``addnode``
         response message which udi_interface publishes as ADDNODEDONE.
         """
+        if address in self._confirmed_node_addresses:
+            LOGGER.debug("[_wait_for_node_confirmed] Node %s already confirmed", address)
+            return True
+
         event = threading.Event()
 
         def _handler(node):
@@ -1165,6 +1172,10 @@ class BroadlinkController(BaseNode):
                 event.set()
 
         self.poly.subscribe(self.poly.ADDNODEDONE, _handler)
+        if address in self._confirmed_node_addresses:
+            self.poly.unsubscribe(self.poly.ADDNODEDONE, _handler)
+            LOGGER.debug("[_wait_for_node_confirmed] Node %s confirmed before local wait", address)
+            return True
         confirmed = event.wait(timeout=timeout)
         self.poly.unsubscribe(self.poly.ADDNODEDONE, _handler)
         if not confirmed:
