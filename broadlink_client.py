@@ -216,11 +216,24 @@ class BroadlinkHubClient:
                 LOGGER.debug("[check_sensors] Raw sensor data from %s: <empty>", self.hub_ip)
             temp = data.get("temperature")
             humidity = data.get("humidity")
+
+            # Broadlink hubs with no physical sensor attached return 0.0 for
+            # all fields rather than omitting them.  Treat a response where
+            # every numeric value rounds to exactly zero as "no sensor".
+            temp_val = float(temp) if temp is not None else 0.0
+            humidity_val = float(humidity) if humidity is not None else 0.0
+            all_zero = (temp_val == 0.0 and humidity_val == 0.0)
+            if all_zero:
+                LOGGER.debug(
+                    "[check_sensors] All-zero sensor response from %s — treating as no sensor attached",
+                    self.hub_ip,
+                )
+
             return SensorData(
-                has_temperature=temp is not None,
-                has_humidity=humidity is not None,
-                temperature_c=float(temp) if temp is not None else 0.0,
-                humidity=float(humidity) if humidity is not None else 0.0,
+                has_temperature=temp is not None and not all_zero,
+                has_humidity=humidity is not None and not all_zero,
+                temperature_c=temp_val,
+                humidity=humidity_val,
             )
 
     def learn_ir(self, timeout_sec: int = 30, poll_interval: float = 1.0) -> bytes:
