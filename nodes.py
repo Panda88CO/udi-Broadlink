@@ -321,16 +321,47 @@ class _ControllerNode(BaseNode):
         self._learn_thread: threading.Thread | None = None
         self._learn_count: int = 0
 
-    def start(self) -> None:
-        existing = [
-            meta
-            for meta in self.controller.learned_codes.values()
-            if meta.get("controller_type") == self._code_type
-        ]
-        self._learn_count = len(existing)
+    def _existing_code_addresses(self) -> set[str]:
+        prefix = self.controller._code_address_prefix(self._code_type)
+        addrs: set[str] = set()
+
+        try:
+            existing_nodes = self.poly.getNodes()
+            if isinstance(existing_nodes, dict):
+                node_addrs = existing_nodes.keys()
+            else:
+                node_addrs = (getattr(node, "address", "") for node in existing_nodes)
+            for addr in node_addrs:
+                text = str(addr or "")
+                if text.startswith(prefix):
+                    addrs.add(text)
+        except Exception:
+            pass
+
+        for addr, meta in self.controller.learned_codes.items():
+            text = str(addr or "")
+            if not text:
+                continue
+            if text.startswith(prefix) or (isinstance(meta, dict) and meta.get("controller_type") == self._code_type):
+                addrs.add(text)
+
+        return addrs
+
+    def _hub_connected(self) -> bool:
+        blueprint = getattr(self.controller, "hub_blueprint", None)
+        if blueprint is not None:
+            return bool(getattr(blueprint, "connected", False))
+        return bool(self.controller.hub_client and self.controller.hub_client.connected)
+
+    def refresh_learn_state(self, reset_status: bool = False) -> None:
+        self._learn_count = len(self._existing_code_addresses())
         self._set("GV1", self._learn_count, 56)
-        self._set("GV2", 1 if self.controller.hub_client and self.controller.hub_client.connected else 0)
-        self._set("ST", 0)
+        self._set("GV2", 1 if self._hub_connected() else 0)
+        if reset_status:
+            self._set("ST", 0)
+
+    def start(self) -> None:
+        self.refresh_learn_state(reset_status=True)
 
     def learn_code(self, command=None) -> None:
         if self._learn_thread and self._learn_thread.is_alive():
@@ -388,7 +419,7 @@ class _ControllerNode(BaseNode):
             code_node._code_meta = metadata
             self.poly.addNode(code_node)
 
-            self._learn_count += 1
+            self.refresh_learn_state(reset_status=False)
             self._set("TIME", int(time.time()), 151)
             self._set("GV1", self._learn_count, 56)
             if self._code_type in ("rf", "ir"):
@@ -607,6 +638,10 @@ class HubNode(BaseNode):
             self.controller._remove_hub_error_notice(self.hub_mac)
             LOGGER.debug("[HubNode.reconcile][%s] Hub connected, ensuring child nodes for ip=%s", trace, self.hub_ip)
             self._ensure_controller_nodes(trace)
+            if self.ir_controller is not None:
+                self.ir_controller.refresh_learn_state(reset_status=False)
+            if self.rf_controller is not None:
+                self.rf_controller.refresh_learn_state(reset_status=False)
             # Detect sensor capability live so the optional sensor node is
             # created even when HubNode.start() was never called (e.g. when
             # START event is not delivered by PG3).
@@ -615,6 +650,10 @@ class HubNode(BaseNode):
             self._load_learned_codes(trace)
             self._refresh_sensor_readings(self.controller.temp_unit)
         else:
+            if self.ir_controller is not None:
+                self.ir_controller.refresh_learn_state(reset_status=False)
+            if self.rf_controller is not None:
+                self.rf_controller.refresh_learn_state(reset_status=False)
             if blueprint.last_error:
                 self.controller._add_hub_error_notice(self.hub_mac, self.hub_ip, blueprint.last_error)
 
@@ -767,6 +806,7 @@ class HubNode(BaseNode):
             # nodes can be their only direct children.
             self.ir_controller = IRControllerNode(self.poly, ir_addr, ir_addr, ir_name, self)
             self.poly.addNode(self.ir_controller)
+            self.ir_controller.refresh_learn_state(reset_status=True)
             LOGGER.info("[HubNode] Added IRControllerNode %s", ir_addr)
         if self.rf_controller is None:
             rf_addr = self._controller_address("rf")
@@ -776,6 +816,7 @@ class HubNode(BaseNode):
             # nodes can be their only direct children.
             self.rf_controller = RFControllerNode(self.poly, rf_addr, rf_addr, rf_name, self)
             self.poly.addNode(self.rf_controller)
+            self.rf_controller.refresh_learn_state(reset_status=True)
             LOGGER.info("[HubNode] Added RFControllerNode %s", rf_addr)
 
     def _resolve_controller_node_name(self, controller_addr: str, code_type: str) -> str:
@@ -817,7 +858,7 @@ class HubNode(BaseNode):
             for addr, meta in self.learned_codes.items():
                 code_type = meta.get("controller_type", "ir")
                 name = meta.get("name") or "(unnamed)"
-                has_data = bool(meta.get("code") or meta.get("data"))
+                has_data = bool(meta.get("code_hex") or meta.get("code") or meta.get("data"))
                 status = "loaded" if addr in self._loaded_code_addrs else "pending"
                 lines.append(f"  {addr:<20} type={code_type:<4} name={name:<30} has_code={has_data} status={status}")
             LOGGER.debug(
@@ -828,8 +869,18 @@ class HubNode(BaseNode):
             )
         else:
             LOGGER.debug("[HubNode._load_learned_codes][%s] No cached codes for ip=%s", trace, self.hub_ip)
+        invalid_addrs: list[str] = []
         for addr, meta in self.learned_codes.items():
             if addr in self._loaded_code_addrs:
+                continue
+            code_payload = meta.get("code_hex") or meta.get("code") or meta.get("data")
+            if not code_payload:
+                LOGGER.warning(
+                    "[HubNode._load_learned_codes][%s] Skipping restore for %s due to missing code payload",
+                    trace,
+                    addr,
+                )
+                invalid_addrs.append(addr)
                 continue
             code_type = meta.get("controller_type", "ir")
             ctrl_addr = self._normalize_controller_addr(meta.get("controller_addr"), code_type)
@@ -855,6 +906,27 @@ class HubNode(BaseNode):
             self.poly.addNode(node)
             self._loaded_code_addrs.add(addr)
             LOGGER.info("[HubNode] Restored %s code node %s", code_type.upper(), addr)
+
+        if invalid_addrs:
+            updated = {
+                addr: meta
+                for addr, meta in self.learned_codes.items()
+                if addr not in invalid_addrs
+            }
+            self.learned_codes = updated
+            all_codes = dict(self.controller.data_store.get("learned_codes") or {})
+            changed = False
+            for addr in invalid_addrs:
+                if addr in all_codes:
+                    del all_codes[addr]
+                    changed = True
+            if changed:
+                self.controller.data_store["learned_codes"] = all_codes
+
+        if self.ir_controller is not None:
+            self.ir_controller.refresh_learn_state(reset_status=False)
+        if self.rf_controller is not None:
+            self.rf_controller.refresh_learn_state(reset_status=False)
 
     # ------------------------------------------------------------------ persistence
 
