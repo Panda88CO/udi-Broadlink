@@ -37,11 +37,8 @@ IR_LEARN_STATUS_NAMES = {
 
 RF_LEARN_STATUS_NAMES = {
     "0": "Idle",
-    "1": "When LED ON press long on button to learn",
-    "2": "When LED ON press short on button to learn",
-    "3": "Hub learning code - may need to press again",
-    "4": "Learned",
-    "5": "Failed",
+    "1": "Learning",
+    "2": "Learned",
 }
 
 LEARN_STATUS_BY_EVENT = {
@@ -50,10 +47,10 @@ LEARN_STATUS_BY_EVENT = {
         "ir_check_data": 2,
     },
     "rf": {
-        "rf_sweep_completed": 2,
-        "rf_find_packet_completed": 3,
-        "rf_fallback_enter_learning": 2,
-        "rf_check_data": 3,
+        "rf_sweep_completed": 1,
+        "rf_find_packet_completed": 1,
+        "rf_fallback_enter_learning": 1,
+        "rf_check_data": 1,
     },
 }
 
@@ -97,7 +94,7 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
         },
         {
             "id": "rf_learn_status",
-            "ranges": [{"uom": "25", "subset": "0-5", "names": RF_LEARN_STATUS_NAMES}],
+            "ranges": [{"uom": "25", "subset": "0-2", "names": RF_LEARN_STATUS_NAMES}],
         },
         {
             "id": "tx_status",
@@ -389,7 +386,7 @@ class _ControllerNode(BaseNode):
                     timeout_sec=self._learn_timeout,
                     progress_callback=self._handle_learn_progress,
                 )
-                self._set("ST", 4)
+                self._set("ST", 2)
             else:
                 packet = self.controller.hub_client.learn_ir(
                     timeout_sec=self._learn_timeout,
@@ -428,10 +425,10 @@ class _ControllerNode(BaseNode):
             LOGGER.info("[%s._do_learn] Learned OK, stored as %s", tag, addr)
         except TimeoutError:
             LOGGER.warning("[%s._do_learn] Learn timed out after %ds", tag, self._learn_timeout)
-            self._set("ST", 5 if self._code_type == "rf" else 4)
+            self._set("ST", 0 if self._code_type == "rf" else 4)
         except Exception as err:
             LOGGER.error("[%s._do_learn] Failed: %s", tag, err)
-            self._set("ST", 5 if self._code_type == "rf" else 4)
+            self._set("ST", 0 if self._code_type == "rf" else 4)
 
     commands = {
         "LEARNCODE": learn_code,
