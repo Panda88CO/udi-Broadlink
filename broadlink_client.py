@@ -25,6 +25,14 @@ class FrequencyNotFoundError(TimeoutError):
 
 
 @dataclass(slots=True)
+class RFLearnResult:
+    """RF learn payload including optional locked frequency in MHz."""
+
+    packet: bytes
+    frequency_mhz: float | None = None
+
+
+@dataclass(slots=True)
 class BroadlinkHubInfo:
     """Cached identity information for a connected hub."""
 
@@ -271,8 +279,8 @@ class BroadlinkHubClient:
         packet_timeout_sec: int = 30,
         poll_interval: float = 1.0,
         progress_callback: LearnProgressCallback | None = None,
-    ) -> bytes:
-        """Learn a single RF packet and return raw Broadlink bytes.
+    ) -> RFLearnResult:
+        """Learn a single RF packet and return packet bytes plus lock frequency.
 
         For devices that support RF sweep APIs we use sweep->check_frequency->find_rf_packet.
         If the device does not expose RF sweep APIs, we fall back to generic learning.
@@ -334,12 +342,13 @@ class BroadlinkHubClient:
                     LOGGER.info("[learn_rf] Frequency lock found after %s checks; waiting for RF packet", checks)
                     if progress_callback:
                         progress_callback("rf_find_packet_completed")
-                    return self._wait_for_learned_packet(
+                    packet = self._wait_for_learned_packet(
                         timeout_sec=packet_timeout_sec,
                         poll_interval=poll_interval,
                         progress_callback=progress_callback,
                         waiting_event="",
                     )
+                    return RFLearnResult(packet=packet, frequency_mhz=float(frequency) if frequency is not None else None)
 
                 # RF-capable devices should stop here when no valid frequency lock was found.
                 try:
@@ -356,12 +365,13 @@ class BroadlinkHubClient:
                 progress_callback("rf_fallback_enter_learning")
             LOGGER.info("[learn_rf] Using enter_learning fallback flow")
             self._device.enter_learning()
-            return self._wait_for_learned_packet(
+            packet = self._wait_for_learned_packet(
                 timeout_sec=packet_timeout_sec,
                 poll_interval=poll_interval,
                 progress_callback=progress_callback,
                 waiting_event="rf_check_data",
             )
+            return RFLearnResult(packet=packet, frequency_mhz=None)
 
     def _wait_for_learned_packet(
         self,

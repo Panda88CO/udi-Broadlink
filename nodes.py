@@ -9,7 +9,7 @@ import time
 
 import udi_interface
 
-from broadlink_client import BroadlinkHubClient, BroadlinkHubInfo, FrequencyNotFoundError, SensorData
+from broadlink_client import BroadlinkHubClient, BroadlinkHubInfo, FrequencyNotFoundError, RFLearnResult, SensorData
 from config_parser import PluginConfig, build_config
 
 LOGGER = udi_interface.LOGGER
@@ -108,6 +108,13 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
         {
             "id": "tx_result",
             "ranges": [{"uom": "25", "subset": "0-2", "names": {"0": "Never", "1": "Success", "2": "Failed"}}],
+        },
+        {
+            "id": "frequency_mhz",
+            "ranges": [
+                {"uom": "56", "min": 0, "max": 1000, "prec": 1},
+                {"uom": "25", "subset": "0-1", "names": {"0": "No Frequency Identified", "1": "Frequency Identified"}},
+            ],
         },
         {"id": "temp_c", "ranges": [{"uom": "17", "min": -40, "max": 125, "prec": 1}]},
         {"id": "temp_f", "ranges": [{"uom": "4", "min": -40, "max": 257, "prec": 1}]},
@@ -216,6 +223,7 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
             "icon": "GenericCtl",
             "properties": [
                 {"id": "ST", "name": "Status", "editor": "tx_status"},
+                {"id": "GV0", "name": "Frequency (MHz)", "editor": "frequency_mhz"},
                 {"id": "TIME", "name": "Created", "editor": "timestamp"},
                 {"id": "GV1", "name": "Last Sent", "editor": "timestamp"},
                 {"id": "GV2", "name": "Last Result", "editor": "tx_result"},
@@ -397,12 +405,16 @@ class _ControllerNode(BaseNode):
             LOGGER.info("[%s._do_learn] Starting %s learn (%ds window)", tag, self._code_type.upper(), self._learn_timeout)
             if self._code_type == "rf":
                 LOGGER.info("[%s._do_learn] Invoking hub_client.learn_rf", tag)
-                packet = self.controller.hub_client.learn_rf(
+                rf_result: RFLearnResult = self.controller.hub_client.learn_rf(
                     timeout_sec=self._learn_timeout,
                     packet_timeout_sec=30,
                     progress_callback=self._handle_learn_progress,
                 )
+                packet = rf_result.packet
+                rf_frequency_mhz = rf_result.frequency_mhz
                 LOGGER.info("[%s._do_learn] hub_client.learn_rf returned packet_len=%s", tag, len(packet) if packet else 0)
+                if rf_frequency_mhz is not None:
+                    LOGGER.info("[%s._do_learn] RF frequency lock=%.1f MHz", tag, rf_frequency_mhz)
                 self._set("ST", 3)
             else:
                 LOGGER.info("[%s._do_learn] Invoking hub_client.learn_ir", tag)
@@ -410,6 +422,7 @@ class _ControllerNode(BaseNode):
                     timeout_sec=self._learn_timeout,
                     progress_callback=self._handle_learn_progress,
                 )
+                rf_frequency_mhz = None
                 LOGGER.info("[%s._do_learn] hub_client.learn_ir returned packet_len=%s", tag, len(packet) if packet else 0)
                 self._set("ST", 3)
 
@@ -444,6 +457,8 @@ class _ControllerNode(BaseNode):
                 "controller_type": self._code_type,
                 "controller_addr": self.address,
             }
+            if self._code_type == "rf" and rf_frequency_mhz is not None:
+                metadata["rf_frequency_mhz"] = round(rf_frequency_mhz, 1)
             self.controller._persist_learned_code(addr, metadata)
 
             if self._code_type == "rf":
@@ -573,6 +588,27 @@ class RFCodeNode(_CodeNode):
     """Learned RF code node."""
 
     id = "blrfcode"
+    drivers = [
+        {"driver": "ST", "value": 0, "uom": 25},
+        {"driver": "GV0", "value": 0, "uom": 56},
+        {"driver": "TIME", "value": 0, "uom": 151},
+        {"driver": "GV1", "value": 0, "uom": 151},
+        {"driver": "GV2", "value": 0, "uom": 25},
+        {"driver": "GV3", "value": 0, "uom": 56},
+    ]
+
+    def start(self) -> None:
+        super().start()
+        frequency = self._code_meta.get("rf_frequency_mhz", 0)
+        try:
+            freq_value = round(float(frequency), 1)
+        except (TypeError, ValueError):
+            freq_value = 0.0
+        identified = 1 if freq_value > 0 else 0
+        if identified:
+            self._set("GV0", freq_value, 56)
+        else:
+            self._set("GV0", 0, 25)
 
 
 class HubSensorNode(BaseNode):
