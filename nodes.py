@@ -10,6 +10,9 @@ import time
 import udi_interface
 
 from broadlink_client import BroadlinkHubClient, BroadlinkHubInfo, FrequencyNotFoundError, RFLearnResult, SensorData
+from code_helpers import code_duplicate_fingerprint as _code_duplicate_fingerprint
+from code_helpers import code_duplicate_signatures as _code_duplicate_signatures
+from code_helpers import extract_hex_codes, detect_and_clean_repeated_code
 from config_parser import PluginConfig, build_config
 
 LOGGER = udi_interface.LOGGER
@@ -58,36 +61,6 @@ LEARN_STATUS_BY_EVENT = {
         "rf_check_data": 2,
     },
 }
-
-
-def _normalize_code_hex(candidate: str) -> str:
-    """Return lowercase hex with separators removed when possible."""
-    text = str(candidate or "").strip().lower()
-    if text.startswith("0x"):
-        text = text[2:]
-    return "".join(ch for ch in text if ch in "0123456789abcdef")
-
-
-def _code_duplicate_fingerprint(code_hex: str) -> str:
-    """Return a byte-rotation-invariant fingerprint for duplicate detection."""
-    normalized = _normalize_code_hex(code_hex)
-    if not normalized or len(normalized) % 2 != 0:
-        return normalized
-    try:
-        payload = bytes.fromhex(normalized)
-    except ValueError:
-        return normalized
-    size = len(payload)
-    if size <= 1:
-        return normalized
-
-    doubled = payload + payload
-    best = payload
-    for offset in range(1, size):
-        candidate = doubled[offset:offset + size]
-        if candidate < best:
-            best = candidate
-    return best.hex()
 
 def _build_profile_definition(temp_unit: str = "C") -> dict:
     """Build the dynamic JSON profile definition.
@@ -457,12 +430,30 @@ class _ControllerNode(BaseNode):
                 self._set("ST", 3)
 
             code_hex = packet.hex()
-            code_fingerprint = _code_duplicate_fingerprint(code_hex)
+            
+            # For RF codes: attempt to decode and clean if pattern detected
+            final_code_hex = code_hex
+            dominant_code = ""
+            was_cleaned = False
+            
+            if self._code_type == "rf":
+                try:
+                    packets_found = extract_hex_codes(code_hex)
+                    final_code_hex, was_cleaned, dominant_code = detect_and_clean_repeated_code(code_hex, packets_found)
+                    LOGGER.info(
+                        "[%s._do_learn] RF decode: found_codes=%s dominant=%s was_cleaned=%s",
+                        tag, packets_found, dominant_code, was_cleaned
+                    )
+                except Exception as e:
+                    LOGGER.warning("[%s._do_learn] RF decode failed: %s, using original code", tag, e)
+                    final_code_hex = code_hex
+            
+            code_fingerprint = _code_duplicate_fingerprint(final_code_hex)
             LOGGER.info(
-                "[%s._do_learn] Received %s payload hex=%s",
+                "[%s._do_learn] Received %s payload hex=%s (final after processing)",
                 tag,
                 self._code_type.upper(),
-                code_hex,
+                final_code_hex[:100] + ("..." if len(final_code_hex) > 100 else ""),
             )
             LOGGER.info(
                 "[%s._do_learn] Received %s payload fingerprint=%s",
@@ -470,14 +461,23 @@ class _ControllerNode(BaseNode):
                 self._code_type.upper(),
                 code_fingerprint,
             )
+            learned_signatures = _code_duplicate_signatures(final_code_hex)
 
             # Check if this code was already learned (including cyclic shifts)
-            duplicate_addr = next(
-                (a for a, m in self.controller.learned_codes.items()
-                 if (m.get("code_fingerprint")
-                     or _code_duplicate_fingerprint(m.get("code_hex") or m.get("code") or m.get("data") or "")) == code_fingerprint),
-                None,
-            )
+            duplicate_addr = None
+            for existing_addr, existing_meta in self.controller.learned_codes.items():
+                existing_payload = (
+                    existing_meta.get("code_hex")
+                    or existing_meta.get("code")
+                    or existing_meta.get("data")
+                    or ""
+                )
+                existing_fingerprint = existing_meta.get("code_fingerprint") or ""
+                existing_signatures = _code_duplicate_signatures(existing_payload, existing_fingerprint)
+                if learned_signatures.intersection(existing_signatures):
+                    duplicate_addr = existing_addr
+                    break
+
             if duplicate_addr is not None:
                 dup_meta = self.controller.learned_codes[duplicate_addr]
                 dup_name = dup_meta.get("name", duplicate_addr)
@@ -497,7 +497,7 @@ class _ControllerNode(BaseNode):
             name = f"{self._code_type.upper()} Code {addr[-3:]}"
             metadata: dict = {
                 "name": name,
-                "code_hex": code_hex,
+                "code_hex": final_code_hex,
                 "code_fingerprint": code_fingerprint,
                 "created_at": int(time.time()),
                 "last_sent": 0,
@@ -506,6 +506,11 @@ class _ControllerNode(BaseNode):
                 "controller_type": self._code_type,
                 "controller_addr": self.address,
             }
+            # Track RF decode information for debugging
+            if self._code_type == "rf":
+                metadata["rf_code_was_cleaned"] = was_cleaned
+                if dominant_code:
+                    metadata["rf_dominant_code"] = dominant_code
             if self._code_type == "rf" and rf_frequency_mhz is not None:
                 metadata["rf_frequency_mhz"] = round(rf_frequency_mhz, 1)
             self.controller._persist_learned_code(addr, metadata)
