@@ -250,6 +250,7 @@ class BroadlinkHubClient:
             if self._device is None:
                 self.connect()
 
+            LOGGER.info("[learn_ir] Entering learning mode (timeout=%ss poll=%.2fs)", timeout_sec, poll_interval)
             self._device.enter_learning()
             if progress_callback:
                 progress_callback("ir_enter_learning_completed")
@@ -269,49 +270,77 @@ class BroadlinkHubClient:
         """Learn a single RF packet and return raw Broadlink bytes.
 
         For devices that support RF sweep APIs we use sweep->check_frequency->find_rf_packet.
-        If not supported, we fall back to the generic learning method.
+        If that flow is unavailable or fails, we fall back to generic learning.
         """
         with self._lock:
             if self._device is None:
                 self.connect()
 
             if hasattr(self._device, "sweep_frequency") and hasattr(self._device, "check_frequency"):
+                LOGGER.info("[learn_rf] Using RF sweep flow (timeout=%ss poll=%.2fs)", timeout_sec, poll_interval)
                 self._device.sweep_frequency()
                 if progress_callback:
                     progress_callback("rf_sweep_completed")
                 start = time.time()
                 found = False
                 frequency = None
+                checks = 0
 
                 while (time.time() - start) < timeout_sec:
                     time.sleep(poll_interval)
+                    checks += 1
                     try:
-                        found, frequency = self._device.check_frequency()
+                        check_result = self._device.check_frequency()
                     except Exception:
                         continue
+                    if isinstance(check_result, tuple):
+                        found = bool(check_result[0])
+                        frequency = check_result[1] if len(check_result) > 1 else None
+                    else:
+                        found = bool(check_result)
+                        frequency = None
+                    if checks == 1 or checks % 5 == 0 or found:
+                        LOGGER.debug(
+                            "[learn_rf] check_frequency attempt=%s found=%s frequency=%s result_type=%s",
+                            checks,
+                            found,
+                            frequency,
+                            type(check_result).__name__,
+                        )
                     if found:
                         break
 
-                if not found:
+                if found:
                     try:
-                        self._device.cancel_sweep_frequency()
-                    except Exception:
-                        pass
-                    raise TimeoutError("RF frequency sweep timed out")
+                        if frequency is not None:
+                            self._device.find_rf_packet(frequency)
+                        else:
+                            self._device.find_rf_packet()
+                    except TypeError:
+                        # Older/alternate implementations may not accept frequency.
+                        self._device.find_rf_packet()
+                    LOGGER.info("[learn_rf] Frequency lock found after %s checks; waiting for RF packet", checks)
+                    if progress_callback:
+                        progress_callback("rf_find_packet_completed")
+                    return self._wait_for_learned_packet(
+                        timeout_sec=timeout_sec,
+                        poll_interval=poll_interval,
+                        progress_callback=progress_callback,
+                        waiting_event="",
+                    )
 
-                self._device.find_rf_packet(frequency)
-                if progress_callback:
-                    progress_callback("rf_find_packet_completed")
-                return self._wait_for_learned_packet(
-                    timeout_sec=timeout_sec,
-                    poll_interval=poll_interval,
-                    progress_callback=progress_callback,
-                    waiting_event="",
-                )
+                # Some devices expose sweep APIs but do not complete RF lock reliably.
+                # Cancel sweep and attempt generic learning before failing.
+                try:
+                    self._device.cancel_sweep_frequency()
+                except Exception:
+                    pass
+                LOGGER.warning("[learn_rf] RF frequency sweep timed out after %s checks; attempting enter_learning fallback", checks)
 
             # Some remote models learn RF through the same generic IR flow.
             if progress_callback:
                 progress_callback("rf_fallback_enter_learning")
+            LOGGER.info("[learn_rf] Using enter_learning fallback flow")
             self._device.enter_learning()
             return self._wait_for_learned_packet(
                 timeout_sec=timeout_sec,
@@ -330,18 +359,25 @@ class BroadlinkHubClient:
         """Poll the hub until a learned packet is available."""
         start = time.time()
         announced_wait = False
+        polls = 0
+        LOGGER.debug("[_wait_for_learned_packet] waiting_event=%s timeout=%ss poll=%.2fs", waiting_event, timeout_sec, poll_interval)
         while (time.time() - start) < timeout_sec:
             if progress_callback and waiting_event and not announced_wait:
                 progress_callback(waiting_event)
                 announced_wait = True
             time.sleep(poll_interval)
+            polls += 1
             try:
                 packet = self._device.check_data()
             except Exception:
                 continue
             if packet:
+                LOGGER.info("[_wait_for_learned_packet] Packet received after %s polls, size=%s", polls, len(packet))
                 return packet
+            if polls == 1 or polls % 5 == 0:
+                LOGGER.debug("[_wait_for_learned_packet] No packet yet after %s polls", polls)
 
+        LOGGER.warning("[_wait_for_learned_packet] Timed out after %s polls", polls)
         raise TimeoutError("No learned packet received before timeout")
 
     def provision_ap(self, ssid: str, password: str, security_mode: int = 4, setup_ip: str = "255.255.255.255") -> bool:

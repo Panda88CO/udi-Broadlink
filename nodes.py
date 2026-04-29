@@ -364,14 +364,23 @@ class _ControllerNode(BaseNode):
         if self._learn_thread and self._learn_thread.is_alive():
             LOGGER.warning("[%s] Learn already in progress, ignoring command", type(self).__name__)
             return
+        LOGGER.info("[%s.learn_code] LEARNCODE requested; type=%s timeout=%ss", type(self).__name__, self._code_type, self._learn_timeout)
         self._set("ST", 1)
         self._learn_thread = threading.Thread(
             target=self._do_learn, daemon=True, name=f"{self._code_type}-learn"
         )
+        LOGGER.debug("[%s.learn_code] Starting learn thread %s", type(self).__name__, self._learn_thread.name)
         self._learn_thread.start()
 
     def _handle_learn_progress(self, event: str) -> None:
         state = LEARN_STATUS_BY_EVENT.get(self._code_type, {}).get(event)
+        LOGGER.info(
+            "[%s._handle_learn_progress] event=%s mapped_state=%s code_type=%s",
+            type(self).__name__,
+            event,
+            state,
+            self._code_type,
+        )
         if state is not None:
             self._set("ST", state)
 
@@ -382,16 +391,20 @@ class _ControllerNode(BaseNode):
                 raise RuntimeError("Hub client not available")
             LOGGER.info("[%s._do_learn] Starting %s learn (%ds window)", tag, self._code_type.upper(), self._learn_timeout)
             if self._code_type == "rf":
+                LOGGER.info("[%s._do_learn] Invoking hub_client.learn_rf", tag)
                 packet = self.controller.hub_client.learn_rf(
                     timeout_sec=self._learn_timeout,
                     progress_callback=self._handle_learn_progress,
                 )
+                LOGGER.info("[%s._do_learn] hub_client.learn_rf returned packet_len=%s", tag, len(packet) if packet else 0)
                 self._set("ST", 2)
             else:
+                LOGGER.info("[%s._do_learn] Invoking hub_client.learn_ir", tag)
                 packet = self.controller.hub_client.learn_ir(
                     timeout_sec=self._learn_timeout,
                     progress_callback=self._handle_learn_progress,
                 )
+                LOGGER.info("[%s._do_learn] hub_client.learn_ir returned packet_len=%s", tag, len(packet) if packet else 0)
                 self._set("ST", 3)
 
             code_hex = packet.hex()
@@ -420,6 +433,7 @@ class _ControllerNode(BaseNode):
             self._set("TIME", int(time.time()), 151)
             self._set("GV1", self._learn_count, 56)
             if self._code_type in ("rf", "ir"):
+                LOGGER.debug("[%s._do_learn] Success pause before reset to Idle", tag)
                 time.sleep(3)
                 self._set("ST", 0)
             LOGGER.info("[%s._do_learn] Learned OK, stored as %s", tag, addr)
