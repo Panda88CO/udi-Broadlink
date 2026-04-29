@@ -467,6 +467,8 @@ class _ControllerNode(BaseNode):
                 code_node = IRCodeNode(self.poly, self.address, addr, name, self.controller)
             code_node._code_meta = metadata
             self.poly.addNode(code_node)
+            if isinstance(code_node, RFCodeNode):
+                code_node.sync_frequency_display()
 
             self.refresh_learn_state(reset_status=False)
             self._set("TIME", int(time.time()), 151)
@@ -599,6 +601,9 @@ class RFCodeNode(_CodeNode):
 
     def start(self) -> None:
         super().start()
+        self.sync_frequency_display()
+
+    def sync_frequency_display(self) -> None:
         frequency = self._code_meta.get("rf_frequency_mhz", 0)
         try:
             freq_value = round(float(frequency), 1)
@@ -978,6 +983,8 @@ class HubNode(BaseNode):
             node._code_meta = dict(meta)
             node._code_meta["controller_addr"] = ctrl_addr
             self.poly.addNode(node)
+            if isinstance(node, RFCodeNode):
+                node.sync_frequency_display()
             self._loaded_code_addrs.add(addr)
             LOGGER.info("[HubNode] Restored %s code node %s", code_type.upper(), addr)
 
