@@ -948,9 +948,30 @@ class HubNode(BaseNode):
             )
         else:
             LOGGER.debug("[HubNode._load_learned_codes][%s] No cached codes for ip=%s", trace, self.hub_ip)
+        # Query PG3x once for all currently registered node addresses.  Any
+        # learned-code address that is absent from PG3x was deleted by the user
+        # before this startup and must not be re-added.
+        try:
+            pg3_nodes = self.poly.getNodes()
+            pg3_addresses: set[str] | None = set(pg3_nodes.keys()) if isinstance(pg3_nodes, dict) else None
+        except Exception as _e:
+            LOGGER.warning("[HubNode._load_learned_codes][%s] Could not query PG3x node list: %s — skipping deletion filter", trace, _e)
+            pg3_addresses = None
+
+        pruned_addrs: list[str] = []
         invalid_addrs: list[str] = []
         for addr, meta in self.learned_codes.items():
             if addr in self._loaded_code_addrs:
+                continue
+            # If PG3x does not have this node it was removed by the user;
+            # skip restoring it and prune it from local storage.
+            if pg3_addresses is not None and addr not in pg3_addresses:
+                LOGGER.info(
+                    "[HubNode._load_learned_codes][%s] Pruning %s — not found in PG3x node list (deleted by user)",
+                    trace,
+                    addr,
+                )
+                pruned_addrs.append(addr)
                 continue
             code_payload = meta.get("code_hex") or meta.get("code") or meta.get("data")
             if not code_payload:
@@ -1003,6 +1024,27 @@ class HubNode(BaseNode):
                     changed = True
             if changed:
                 self.controller.data_store["learned_codes"] = all_codes
+
+        if pruned_addrs:
+            self.learned_codes = {
+                addr: meta
+                for addr, meta in self.learned_codes.items()
+                if addr not in pruned_addrs
+            }
+            all_codes = dict(self.controller.data_store.get("learned_codes") or {})
+            changed = False
+            for addr in pruned_addrs:
+                if addr in all_codes:
+                    del all_codes[addr]
+                    changed = True
+            if changed:
+                self.controller.data_store["learned_codes"] = all_codes
+            LOGGER.info(
+                "[HubNode._load_learned_codes][%s] Pruned %d user-deleted code(s) from storage: %s",
+                trace,
+                len(pruned_addrs),
+                pruned_addrs,
+            )
 
         if self.ir_controller is not None:
             self.ir_controller.refresh_learn_state(reset_status=False)
