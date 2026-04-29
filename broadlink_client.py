@@ -264,6 +264,7 @@ class BroadlinkHubClient:
     def learn_rf(
         self,
         timeout_sec: int = 45,
+        packet_timeout_sec: int = 30,
         poll_interval: float = 1.0,
         progress_callback: LearnProgressCallback | None = None,
     ) -> bytes:
@@ -278,6 +279,13 @@ class BroadlinkHubClient:
 
             if hasattr(self._device, "sweep_frequency") and hasattr(self._device, "check_frequency"):
                 LOGGER.info("[learn_rf] Using RF sweep flow (timeout=%ss poll=%.2fs)", timeout_sec, poll_interval)
+                # Cancel any residual learning state from a previous session before starting.
+                try:
+                    self._device.cancel_sweep_frequency()
+                    LOGGER.debug("[learn_rf] Cancelled any previous sweep state")
+                except Exception:
+                    pass
+                time.sleep(0.25)
                 self._device.sweep_frequency()
                 if progress_callback:
                     progress_callback("rf_sweep_completed")
@@ -323,7 +331,7 @@ class BroadlinkHubClient:
                     if progress_callback:
                         progress_callback("rf_find_packet_completed")
                     return self._wait_for_learned_packet(
-                        timeout_sec=timeout_sec,
+                        timeout_sec=packet_timeout_sec,
                         poll_interval=poll_interval,
                         progress_callback=progress_callback,
                         waiting_event="",
@@ -343,7 +351,7 @@ class BroadlinkHubClient:
             LOGGER.info("[learn_rf] Using enter_learning fallback flow")
             self._device.enter_learning()
             return self._wait_for_learned_packet(
-                timeout_sec=timeout_sec,
+                timeout_sec=packet_timeout_sec,
                 poll_interval=poll_interval,
                 progress_callback=progress_callback,
                 waiting_event="rf_check_data",

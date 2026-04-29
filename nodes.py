@@ -37,8 +37,9 @@ IR_LEARN_STATUS_NAMES = {
 
 RF_LEARN_STATUS_NAMES = {
     "0": "Idle",
-    "1": "Learning",
-    "2": "Learned",
+    "1": "Scanning: hold button until frequency locks",
+    "2": "Press button once to capture",
+    "3": "Learned",
 }
 
 LEARN_STATUS_BY_EVENT = {
@@ -48,9 +49,9 @@ LEARN_STATUS_BY_EVENT = {
     },
     "rf": {
         "rf_sweep_completed": 1,
-        "rf_find_packet_completed": 1,
-        "rf_fallback_enter_learning": 1,
-        "rf_check_data": 1,
+        "rf_find_packet_completed": 2,
+        "rf_fallback_enter_learning": 2,
+        "rf_check_data": 2,
     },
 }
 
@@ -94,7 +95,7 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
         },
         {
             "id": "rf_learn_status",
-            "ranges": [{"uom": "25", "subset": "0-2", "names": RF_LEARN_STATUS_NAMES}],
+            "ranges": [{"uom": "25", "subset": "0-3", "names": RF_LEARN_STATUS_NAMES}],
         },
         {
             "id": "tx_status",
@@ -394,10 +395,11 @@ class _ControllerNode(BaseNode):
                 LOGGER.info("[%s._do_learn] Invoking hub_client.learn_rf", tag)
                 packet = self.controller.hub_client.learn_rf(
                     timeout_sec=self._learn_timeout,
+                    packet_timeout_sec=30,
                     progress_callback=self._handle_learn_progress,
                 )
                 LOGGER.info("[%s._do_learn] hub_client.learn_rf returned packet_len=%s", tag, len(packet) if packet else 0)
-                self._set("ST", 2)
+                self._set("ST", 3)
             else:
                 LOGGER.info("[%s._do_learn] Invoking hub_client.learn_ir", tag)
                 packet = self.controller.hub_client.learn_ir(
