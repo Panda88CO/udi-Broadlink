@@ -9,7 +9,7 @@ import time
 
 import udi_interface
 
-from broadlink_client import BroadlinkHubClient, BroadlinkHubInfo, SensorData
+from broadlink_client import BroadlinkHubClient, BroadlinkHubInfo, FrequencyNotFoundError, SensorData
 from config_parser import PluginConfig, build_config
 
 LOGGER = udi_interface.LOGGER
@@ -33,6 +33,7 @@ IR_LEARN_STATUS_NAMES = {
     "2": "Check Packet Data: keep remote aimed at hub",
     "3": "Learned",
     "4": "Failed",
+    "5": "Duplicate - Code Already Exists",
 }
 
 RF_LEARN_STATUS_NAMES = {
@@ -40,6 +41,8 @@ RF_LEARN_STATUS_NAMES = {
     "1": "Scanning: hold button until frequency locks",
     "2": "Press button once to capture",
     "3": "Learned",
+    "4": "No frequency found",
+    "5": "Duplicate - Code Already Exists",
 }
 
 LEARN_STATUS_BY_EVENT = {
@@ -51,6 +54,7 @@ LEARN_STATUS_BY_EVENT = {
         "rf_sweep_completed": 1,
         "rf_find_packet_completed": 2,
         "rf_fallback_enter_learning": 2,
+        "rf_frequency_not_found": 4,
         "rf_check_data": 2,
     },
 }
@@ -91,11 +95,11 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
         },
         {
             "id": "ir_learn_status",
-            "ranges": [{"uom": "25", "subset": "0-4", "names": IR_LEARN_STATUS_NAMES}],
+            "ranges": [{"uom": "25", "subset": "0-5", "names": IR_LEARN_STATUS_NAMES}],
         },
         {
             "id": "rf_learn_status",
-            "ranges": [{"uom": "25", "subset": "0-3", "names": RF_LEARN_STATUS_NAMES}],
+            "ranges": [{"uom": "25", "subset": "0-5", "names": RF_LEARN_STATUS_NAMES}],
         },
         {
             "id": "tx_status",
@@ -410,6 +414,24 @@ class _ControllerNode(BaseNode):
                 self._set("ST", 3)
 
             code_hex = packet.hex()
+
+            # Check if this exact code was already learned
+            duplicate_addr = next(
+                (a for a, m in self.controller.learned_codes.items()
+                 if m.get("code_hex") == code_hex),
+                None,
+            )
+            if duplicate_addr is not None:
+                dup_name = self.controller.learned_codes[duplicate_addr].get("name", duplicate_addr)
+                LOGGER.warning(
+                    "[%s._do_learn] Learned %s code matches existing code '%s' (%s) — not adding duplicate",
+                    tag, self._code_type.upper(), dup_name, duplicate_addr,
+                )
+                self._set("ST", 5)
+                time.sleep(3)
+                self._set("ST", 0)
+                return
+
             addr = self.controller._next_code_address(self._code_type)
             name = f"{self._code_type.upper()} Code {addr[-3:]}"
             metadata: dict = {
@@ -439,6 +461,9 @@ class _ControllerNode(BaseNode):
                 time.sleep(3)
                 self._set("ST", 0)
             LOGGER.info("[%s._do_learn] Learned OK, stored as %s", tag, addr)
+        except FrequencyNotFoundError:
+            LOGGER.warning("[%s._do_learn] RF frequency not found after %ds", tag, self._learn_timeout)
+            self._set("ST", 4)
         except TimeoutError:
             LOGGER.warning("[%s._do_learn] Learn timed out after %ds", tag, self._learn_timeout)
             self._set("ST", 0 if self._code_type == "rf" else 4)
@@ -1116,6 +1141,24 @@ class BroadlinkController(BaseNode):
         self._startup_completed = True
         LOGGER.info("[_run_startup_once] Startup reconciliation complete via %s", source)
 
+    def _scan_for_duplicate_codes(self) -> None:
+        """Log any duplicate code_hex values within each hub's learned codes."""
+        for hub_ip, hub_node in self.hub_nodes.items():
+            seen: dict[str, tuple[str, str]] = {}  # code_hex -> (first addr, first name)
+            for addr, meta in hub_node.learned_codes.items():
+                code_hex = meta.get("code_hex", "")
+                if not code_hex:
+                    continue
+                name = meta.get("name", addr)
+                if code_hex in seen:
+                    first_addr, first_name = seen[code_hex]
+                    LOGGER.warning(
+                        "[_scan_for_duplicate_codes] Hub %s: duplicate code detected: %s ('%s') has same data as %s ('%s')",
+                        hub_ip, addr, name, first_addr, first_name,
+                    )
+                else:
+                    seen[code_hex] = (addr, name)
+
     def stop(self, *_args, **_kwargs) -> None:
         self.poly.Notices.clear()
         if not self._node_added:
@@ -1123,6 +1166,7 @@ class BroadlinkController(BaseNode):
             return
         for hub_node in list(self.hub_nodes.values()):
             hub_node.sync_all_node_names()
+        self._scan_for_duplicate_codes()
         self._set("ST", 0)
         self.poly.stop()
 

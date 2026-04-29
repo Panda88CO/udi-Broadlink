@@ -20,6 +20,10 @@ LOGGER = udi_interface.LOGGER
 LearnProgressCallback = Callable[[str], None]
 
 
+class FrequencyNotFoundError(TimeoutError):
+    """Raised when RF sweep completes without a valid frequency lock."""
+
+
 @dataclass(slots=True)
 class BroadlinkHubInfo:
     """Cached identity information for a connected hub."""
@@ -271,7 +275,7 @@ class BroadlinkHubClient:
         """Learn a single RF packet and return raw Broadlink bytes.
 
         For devices that support RF sweep APIs we use sweep->check_frequency->find_rf_packet.
-        If that flow is unavailable or fails, we fall back to generic learning.
+        If the device does not expose RF sweep APIs, we fall back to generic learning.
         """
         with self._lock:
             if self._device is None:
@@ -337,13 +341,15 @@ class BroadlinkHubClient:
                         waiting_event="",
                     )
 
-                # Some devices expose sweep APIs but do not complete RF lock reliably.
-                # Cancel sweep and attempt generic learning before failing.
+                # RF-capable devices should stop here when no valid frequency lock was found.
                 try:
                     self._device.cancel_sweep_frequency()
                 except Exception:
                     pass
-                LOGGER.warning("[learn_rf] RF frequency sweep timed out after %s checks; attempting enter_learning fallback", checks)
+                if progress_callback:
+                    progress_callback("rf_frequency_not_found")
+                LOGGER.warning("[learn_rf] RF frequency sweep timed out after %s checks; stopping learn", checks)
+                raise FrequencyNotFoundError("RF frequency was not identified before timeout")
 
             # Some remote models learn RF through the same generic IR flow.
             if progress_callback:
