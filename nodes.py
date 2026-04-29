@@ -59,6 +59,36 @@ LEARN_STATUS_BY_EVENT = {
     },
 }
 
+
+def _normalize_code_hex(candidate: str) -> str:
+    """Return lowercase hex with separators removed when possible."""
+    text = str(candidate or "").strip().lower()
+    if text.startswith("0x"):
+        text = text[2:]
+    return "".join(ch for ch in text if ch in "0123456789abcdef")
+
+
+def _code_duplicate_fingerprint(code_hex: str) -> str:
+    """Return a byte-rotation-invariant fingerprint for duplicate detection."""
+    normalized = _normalize_code_hex(code_hex)
+    if not normalized or len(normalized) % 2 != 0:
+        return normalized
+    try:
+        payload = bytes.fromhex(normalized)
+    except ValueError:
+        return normalized
+    size = len(payload)
+    if size <= 1:
+        return normalized
+
+    doubled = payload + payload
+    best = payload
+    for offset in range(1, size):
+        candidate = doubled[offset:offset + size]
+        if candidate < best:
+            best = candidate
+    return best.hex()
+
 def _build_profile_definition(temp_unit: str = "C") -> dict:
     """Build the dynamic JSON profile definition.
 
@@ -427,18 +457,36 @@ class _ControllerNode(BaseNode):
                 self._set("ST", 3)
 
             code_hex = packet.hex()
+            code_fingerprint = _code_duplicate_fingerprint(code_hex)
+            LOGGER.info(
+                "[%s._do_learn] Received %s payload hex=%s",
+                tag,
+                self._code_type.upper(),
+                code_hex,
+            )
+            LOGGER.info(
+                "[%s._do_learn] Received %s payload fingerprint=%s",
+                tag,
+                self._code_type.upper(),
+                code_fingerprint,
+            )
 
-            # Check if this exact code was already learned
+            # Check if this code was already learned (including cyclic shifts)
             duplicate_addr = next(
                 (a for a, m in self.controller.learned_codes.items()
-                 if m.get("code_hex") == code_hex),
+                 if (m.get("code_fingerprint")
+                     or _code_duplicate_fingerprint(m.get("code_hex") or m.get("code") or m.get("data") or "")) == code_fingerprint),
                 None,
             )
             if duplicate_addr is not None:
-                dup_name = self.controller.learned_codes[duplicate_addr].get("name", duplicate_addr)
+                dup_meta = self.controller.learned_codes[duplicate_addr]
+                dup_name = dup_meta.get("name", duplicate_addr)
+                dup_payload = dup_meta.get("code_hex") or dup_meta.get("code") or dup_meta.get("data") or ""
+                dup_fingerprint = dup_meta.get("code_fingerprint") or _code_duplicate_fingerprint(dup_payload)
                 LOGGER.warning(
-                    "[%s._do_learn] Learned %s code matches existing code '%s' (%s) — not adding duplicate",
+                    "[%s._do_learn] Learned %s code matches existing code '%s' (%s) — not adding duplicate. learned_hex=%s existing_hex=%s learned_fp=%s existing_fp=%s",
                     tag, self._code_type.upper(), dup_name, duplicate_addr,
+                    code_hex, dup_payload, code_fingerprint, dup_fingerprint,
                 )
                 self._set("ST", 5)
                 time.sleep(3)
@@ -450,6 +498,7 @@ class _ControllerNode(BaseNode):
             metadata: dict = {
                 "name": name,
                 "code_hex": code_hex,
+                "code_fingerprint": code_fingerprint,
                 "created_at": int(time.time()),
                 "last_sent": 0,
                 "last_send_success": 0,
@@ -1227,22 +1276,23 @@ class BroadlinkController(BaseNode):
         LOGGER.info("[_run_startup_once] Startup reconciliation complete via %s", source)
 
     def _scan_for_duplicate_codes(self) -> None:
-        """Log any duplicate code_hex values within each hub's learned codes."""
+        """Log duplicate learned-code payloads within each hub."""
         for hub_ip, hub_node in self.hub_nodes.items():
-            seen: dict[str, tuple[str, str]] = {}  # code_hex -> (first addr, first name)
+            seen: dict[str, tuple[str, str]] = {}  # fingerprint -> (first addr, first name)
             for addr, meta in hub_node.learned_codes.items():
-                code_hex = meta.get("code_hex", "")
-                if not code_hex:
+                code_hex = meta.get("code_hex") or meta.get("code") or meta.get("data") or ""
+                code_fingerprint = meta.get("code_fingerprint") or _code_duplicate_fingerprint(code_hex)
+                if not code_fingerprint:
                     continue
                 name = meta.get("name", addr)
-                if code_hex in seen:
-                    first_addr, first_name = seen[code_hex]
+                if code_fingerprint in seen:
+                    first_addr, first_name = seen[code_fingerprint]
                     LOGGER.warning(
                         "[_scan_for_duplicate_codes] Hub %s: duplicate code detected: %s ('%s') has same data as %s ('%s')",
                         hub_ip, addr, name, first_addr, first_name,
                     )
                 else:
-                    seen[code_hex] = (addr, name)
+                    seen[code_fingerprint] = (addr, name)
 
     def stop(self, *_args, **_kwargs) -> None:
         self.poly.Notices.clear()
@@ -1733,7 +1783,12 @@ class BroadlinkController(BaseNode):
                 continue
             addr = key.strip()
             if addr:
-                parsed[addr] = dict(value)
+                meta = dict(value)
+                payload = meta.get("code_hex") or meta.get("code") or meta.get("data") or ""
+                fingerprint = _code_duplicate_fingerprint(payload)
+                if fingerprint and meta.get("code_fingerprint") != fingerprint:
+                    meta["code_fingerprint"] = fingerprint
+                parsed[addr] = meta
         return parsed
 
     def _cleanup_deleted_codes(self) -> None:
