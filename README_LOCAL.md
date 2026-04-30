@@ -35,7 +35,7 @@ Required parameters:
 - `HUB_IP`
 
 Notes:
-- `USER_ID` and `USER_PASSWORD` are currently validated and stored, but not required by local RM protocol itself.
+- `USER_ID` and `USER_PASSWORD` are currently validated and stored, but not required by the local RM protocol itself.
 - `HUB_IP` is used to connect/authenticate to the Broadlink hub.
 
 AP provisioning (optional):

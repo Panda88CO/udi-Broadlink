@@ -29,7 +29,7 @@ Primary node. Created automatically on startup.
 | Driver | Name | Description |
 |--------|------|-------------|
 | `ST` | Status | `Not Configured` / `Online` / `Error` |
-| `GV0` | Model | Detected device model (e.g. RM4 Pro, RM4 Mini) |
+| `GV0` | Model | Detected device model (e.g., RM4 Pro, RM4 Mini) |
 | `GV1` | Connected | `Yes` / `No` |
 | `TIME` | Last Update | Timestamp of the most recent poll |
 | `GV2` | Temperature | Present only when a sensor cable is detected |
@@ -126,10 +126,6 @@ Learned codes and node names are persisted to PG3 `customdata`. On restart:
 - Stored node names are replayed so user-defined names survive restarts.
 - All previously learned IR and RF code nodes are restored from `customdata` before the IR/RF controller nodes are added.
 - Sensor state (has_temperature / has_humidity) is restored from `customdata` so the profile can be published correctly before the first sensor poll.
-
-
-
-```
 
 ### PG3 install script
 `install.sh` installs dependencies from `requirements.txt`.

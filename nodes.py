@@ -46,6 +46,7 @@ RF_LEARN_STATUS_NAMES = {
     "3": "Learned",
     "4": "No frequency found",
     "5": "Duplicate - Code Already Exists",
+    "6": "Signal not captured",
 }
 
 LEARN_STATUS_BY_EVENT = {
@@ -102,7 +103,7 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
         },
         {
             "id": "rf_learn_status",
-            "ranges": [{"uom": "25", "subset": "0-5", "names": RF_LEARN_STATUS_NAMES}],
+            "ranges": [{"uom": "25", "subset": "0-6", "names": RF_LEARN_STATUS_NAMES}],
         },
         {
             "id": "tx_status",
@@ -539,7 +540,12 @@ class _ControllerNode(BaseNode):
             self._set("ST", 0)
         except TimeoutError:
             LOGGER.warning("[%s._do_learn] Learn timed out after %ds", tag, self._learn_timeout)
-            self._set("ST", 0 if self._code_type == "rf" else 4)
+            if self._code_type == "rf":
+                self._set("ST", 6)
+                time.sleep(3)
+                self._set("ST", 0)
+            else:
+                self._set("ST", 4)
         except Exception as err:
             LOGGER.error("[%s._do_learn] Failed: %s", tag, err)
             self._set("ST", 0 if self._code_type == "rf" else 4)
