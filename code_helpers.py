@@ -185,17 +185,14 @@ def detect_and_clean_repeated_code(raw_code_hex: str, packets_found: dict[str, i
     dominant_code = max(valid_codes.items(), key=lambda item: item[1])[0]
     dominant_count = valid_codes[dominant_code]
     
-    # If dominant code repeats more than threshold times, generate clean version
+    # Always use the original captured code for transmission (generate_rf_string disabled).
+    # Still detect confidence level and log for analysis.
     if dominant_count > threshold:
-        try:
-            clean_code = generate_rf_string(dominant_code, repeats=5)
-            return clean_code, True, dominant_code
-        except (ValueError, TypeError):
-            # If generate_rf_string fails, use original and log the issue
-            save_unrecognized_code(raw_code_hex, packets_found, reason="generate_rf_string_failed")
-            return raw_code_hex, False, dominant_code
+        # High confidence: dominant code repeats enough times; log for reference
+        save_unrecognized_code(raw_code_hex, packets_found, reason=f"high_confidence_dominant={dominant_code}_count={dominant_count}")
+        return raw_code_hex, False, dominant_code
     else:
-        # Not enough repetition for confident decode; save for later analysis
+        # Low confidence: save for later analysis
         save_unrecognized_code(raw_code_hex, packets_found, reason=f"insufficient_repetition_count={dominant_count}")
         return raw_code_hex, False, dominant_code
 
