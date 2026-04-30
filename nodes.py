@@ -535,6 +535,8 @@ class _ControllerNode(BaseNode):
         except FrequencyNotFoundError:
             LOGGER.warning("[%s._do_learn] RF frequency not found after %ds", tag, self._learn_timeout)
             self._set("ST", 4)
+            time.sleep(3)
+            self._set("ST", 0)
         except TimeoutError:
             LOGGER.warning("[%s._do_learn] Learn timed out after %ds", tag, self._learn_timeout)
             self._set("ST", 0 if self._code_type == "rf" else 4)
