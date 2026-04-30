@@ -300,18 +300,22 @@ class BroadlinkHubClient:
                 time.sleep(0.25)
                 self._device.sweep_frequency()
                 if progress_callback:
+                    LOGGER.debug("[learn_rf] Emitting progress event=rf_sweep_completed")
                     progress_callback("rf_sweep_completed")
                 start = time.time()
                 found = False
                 frequency = None
                 checks = 0
+                LOGGER.debug("[learn_rf] Sweep started at t=%.3f timeout=%ss", start, timeout_sec)
 
                 while (time.time() - start) < timeout_sec:
                     time.sleep(poll_interval)
                     checks += 1
                     try:
                         check_result = self._device.check_frequency()
-                    except Exception:
+                    except Exception as err:
+                        if checks == 1 or checks % 5 == 0:
+                            LOGGER.debug("[learn_rf] check_frequency attempt=%s raised=%s", checks, err)
                         continue
                     if isinstance(check_result, tuple):
                         found = bool(check_result[0])
@@ -330,6 +334,44 @@ class BroadlinkHubClient:
                     if found:
                         break
 
+                elapsed = time.time() - start
+                LOGGER.debug(
+                    "[learn_rf] Sweep loop ended found=%s checks=%s elapsed=%.2fs timeout=%ss last_frequency=%s",
+                    found,
+                    checks,
+                    elapsed,
+                    timeout_sec,
+                    frequency,
+                )
+
+                # Final check after timeout boundary to avoid missing a lock that arrives
+                # between the loop condition and the next iteration.
+                if not found:
+                    try:
+                        final_check_result = self._device.check_frequency()
+                        final_found = False
+                        final_frequency = None
+                        if isinstance(final_check_result, tuple):
+                            final_found = bool(final_check_result[0])
+                            final_frequency = final_check_result[1] if len(final_check_result) > 1 else None
+                        else:
+                            final_found = bool(final_check_result)
+                        LOGGER.debug(
+                            "[learn_rf] Post-timeout check_frequency found=%s frequency=%s result_type=%s",
+                            final_found,
+                            final_frequency,
+                            type(final_check_result).__name__,
+                        )
+                        if final_found:
+                            found = True
+                            if final_frequency is not None:
+                                frequency = final_frequency
+                            LOGGER.info(
+                                "[learn_rf] Frequency lock detected on post-timeout check; proceeding to packet capture"
+                            )
+                    except Exception as err:
+                        LOGGER.debug("[learn_rf] Post-timeout check_frequency raised=%s", err)
+
                 if found:
                     try:
                         if frequency is not None:
@@ -341,6 +383,7 @@ class BroadlinkHubClient:
                         self._device.find_rf_packet()
                     LOGGER.info("[learn_rf] Frequency lock found after %s checks; waiting for RF packet", checks)
                     if progress_callback:
+                        LOGGER.debug("[learn_rf] Emitting progress event=rf_find_packet_completed")
                         progress_callback("rf_find_packet_completed")
                     packet = self._wait_for_learned_packet(
                         timeout_sec=packet_timeout_sec,
@@ -356,8 +399,13 @@ class BroadlinkHubClient:
                 except Exception:
                     pass
                 if progress_callback:
+                    LOGGER.debug("[learn_rf] Emitting progress event=rf_frequency_not_found")
                     progress_callback("rf_frequency_not_found")
-                LOGGER.warning("[learn_rf] RF frequency sweep timed out after %s checks; stopping learn", checks)
+                LOGGER.warning(
+                    "[learn_rf] RF frequency sweep timed out after %s checks (elapsed=%.2fs); no frequency lock found; stopping learn",
+                    checks,
+                    elapsed,
+                )
                 raise FrequencyNotFoundError("RF frequency was not identified before timeout")
 
             # Some remote models learn RF through the same generic IR flow.

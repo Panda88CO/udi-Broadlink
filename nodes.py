@@ -41,7 +41,7 @@ IR_LEARN_STATUS_NAMES = {
 
 RF_LEARN_STATUS_NAMES = {
     "0": "Idle",
-    "1": "Scanning: hold button until frequency locks",
+    "1": "Scanning - hold button until frequency locks",
     "2": "Press button once to capture",
     "3": "Learned",
     "4": "No frequency found",
