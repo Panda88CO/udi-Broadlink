@@ -266,11 +266,13 @@ class BroadlinkHubClient:
             self._device.enter_learning()
             if progress_callback:
                 progress_callback("ir_enter_learning_completed")
+            # Announce that we're waiting for IR packet data and allow the
+            # waiter to emit timeout events via the provided event name.
             return self._wait_for_learned_packet(
                 timeout_sec=timeout_sec,
                 poll_interval=poll_interval,
                 progress_callback=progress_callback,
-                waiting_event="",
+                waiting_event="ir_check_data",
             )
 
     def learn_rf(
@@ -313,6 +315,7 @@ class BroadlinkHubClient:
                     checks += 1
                     try:
                         check_result = self._device.check_frequency()
+                        LOGGER.debug(f'[learn_rf] Check Results {check_result }')
                     except Exception as err:
                         if checks == 1 or checks % 5 == 0:
                             LOGGER.debug("[learn_rf] check_frequency attempt=%s raised=%s", checks, err)
@@ -385,11 +388,14 @@ class BroadlinkHubClient:
                     if progress_callback:
                         LOGGER.debug("[learn_rf] Emitting progress event=rf_find_packet_completed")
                         progress_callback("rf_find_packet_completed")
+                    # Wait for the RF packet and emit progress events for
+                    # waiting and potential timeouts by specifying the
+                    # rf_check_data event name.
                     packet = self._wait_for_learned_packet(
                         timeout_sec=packet_timeout_sec,
                         poll_interval=poll_interval,
                         progress_callback=progress_callback,
-                        waiting_event="",
+                        waiting_event="rf_check_data",
                     )
                     return RFLearnResult(packet=packet, frequency_mhz=float(frequency) if frequency is not None else None)
 
@@ -450,6 +456,14 @@ class BroadlinkHubClient:
                 LOGGER.debug("[_wait_for_learned_packet] No packet yet after %s polls", polls)
 
         LOGGER.warning("[_wait_for_learned_packet] Timed out after %s polls", polls)
+        # Emit a timeout-specific progress event when possible so callers
+        # (e.g., node logic) can map to a suitable state via
+        # _handle_learn_progress.
+        if progress_callback and waiting_event:
+            try:
+                progress_callback(f"{waiting_event}_timeout")
+            except Exception:
+                pass
         raise TimeoutError("No learned packet received before timeout")
 
     def provision_ap(self, ssid: str, password: str, security_mode: int = 4, setup_ip: str = "255.255.255.255") -> bool:

@@ -63,6 +63,20 @@ LEARN_STATUS_BY_EVENT = {
     },
 }
 
+# Additional lifecycle events mapped to learn status indices. These
+# allow the hub client to emit progress events (including timeouts)
+# and let the node map them to user-facing `ST` states.
+LEARN_STATUS_BY_EVENT["ir"].update({
+    "ir_learned": 3,
+    "ir_duplicate": 5,
+    "ir_check_data_timeout": 4,
+})
+LEARN_STATUS_BY_EVENT["rf"].update({
+    "rf_learned": 3,
+    "rf_duplicate": 5,
+    "rf_check_data_timeout": 6,
+})
+
 def _build_profile_definition(temp_unit: str = "C") -> dict:
     """Build the dynamic JSON profile definition.
 
@@ -419,7 +433,12 @@ class _ControllerNode(BaseNode):
                 LOGGER.info("[%s._do_learn] hub_client.learn_rf returned packet_len=%s", tag, len(packet) if packet else 0)
                 if rf_frequency_mhz is not None:
                     LOGGER.info("[%s._do_learn] RF frequency lock=%.1f MHz", tag, rf_frequency_mhz)
-                self._set("ST", 3)
+                # Mark learned via the mapped progress event so the node
+                # state logic stays consistent.
+                try:
+                    self._handle_learn_progress("rf_learned")
+                except Exception:
+                    self._set("ST", 3)
             else:
                 LOGGER.info("[%s._do_learn] Invoking hub_client.learn_ir", tag)
                 packet = self.controller.hub_client.learn_ir(
@@ -428,7 +447,10 @@ class _ControllerNode(BaseNode):
                 )
                 rf_frequency_mhz = None
                 LOGGER.info("[%s._do_learn] hub_client.learn_ir returned packet_len=%s", tag, len(packet) if packet else 0)
-                self._set("ST", 3)
+                try:
+                    self._handle_learn_progress("ir_learned")
+                except Exception:
+                    self._set("ST", 3)
 
             code_hex = packet.hex()
             
@@ -489,7 +511,12 @@ class _ControllerNode(BaseNode):
                     tag, self._code_type.upper(), dup_name, duplicate_addr,
                     code_hex, dup_payload, code_fingerprint, dup_fingerprint,
                 )
-                self._set("ST", 5)
+                # Signal duplicate via mapped event to keep state handling
+                # centralized in `_handle_learn_progress`.
+                try:
+                    self._handle_learn_progress(f"{self._code_type}_duplicate")
+                except Exception:
+                    self._set("ST", 5)
                 time.sleep(3)
                 self._set("ST", 0)
                 return
@@ -535,17 +562,26 @@ class _ControllerNode(BaseNode):
             LOGGER.info("[%s._do_learn] Learned OK, stored as %s", tag, addr)
         except FrequencyNotFoundError:
             LOGGER.warning("[%s._do_learn] RF frequency not found after %ds", tag, self._learn_timeout)
-            self._set("ST", 4)
+            try:
+                self._handle_learn_progress("rf_frequency_not_found")
+            except Exception:
+                self._set("ST", 4)
             time.sleep(3)
             self._set("ST", 0)
         except TimeoutError:
             LOGGER.warning("[%s._do_learn] Learn timed out after %ds", tag, self._learn_timeout)
-            if self._code_type == "rf":
-                self._set("ST", 6)
-                time.sleep(3)
-                self._set("ST", 0)
-            else:
-                self._set("ST", 4)
+            # Use mapped timeout events where possible so UI/state mapping is
+            # consistent with progress callbacks emitted by the hub client.
+            timeout_event = f"{self._code_type}_check_data_timeout"
+            try:
+                self._handle_learn_progress(timeout_event)
+            except Exception:
+                if self._code_type == "rf":
+                    self._set("ST", 6)
+                    time.sleep(3)
+                    self._set("ST", 0)
+                else:
+                    self._set("ST", 4)
         except Exception as err:
             LOGGER.error("[%s._do_learn] Failed: %s", tag, err)
             self._set("ST", 0 if self._code_type == "rf" else 4)
