@@ -82,6 +82,8 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
 
     CLITEMP supports both temperature UOMs: 'C' -> 17 and 'F' -> 4.
     """
+    # The profile is rebuilt at runtime so TEMP_UNIT can switch the exposed
+    # temperature UOM without maintaining separate static profile files.
     editors = [
         {
             "id": "hub_status",
@@ -142,6 +144,8 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
         {"id": "CLIHUM", "ranges": [{"uom": "22", "min": 0, "max": 100, "prec": 1}]},
     ]
 
+    # Reuse the same hub property shape in both the node definition and any
+    # profile comparisons so the published profile stays deterministic.
     blhub_properties = [
         {"id": "ST", "name": "Status", "editor": "status_index"},
         {"id": "GV0", "name": "Model", "editor": "model_index"},
@@ -359,6 +363,8 @@ class _ControllerNode(BaseNode):
         addrs: set[str] = set()
 
         try:
+            # Check live PG3 nodes first so the learn count reflects what is
+            # actually registered even if customdata is stale.
             existing_nodes = self.poly.getNodes()
             if isinstance(existing_nodes, dict):
                 node_addrs = existing_nodes.keys()
@@ -371,6 +377,8 @@ class _ControllerNode(BaseNode):
         except Exception:
             pass
 
+        # Merge in persisted metadata as a fallback for startup windows where
+        # nodes have not been fully re-added yet.
         for addr, meta in self.controller.learned_codes.items():
             text = str(addr or "")
             if not text:
@@ -387,6 +395,8 @@ class _ControllerNode(BaseNode):
         return bool(self.controller.hub_client and self.controller.hub_client.connected)
 
     def refresh_learn_state(self, reset_status: bool = False) -> None:
+        # GV1 is derived from current node/persistence state rather than being
+        # incremented locally so restarts and deletions self-heal.
         self._learn_count = len(self._existing_code_addresses())
         self._set("GV1", self._learn_count, 56)
         self._set("GV2", 1 if self._hub_connected() else 0)
@@ -465,12 +475,14 @@ class _ControllerNode(BaseNode):
                     self._set("ST", 3)
 
             code_hex = packet.hex()
-            
+
+            # RF learns sometimes return repeated packet patterns; normalize
+            # them before fingerprinting so duplicate detection is stable.
             # For RF codes: attempt to decode and clean if pattern detected
             final_code_hex = code_hex
             dominant_code = ""
             was_cleaned = False
-            
+
             if self._code_type == "rf":
                 try:
                     packets_found = extract_hex_codes(code_hex)
@@ -482,7 +494,9 @@ class _ControllerNode(BaseNode):
                 except Exception as e:
                     LOGGER.warning("[%s._do_learn] RF decode failed: %s, using original code", tag, e)
                     final_code_hex = code_hex
-            
+
+            # Duplicate detection uses a signature set so cyclic shifts and
+            # equivalent packet layouts are treated as the same learned code.
             code_fingerprint = _code_duplicate_fingerprint(final_code_hex)
             LOGGER.info(
                 "[%s._do_learn] Received %s payload hex=%s (final after processing)",
@@ -546,6 +560,8 @@ class _ControllerNode(BaseNode):
                 "controller_type": self._code_type,
                 "controller_addr": self.address,
             }
+            # Preserve RF cleanup/debug fields in customdata so restored nodes
+            # expose the same metadata after restart.
             # Track RF decode information for debugging
             if self._code_type == "rf":
                 metadata["rf_code_was_cleaned"] = was_cleaned
@@ -724,6 +740,8 @@ class RFCodeNode(_CodeNode):
         if identified:
             self._set("GV0", freq_value, 56)
         else:
+            # When no frequency was captured, GV0 falls back to the boolean
+            # editor variant so the UI can show the "not identified" label.
             self._set("GV0", 0, 25)
 
 
@@ -827,6 +845,8 @@ class HubNode(BaseNode):
         if blueprint.connected:
             self.controller._remove_hub_error_notice(self.hub_mac)
             LOGGER.debug("[HubNode.reconcile][%s] Hub connected, ensuring child nodes for ip=%s", trace, self.hub_ip)
+            # Child nodes are created only after connectivity succeeds so they
+            # do not appear for hubs that were configured but never confirmed.
             self._ensure_controller_nodes(trace)
             if self.ir_controller is not None:
                 self.ir_controller.refresh_learn_state(reset_status=False)
@@ -1112,6 +1132,8 @@ class HubNode(BaseNode):
                 node: _CodeNode = RFCodeNode(self.poly, ctrl_addr, addr, name, self)
             else:
                 node = IRCodeNode(self.poly, ctrl_addr, addr, name, self)
+            # Copy metadata before attaching it to the runtime node so later
+            # updates do not mutate the shared persisted dict in place.
             node._code_meta = dict(meta)
             node._code_meta["controller_addr"] = ctrl_addr
             self.poly.addNode(node)
@@ -1322,6 +1344,8 @@ class BroadlinkController(BaseNode):
         self._bootstrap_config_if_needed()
         self._set("TIME", int(time.time()), 151)
         if self.config.has_hub and not self.hub_nodes:
+            # Reconcile hub nodes here as a fallback because some PG3 startup
+            # sequences deliver POLL before START/CUSTOMPARAMS settle.
             self._reconcile_hub_nodes()
         for hub_node in list(self.hub_nodes.values()):
             hub_node.start()
@@ -1583,6 +1607,8 @@ class BroadlinkController(BaseNode):
                 self.hub_nodes[ip].reconcile(trace_id=trace_id)
                 continue
 
+            # New hubs are resolved to a stable MAC-based address before node
+            # creation so address changes do not depend on transient IP order.
             # New hub: get identity, add node, wait for PG3 confirmation, then children.
             mac = hub_macs.get(ip)
             client = None
@@ -1690,6 +1716,8 @@ class BroadlinkController(BaseNode):
         # Live detection in HubNode.reconcile() decides whether a sensor
         # node should exist for this runtime.
         all_codes = self._safe_code_map(self.data_store.get("learned_codes", {}))
+        # Learned code ownership is inferred from the MAC-derived address
+        # prefix, which keeps restore logic independent of IP changes.
         hub_node.learned_codes = {
             addr: meta
             for addr, meta in all_codes.items()

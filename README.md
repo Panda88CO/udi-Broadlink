@@ -12,8 +12,12 @@ Run one PG3 node server instance per Broadlink hub. Multiple hubs are supported 
 Each Hub creates a node - If temp and humidity sersor is present its data is shown in a child node 
 The hub also generates 2 seprate nodes RF Controller and IF controller (with the HUB IP appended).  Each learned code becomes a child to this controller node
 
-```
 
+## Learning RF codes
+Learning an RF code is a two step task.  First the RF controller searches for teh correct frequecy - During this time oneneed to press the key being learned - The HUBs LED remains on during this time.  once the LED goes off, the AC will ask you to press the key one more - and the actual code is learned.  If the code is alrady learned it cannot be stored again (you can erase the code in the polyglot interface or ungroup the RF controller, Delete and regroup)
+
+
+```
 ### Broadlink Hub (`setup`)
 
 Primary node. Created automatically on startup.
@@ -93,10 +97,6 @@ Legacy comma-separated list (only the first IP is used):
 
 > Run one PG3 node server instance per hub. Multi-hub configurations are not supported in a single instance.
 
-## Profile
-
-The plugin publishes a fully dynamic JSON profile at startup via `updateJsonProfile(...)`. No static profile files are required. The profile is regenerated whenever sensor state or `TEMP_UNIT` changes so that temperature and humidity drivers appear or disappear from the `setup` node automatically.
-
 ## Persistence
 
 Learned codes and node names are persisted to PG3 `customdata`. On restart:
@@ -104,5 +104,3 @@ Learned codes and node names are persisted to PG3 `customdata`. On restart:
 - All previously learned IR and RF code nodes are restored from `customdata` before the IR/RF controller nodes are added.
 - Sensor state (has_temperature / has_humidity) is restored from `customdata` so the profile can be published correctly before the first sensor poll.
 
-### PG3 install script
-`install.sh` installs dependencies from `requirements.txt`.
