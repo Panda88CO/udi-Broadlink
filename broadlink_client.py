@@ -262,6 +262,7 @@ class BroadlinkHubClient:
             if self._device is None:
                 self.connect()
 
+            self._drain_learn_buffer()
             LOGGER.info("[learn_ir] Entering learning mode (timeout=%ss poll=%.2fs)", timeout_sec, poll_interval)
             self._device.enter_learning()
             if progress_callback:
@@ -299,6 +300,7 @@ class BroadlinkHubClient:
                     LOGGER.debug("[learn_rf] Cancelled any previous sweep state")
                 except Exception:
                     pass
+                self._drain_learn_buffer()
                 time.sleep(0.25)
                 self._device.sweep_frequency()
                 if progress_callback:
@@ -375,29 +377,73 @@ class BroadlinkHubClient:
                     except Exception as err:
                         LOGGER.debug("[learn_rf] Post-timeout check_frequency raised=%s", err)
 
+                # Some devices briefly oscillate between locked/unlocked state.
+                # Confirm one extra lock check so we do not proceed on transient locks.
                 if found:
                     try:
-                        if frequency is not None:
-                            self._device.find_rf_packet(frequency)
+                        confirm_result = self._device.check_frequency()
+                        confirm_found = False
+                        confirm_frequency = None
+                        if isinstance(confirm_result, tuple):
+                            confirm_found = bool(confirm_result[0])
+                            confirm_frequency = confirm_result[1] if len(confirm_result) > 1 else None
                         else:
-                            self._device.find_rf_packet()
-                    except TypeError:
-                        # Older/alternate implementations may not accept frequency.
-                        self._device.find_rf_packet()
+                            confirm_found = bool(confirm_result)
+                        if not confirm_found:
+                            LOGGER.warning(
+                                "[learn_rf] Frequency lock was transient on confirmation check; continuing sweep"
+                            )
+                            found = False
+                        elif confirm_frequency is not None:
+                            frequency = confirm_frequency
+                    except Exception as err:
+                        LOGGER.debug("[learn_rf] Lock confirmation check failed: %s", err)
+
+                if found:
                     LOGGER.info("[learn_rf] Frequency lock found after %s checks; waiting for RF packet", checks)
-                    if progress_callback:
-                        LOGGER.debug("[learn_rf] Emitting progress event=rf_find_packet_completed")
-                        progress_callback("rf_find_packet_completed")
-                    # Wait for the RF packet and emit progress events for
-                    # waiting and potential timeouts by specifying the
-                    # rf_check_data event name.
-                    packet = self._wait_for_learned_packet(
-                        timeout_sec=packet_timeout_sec,
-                        poll_interval=poll_interval,
-                        progress_callback=progress_callback,
-                        waiting_event="rf_check_data",
-                    )
-                    return RFLearnResult(packet=packet, frequency_mhz=float(frequency) if frequency is not None else None)
+
+                    # Retry packet capture once before failing. In practice,
+                    # users can miss the "press once" timing on the first pass.
+                    capture_timeout_sequence = [packet_timeout_sec, max(8, int(packet_timeout_sec / 2))]
+                    last_capture_error: TimeoutError | None = None
+                    for capture_idx, capture_timeout in enumerate(capture_timeout_sequence, start=1):
+                        self._drain_learn_buffer()
+                        try:
+                            if frequency is not None:
+                                self._device.find_rf_packet(frequency)
+                            else:
+                                self._device.find_rf_packet()
+                        except TypeError:
+                            # Older/alternate implementations may not accept frequency.
+                            self._device.find_rf_packet()
+
+                        if progress_callback:
+                            LOGGER.debug("[learn_rf] Emitting progress event=rf_find_packet_completed (capture_attempt=%s)", capture_idx)
+                            progress_callback("rf_find_packet_completed")
+
+                        try:
+                            packet = self._wait_for_learned_packet(
+                                timeout_sec=capture_timeout,
+                                poll_interval=poll_interval,
+                                progress_callback=progress_callback,
+                                waiting_event="rf_check_data",
+                            )
+                            try:
+                                self._device.cancel_sweep_frequency()
+                            except Exception:
+                                pass
+                            return RFLearnResult(packet=packet, frequency_mhz=float(frequency) if frequency is not None else None)
+                        except TimeoutError as err:
+                            last_capture_error = err
+                            LOGGER.warning(
+                                "[learn_rf] RF packet not captured after frequency lock on attempt %s/%s (timeout=%ss)",
+                                capture_idx,
+                                len(capture_timeout_sequence),
+                                capture_timeout,
+                            )
+
+                    if last_capture_error is not None:
+                        raise last_capture_error
 
                 # RF-capable devices should stop here when no valid frequency lock was found.
                 try:
@@ -418,6 +464,7 @@ class BroadlinkHubClient:
             if progress_callback:
                 progress_callback("rf_fallback_enter_learning")
             LOGGER.info("[learn_rf] Using enter_learning fallback flow")
+            self._drain_learn_buffer()
             self._device.enter_learning()
             packet = self._wait_for_learned_packet(
                 timeout_sec=packet_timeout_sec,
@@ -465,6 +512,22 @@ class BroadlinkHubClient:
             except Exception:
                 pass
         raise TimeoutError("No learned packet received before timeout")
+
+    def _drain_learn_buffer(self, max_reads: int = 4, delay_sec: float = 0.05) -> int:
+        """Drain any stale learned packets to avoid reusing old RF/IR data."""
+        drained = 0
+        for _ in range(max_reads):
+            try:
+                packet = self._device.check_data()
+            except Exception:
+                break
+            if not packet:
+                break
+            drained += 1
+            time.sleep(delay_sec)
+        if drained:
+            LOGGER.debug("[_drain_learn_buffer] Discarded %s stale packet(s)", drained)
+        return drained
 
     def provision_ap(self, ssid: str, password: str, security_mode: int = 4, setup_ip: str = "255.255.255.255") -> bool:
         """Provision a Broadlink device in AP mode using broadlink.setup."""
