@@ -627,6 +627,7 @@ class _CodeNode(BaseNode):
         {"driver": "GV2", "value": 0, "uom": 25},
         {"driver": "GV3", "value": 0, "uom": 56},
     ]
+    _tx_success_hold_sec = 2.0
 
     def __init__(self, polyglot, primary, address: str, name: str, controller) -> None:
         super().__init__(polyglot, primary, address, name)
@@ -670,6 +671,9 @@ class _CodeNode(BaseNode):
                 self._set("GV2", 2, 25)
             self._set("GV1", now, 151)
             self.controller._persist_learned_code(self.address, meta)
+            if success:
+                time.sleep(self._tx_success_hold_sec)
+                self._set("ST", 0)  # Ready
         except Exception as err:
             LOGGER.error("[%s.send_code] Unexpected error: %s", type(self).__name__, err)
             meta["last_sent"] = now
