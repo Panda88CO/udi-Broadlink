@@ -17,7 +17,7 @@ from config_parser import PluginConfig, build_config
 
 LOGGER = udi_interface.LOGGER
 Custom = udi_interface.Custom
-VERSION = "0.2.6"
+VERSION = "0.2.7"
 DEFAULT_SETUP_ADDRESS = "setup"
 
 MODEL_INDEX_NAMES = {
@@ -80,10 +80,8 @@ LEARN_STATUS_BY_EVENT["rf"].update({
 def _build_profile_definition(temp_unit: str = "C") -> dict:
     """Build the dynamic JSON profile definition.
 
-    Temperature UOM follows ``temp_unit``: 'C' → UOM 17 (°C), 'F' → UOM 4 (°F).
+    CLITEMP supports both temperature UOMs: 'C' -> 17 and 'F' -> 4.
     """
-    temp_editor_id = "temp_f" if temp_unit == "F" else "temp_c"
-
     editors = [
         {
             "id": "hub_status",
@@ -134,9 +132,14 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
                 {"uom": "25", "subset": "0-1", "names": {"0": "No Frequency Identified", "1": "Frequency Identified"}},
             ],
         },
-        {"id": "temp_c", "ranges": [{"uom": "17", "min": -40, "max": 125, "prec": 1}]},
-        {"id": "temp_f", "ranges": [{"uom": "4", "min": -40, "max": 257, "prec": 1}]},
-        {"id": "humidity_pct", "ranges": [{"uom": "22", "min": 0, "max": 100, "prec": 1}]},
+        {
+            "id": "CLITEMP",
+            "ranges": [
+                {"uom": "17", "min": -40, "max": 125, "prec": 1},
+                {"uom": "4", "min": -40, "max": 257, "prec": 1},
+            ],
+        },
+        {"id": "CLIHUM", "ranges": [{"uom": "22", "min": 0, "max": 100, "prec": 1}]},
     ]
 
     blhub_properties = [
@@ -261,8 +264,8 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
             "icon": "GenericCtl",
             "properties": [
                 {"id": "ST", "name": "Status", "editor": "status_index"},
-                {"id": "GV2", "name": "Temperature", "editor": temp_editor_id},
-                {"id": "GV3", "name": "Humidity", "editor": "humidity_pct"},
+                {"id": "CLITEMP", "name": "Temperature", "editor": "CLITEMP"},
+                {"id": "CLIHUM", "name": "Humidity", "editor": "CLIHUM"},
                 {"id": "TIME", "name": "Last Update", "editor": "timestamp"},
             ],
             "cmds": {
@@ -730,8 +733,8 @@ class HubSensorNode(BaseNode):
     id = "blsensor"
     drivers = [
         {"driver": "ST", "value": 0, "uom": 25},
-        {"driver": "GV2", "value": 0, "uom": 17},
-        {"driver": "GV3", "value": 0, "uom": 22},
+        {"driver": "CLITEMP", "value": 0, "uom": 17},
+        {"driver": "CLIHUM", "value": 0, "uom": 22},
         {"driver": "TIME", "value": 0, "uom": 151},
     ]
 
@@ -940,9 +943,9 @@ class HubNode(BaseNode):
             if sensor_data.has_temperature:
                 temp_c = sensor_data.temperature_c
                 display_val = round((temp_c * 9 / 5) + 32, 1) if temp_unit == "F" else round(temp_c, 1)
-                self.sensor_node._set("GV2", display_val, 4 if temp_unit == "F" else 17)
+                self.sensor_node._set("CLITEMP", display_val, 4 if temp_unit == "F" else 17)
             if sensor_data.has_humidity:
-                self.sensor_node._set("GV3", round(sensor_data.humidity, 1), 22)
+                self.sensor_node._set("CLIHUM", round(sensor_data.humidity, 1), 22)
         except Exception as err:
             self.sensor_node._set("ST", 2)
             LOGGER.debug("[HubNode._refresh_sensor_readings] %s: %s", self.hub_ip, err)

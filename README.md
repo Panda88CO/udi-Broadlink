@@ -1,25 +1,17 @@
 # udi-broadlink
 
 Broadlink node server for UDI Polyglot v3 (PG3/PG3x), implemented in Python using:
-- [`udi_interface`](https://github.com/UniversalDevicesInc/udi_python_interface) — UDI PG3 Python interface
-- [`python-broadlink`](https://github.com/mjg59/python-broadlink) (`broadlink>=0.19.0`) — open-source Broadlink device library by Matthew Garrett
+Python interface
+    Utilizes [`python-broadlink`] interface (https://github.com/mjg59/python-broadlink)  open-source Broadlink device library by Matthew Garrett
 
 ## Overview
 
-Run one PG3 node server instance per Broadlink hub. Each instance manages a single hub and its associated IR and RF controllers plus any learned codes stored under those controllers.
+Run one PG3 node server instance per Broadlink hub. Multiple hubs are supported by providing a list of IP addresses
 
 ## Node Organization
+Each Hub creates a node - If temp and humidity sersor is present its data is shown in a child node 
+The hub also generates 2 seprate nodes RF Controller and IF controller (with the HUB IP appended).  Each learned code becomes a child to this controller node
 
-The plugin publishes a fully dynamic JSON profile. The node hierarchy under ISY/IoX is:
-
-```
-Broadlink Hub  (setup node — primary)
-├── IR Controller  (blirctl)
-│   ├── IR Code <n>  (blircode)
-│   └── ...
-└── RF Controller  (blrfctl)
-    ├── RF Code <n>  (blrfcode)
-    └── ...
 ```
 
 ### Broadlink Hub (`setup`)
@@ -67,26 +59,11 @@ One node per learned code, parented to the appropriate controller.
 | `GV2` | Last Result | `Never` / `Success` / `Failed` |
 | `GV3` | TX Count | Number of successful transmissions |
 
-Commands accepted: `TXCODE` — transmits the stored packet via `device.send_data()`.
+Commands accepted: `Send Code` — transmits the stored packet via `device.send_data()`.
 
 ## python-broadlink API Usage
 
-Hub discovery and authentication are performed via the `python-broadlink` library:
 
-- **Discovery**: `broadlink.hello(ip)` — locates a provisioned device at the given IP and returns a typed device object.
-- **Authentication**: `device.auth()` — authenticates the session with the hub.
-- **Connectivity check**: `device.ping()` — used during polling to detect disconnection before attempting a re-auth.
-- **IR learning**: `device.enter_learning()` then `device.check_data()` (polled).
-- **RF learning**: `device.sweep_frequency()` → `device.check_frequency()` → `device.find_rf_packet(frequency)` → `device.check_data()` (polled). Falls back to `enter_learning` / `check_data` on unsupported devices.
-- **Code transmission**: `device.send_data(packet)` — sends raw IR/RF bytes to the hub for retransmission.
-- **Sensor readings**: `device.check_sensors()` — returns `temperature` and `humidity` keys when an external sensor cable is attached.
-- **Wi-Fi provisioning** (optional): `broadlink.setup(ssid, password, security_mode)` — puts a hub into AP setup mode.
-
-Learned code bytes are stored as hex strings in PG3 `customdata`. On transmission they are decoded back to bytes (`bytes.fromhex(hex_string)`) before being passed to `send_data`. Base64-encoded packets (prefixed `b64:`) are also accepted.
-
-## Configuration
-
-All runtime values are configured through the PG3 configuration UI (Custom Parameters). `server.json` is not used for runtime defaults.
 
 ### Required parameter
 
