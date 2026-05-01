@@ -8,8 +8,8 @@ Broadlink node server for UDI Polyglot v3 (PG3/PG3x), implemented in Python usin
 Run one PG3 node server instance per Broadlink hub. Multiple hubs are supported by providing a list of IP addresses
 
 ## Node Organization
-Each Hub creates a node - If temp and humidity sersor is present its data is shown in a child node 
-The hub also generates 2 seprate nodes RF Controller and IF controller (with the HUB IP appended).  Each learned code becomes a child to this controller node
+Each Hub creates a node - If temp and humidity sensor is present its data is shown in a child node 
+The hub also generates 2 separate nodes RF Controller and IR Controller (with the HUB IP appended).  Each learned code becomes a child to this controller node
 
 
 ## Learning RF codes
@@ -17,9 +17,22 @@ Learning an RF code is a two step task.  First the RF controller searches for te
 Note, you can rename the codes once learned - they should keep the name after a restart.
 
 
-### Broadlink Hub (`setup`)
+### Broadlink Controller (`setup`)
 
-Primary node. Created automatically on startup.
+Top-level coordinator node. Created automatically on startup.
+
+| Driver | Name | Description |
+|--------|------|-------------|
+| `ST` | Status | `No Hubs Configured` / `All Online` / `Partial` / `None Online` |
+| `GV0` | Hub Count | Number of configured hubs |
+| `TIME` | Last Update | Timestamp of the most recent poll |
+
+Commands accepted: `UPDATE` (force immediate refresh).
+Heartbeat events `DON` / `DOF` are sent each short poll cycle.
+
+### Broadlink Hub (`blhub`)
+
+One node per configured hub IP. Created automatically once the hub is confirmed online.
 
 | Driver | Name | Description |
 |--------|------|-------------|
@@ -27,11 +40,8 @@ Primary node. Created automatically on startup.
 | `GV0` | Model | Detected device model (e.g., RM4 Pro, RM4 Mini) |
 | `GV1` | Connected | `Yes` / `No` |
 | `TIME` | Last Update | Timestamp of the most recent poll |
-| `GV2` | Temperature | Present only when a sensor cable is detected |
-| `GV3` | Humidity | Present only when a sensor cable is detected |
 
 Commands accepted: `UPDATE` (force immediate refresh).
-Heartbeat events `DON` / `DOF` are sent each short poll cycle.
 
 ### IR Controller (`blirctl`)
 
@@ -44,15 +54,15 @@ Created automatically under the hub node when the hub is online.
 | `GV1` | Learn Count | Number of IR codes stored |
 | `GV2` | Hub Connected | Whether the hub is reachable |
 
-Commands accepted: `LEARNCODE` — starts a 30-second IR learning window. A new IR Code node is added automatically when a code is captured.
+Commands accepted: `LEARNCODE` — starts a 12-second IR learning window. A new IR Code node is added automatically when a code is captured.
 
 ### RF Controller (`blrfctl`)
 
-Same structure as the IR Controller. RF learning uses a 30-second sweep-and-capture window via the `python-broadlink` frequency sweep API (`sweep_frequency` / `check_frequency` / `find_rf_packet`). Falls back to the generic learn flow for devices that do not expose RF sweep.
+Same driver structure as the IR Controller. RF learning uses a 20-second frequency sweep window followed by a 6-second packet-capture window via the `python-broadlink` frequency sweep API (`sweep_frequency` / `check_frequency` / `find_rf_packet`). Falls back to the generic learn flow for devices that do not expose RF sweep.
 
-### IR Code (`blircode`) / RF Code (`blrfcode`)
+### IR Code (`blircode`)
 
-One node per learned code, parented to the appropriate controller.
+One node per learned IR code, parented to the IR Controller.
 
 | Driver | Name | Description |
 |--------|------|-------------|
@@ -62,7 +72,22 @@ One node per learned code, parented to the appropriate controller.
 | `GV2` | Last Result | `Never` / `Success` / `Failed` |
 | `GV3` | TX Count | Number of successful transmissions |
 
-Commands accepted: `Send Code` — transmits the stored packet via `device.send_data()`.
+Commands accepted: `TXCODE` (`Send Code`) — transmits the stored packet.
+
+### RF Code (`blrfcode`)
+
+One node per learned RF code, parented to the RF Controller. Identical to IR Code with one additional driver:
+
+| Driver | Name | Description |
+|--------|------|-------------|
+| `ST` | Status | `Ready` / `Sending` / `Sent OK` / `Failed` |
+| `GV0` | Frequency (MHz) | Detected RF carrier frequency, or `No Frequency Identified` if not captured |
+| `TIME` | Created | Timestamp when the code was learned |
+| `GV1` | Last Sent | Timestamp of the most recent transmission |
+| `GV2` | Last Result | `Never` / `Success` / `Failed` |
+| `GV3` | TX Count | Number of successful transmissions |
+
+Commands accepted: `TXCODE` (`Send Code`) — transmits the stored packet.
 
 ### Hub Sensor (`blsensor`)
 

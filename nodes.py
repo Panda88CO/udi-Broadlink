@@ -80,10 +80,11 @@ LEARN_STATUS_BY_EVENT["rf"].update({
 def _build_profile_definition(temp_unit: str = "C") -> dict:
     """Build the dynamic JSON profile definition.
 
-    CLITEMP supports both temperature UOMs: 'C' -> 17 and 'F' -> 4.
+    CLITEMP supports both temperature UOMs: 'C' -> 4 and 'F' -> 17.
     """
     # The profile is rebuilt at runtime so TEMP_UNIT can switch the exposed
     # temperature UOM without maintaining separate static profile files.
+    # UOM reference: 4 = Celsius, 17 = Fahrenheit
     editors = [
         {
             "id": "hub_status",
@@ -137,8 +138,8 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
         {
             "id": "CLITEMP",
             "ranges": [
-                {"uom": "17", "min": -40, "max": 125, "prec": 1},
-                {"uom": "4", "min": -40, "max": 257, "prec": 1},
+                {"uom": "4", "min": -40, "max": 125, "prec": 1},
+                {"uom": "17", "min": -40, "max": 257, "prec": 1},
             ],
         },
         {"id": "CLIHUM", "ranges": [{"uom": "22", "min": 0, "max": 100, "prec": 1}]},
@@ -286,11 +287,13 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
 
 
 def _parse_temp_unit(custom_params: dict) -> str:
-    """Extract and normalize TEMP_UNIT from custom params. Returns 'C' or 'F'."""
-    raw = str((custom_params or {}).get("TEMP_UNIT", "")).strip().upper()
-    if raw in ("F", "FAHRENHEIT"):
-        return "F"
-    return "C"
+    """Extract and normalize TEMP_UNIT from custom params. Returns 'C' or 'F'.
+
+    Matches on the first character only (case-insensitive):
+      'F' / 'f' -> Fahrenheit; anything else (including blank) -> Celsius.
+    """
+    raw = str((custom_params or {}).get("TEMP_UNIT", "")).strip()
+    return "F" if raw[:1].upper() == "F" else "C"
 
 
 @dataclass(slots=True)
@@ -751,7 +754,7 @@ class HubSensorNode(BaseNode):
     id = "blsensor"
     drivers = [
         {"driver": "ST", "value": 0, "uom": 25},
-        {"driver": "CLITEMP", "value": 0, "uom": 17},
+        {"driver": "CLITEMP", "value": 0, "uom": 4},
         {"driver": "CLIHUM", "value": 0, "uom": 22},
         {"driver": "TIME", "value": 0, "uom": 151},
     ]
@@ -963,7 +966,10 @@ class HubNode(BaseNode):
             if sensor_data.has_temperature:
                 temp_c = sensor_data.temperature_c
                 display_val = round((temp_c * 9 / 5) + 32, 1) if temp_unit == "F" else round(temp_c, 1)
-                self.sensor_node._set("CLITEMP", display_val, 4 if temp_unit == "F" else 17)
+                # force=True ensures the UOM is always pushed to PG3.
+                # Without it, if the value hasn't changed setDriver skips the
+                # update and a stale UOM (e.g. °F from a previous run) persists.
+                self.sensor_node._set("CLITEMP", display_val, 17 if temp_unit == "F" else 4)
             if sensor_data.has_humidity:
                 self.sensor_node._set("CLIHUM", round(sensor_data.humidity, 1), 22)
         except Exception as err:
