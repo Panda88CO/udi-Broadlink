@@ -443,6 +443,12 @@ class BroadlinkHubClient:
                             )
 
                     if last_capture_error is not None:
+                        # Stop RF learning session when packet capture timed out
+                        # after a successful frequency lock.
+                        try:
+                            self._device.cancel_sweep_frequency()
+                        except Exception:
+                            pass
                         raise last_capture_error
 
                 # RF-capable devices should stop here when no valid frequency lock was found.

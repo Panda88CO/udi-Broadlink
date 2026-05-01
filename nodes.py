@@ -415,6 +415,13 @@ class _ControllerNode(BaseNode):
         if state is not None:
             self._set("ST", state)
 
+    def _set_failed_then_idle(self, failed_state: int, pause_sec: float = 3.0) -> None:
+        """Show a failed learn state briefly, then return controller to idle."""
+        self._set("ST", failed_state)
+        if pause_sec > 0:
+            time.sleep(pause_sec)
+        self._set("ST", 0)
+
     def _do_learn(self) -> None:
         tag = type(self).__name__
         try:
@@ -565,26 +572,22 @@ class _ControllerNode(BaseNode):
             try:
                 self._handle_learn_progress("rf_frequency_not_found")
             except Exception:
-                self._set("ST", 4)
-            time.sleep(3)
-            self._set("ST", 0)
+                pass
+            self._set_failed_then_idle(4)
         except TimeoutError:
             LOGGER.warning("[%s._do_learn] Learn timed out after %ds", tag, self._learn_timeout)
             # Use mapped timeout events where possible so UI/state mapping is
             # consistent with progress callbacks emitted by the hub client.
             timeout_event = f"{self._code_type}_check_data_timeout"
+            timeout_state = LEARN_STATUS_BY_EVENT.get(self._code_type, {}).get(timeout_event)
             try:
                 self._handle_learn_progress(timeout_event)
             except Exception:
-                if self._code_type == "rf":
-                    self._set("ST", 6)
-                    time.sleep(3)
-                    self._set("ST", 0)
-                else:
-                    self._set("ST", 4)
+                pass
+            self._set_failed_then_idle(timeout_state if timeout_state is not None else (6 if self._code_type == "rf" else 4))
         except Exception as err:
             LOGGER.error("[%s._do_learn] Failed: %s", tag, err)
-            self._set("ST", 0 if self._code_type == "rf" else 4)
+            self._set_failed_then_idle(6 if self._code_type == "rf" else 4)
 
     commands = {
         "LEARNCODE": learn_code,
