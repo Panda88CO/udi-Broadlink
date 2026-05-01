@@ -253,7 +253,7 @@ class BroadlinkHubClient:
 
     def learn_ir(
         self,
-        timeout_sec: int = 30,
+        timeout_sec: int = 12,
         poll_interval: float = 1.0,
         progress_callback: LearnProgressCallback | None = None,
     ) -> bytes:
@@ -278,8 +278,8 @@ class BroadlinkHubClient:
 
     def learn_rf(
         self,
-        timeout_sec: int = 45,
-        packet_timeout_sec: int = 30,
+        timeout_sec: int = 20,
+        packet_timeout_sec: int = 6,
         poll_interval: float = 1.0,
         progress_callback: LearnProgressCallback | None = None,
     ) -> RFLearnResult:
@@ -404,7 +404,7 @@ class BroadlinkHubClient:
 
                     # Retry packet capture once before failing. In practice,
                     # users can miss the "press once" timing on the first pass.
-                    capture_timeout_sequence = [packet_timeout_sec, max(8, int(packet_timeout_sec / 2))]
+                    capture_timeout_sequence = [packet_timeout_sec, max(3, int(packet_timeout_sec / 2))]
                     last_capture_error: TimeoutError | None = None
                     for capture_idx, capture_timeout in enumerate(capture_timeout_sequence, start=1):
                         self._drain_learn_buffer()
@@ -482,7 +482,7 @@ class BroadlinkHubClient:
 
     def _wait_for_learned_packet(
         self,
-        timeout_sec: int = 30,
+        timeout_sec: int = 12,
         poll_interval: float = 1.0,
         progress_callback: LearnProgressCallback | None = None,
         waiting_event: str = "check_data",

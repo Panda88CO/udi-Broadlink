@@ -334,7 +334,9 @@ class _ControllerNode(BaseNode):
     """
 
     _code_type: str = "ir"
-    _learn_timeout: int = 30
+    # Single-press learn UX: keep wait windows short to avoid long idle waits.
+    _learn_timeout: int = 12
+    _packet_timeout: int = 12
 
     drivers = [
         {"driver": "ST", "value": 0, "uom": 25},
@@ -432,7 +434,7 @@ class _ControllerNode(BaseNode):
                 LOGGER.info("[%s._do_learn] Invoking hub_client.learn_rf", tag)
                 rf_result: RFLearnResult = self.controller.hub_client.learn_rf(
                     timeout_sec=self._learn_timeout,
-                    packet_timeout_sec=30,
+                    packet_timeout_sec=self._packet_timeout,
                     progress_callback=self._handle_learn_progress,
                 )
                 packet = rf_result.packet
@@ -599,7 +601,7 @@ class IRControllerNode(_ControllerNode):
 
     id = "blirctl"
     _code_type = "ir"
-    _learn_timeout = 30
+    _learn_timeout = 12
 
 
 class RFControllerNode(_ControllerNode):
@@ -607,7 +609,8 @@ class RFControllerNode(_ControllerNode):
 
     id = "blrfctl"
     _code_type = "rf"
-    _learn_timeout = 45
+    _learn_timeout = 20
+    _packet_timeout = 6
 
 
 class _CodeNode(BaseNode):
