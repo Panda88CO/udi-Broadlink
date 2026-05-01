@@ -639,3 +639,906 @@
 2026-04-30 11:28:44.942 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007se :: TIME to 1777573724 UOM 151
 2026-04-30 11:28:45.015 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007se :: GV3 to 46.5 UOM 22
 2026-04-30 11:28:45.057 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e87072dea50b :: TIME to 1777573724 UOM 151
+2026-04-30 11:29:09.433 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message stop
+2026-04-30 11:29:09.433 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING stop
+2026-04-30 11:29:09.433 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS stop message {} from Polyglot
+2026-04-30 11:29:09.433 Command    udi_interface.interface INFO     interface:_handleInput: Received stop from Polyglot... Shutting Down.
+2026-04-30 11:29:09.433 Thread-35 (stop) udi_interface.custom DEBUG    custom:clear: CUSTOM: Clear  ...saving
+2026-04-30 11:29:09.434 Thread-35 (stop) udi_interface.custom INFO     custom:_save: Sending data notices to Polyglot.
+2026-04-30 11:29:09.434 Thread-35 (stop) udi_interface.node DEBUG    node:setDriver: setup:Broadlink Setup Reporting set ST to 0 to Polyglot
+2026-04-30 11:29:09.434 Thread-35 (stop) udi_interface.node DEBUG    node:reportDriver: Updating value to 0
+2026-04-30 11:29:09.434 Thread-35 (stop) udi_interface.interface INFO     interface:stop: Disconnecting from MQTT... localhost:8883
+2026-04-30 11:29:09.435 Thread-35 (stop) udi_interface.interface INFO     interface:_disconnect: MQTT Unexpected disconnection. Reason code: Normal disconnection. Sent by server: False. Retry in 10 seconds.
+2026-04-30 15:31:16.446 MainThread udi_interface      INFO     polylogger:set_basic_config: set_basic_config: enable=True level=30
+2026-04-30 15:31:16.446 MainThread udi_interface      INFO     __init__:<module>: UDI interface initializing
+2026-04-30 15:31:16.447 MainThread udi_interface      INFO     __init__:<module>: User=None
+2026-04-30 15:31:16.447 MainThread udi_interface      INFO     __init__:<module>: Home=/var/polyglot/pg3/ns/0021b9026dcd_24
+2026-04-30 15:31:16.447 MainThread udi_interface      INFO     __init__:<module>: Node Server Path=/var/polyglot/pg3/ns/0021b9026dcd_24
+2026-04-30 15:31:16.447 MainThread udi_interface      INFO     __init__:<module>: PG3INIT=eyJ1dWlkIjoiMDA6MjE6Yjk6MDI6NmQ6Y2QiLCJwcm9maWxlTnVtIjoyNCwibG9nTGV2ZWwiOiJERUJVRyIsInRva2VuIjoiSXZTc0ooWERCZCEqTEJ5QyIsIm1xdHRIb3N0IjoibG9jYWxob3N0IiwibXF0dFBvcnQiOjg4ODMsInNlY3VyZSI6MSwiaXNQRzN4Ijp0cnVlLCJwZzNWZXJzaW9uIjoiMy40LjE4IiwiaXN5VmVyc2lvbiI6IjYuMC41IiwiZWRpdGlvbiI6IkZyZWUifQ==
+2026-04-30 15:31:16.447 MainThread udi_interface      INFO     __init__:<module>: Loading interface module
+2026-04-30 15:31:16.491 MainThread udi_interface      INFO     interface:<module>: Loading MQTT module
+2026-04-30 15:31:16.975 MainThread udi_interface      INFO     interface:<module>: MQTT module loaded
+2026-04-30 15:31:17.199 MainThread udi_interface      INFO     __init__:<module>: Loading udi_interface module
+2026-04-30 15:31:17.200 MainThread udi_interface      INFO     __init__:<module>: Loading node module
+2026-04-30 15:31:17.200 MainThread udi_interface      INFO     __init__:<module>: Loading custom module
+2026-04-30 15:31:17.200 MainThread udi_interface      INFO     __init__:<module>: Loading isy module
+2026-04-30 15:31:17.200 MainThread udi_interface      INFO     __init__:<module>: Loading OAuth module
+2026-04-30 15:31:17.200 MainThread udi_interface      INFO     __init__:<module>: UDI interface initialized
+2026-04-30 15:31:17.201 MainThread udi_interface      INFO     __init__:<module>: UDI Python Interface for Polyglot version 3 3.4.5 Starting...
+2026-04-30 15:31:17.245 MainThread udi_interface      INFO     udibroadlink:<module>: ================================================================================
+2026-04-30 15:31:17.245 MainThread udi_interface      INFO     udibroadlink:<module>: Starting Broadlink PG3 Node Server v0.2.6
+2026-04-30 15:31:17.245 MainThread udi_interface      INFO     udibroadlink:<module>: ================================================================================
+2026-04-30 15:31:17.245 MainThread udi_interface.interface INFO     interface:__init__: Initialization received from Polyglot V3 3.4.18  [ISY: 6.0.5, Slot: 24]
+2026-04-30 15:31:17.246 MainThread udi_interface.interface INFO     interface:__init__: Connect: Network Interface: {'addr': '192.168.1.204', 'netmask': '255.255.255.0', 'broadcast': '192.168.1.255'}
+2026-04-30 15:31:17.246 MainThread udi_interface      INFO     udibroadlink:<module>: Creating polyglot interface
+2026-04-30 15:31:17.246 Interface  udi_interface.interface INFO     interface:_startMqtt: Connecting to MQTT... localhost:8883
+2026-04-30 15:31:17.246 MainThread udi_interface      INFO     udibroadlink:<module>: Polyglot interface started
+2026-04-30 15:31:17.247 Interface  udi_interface.interface INFO     interface:_startMqtt: Using SSL cert: 0021b9026dcd_24.cert key: 0021b9026dcd_24.key ca: /usr/local/etc/ssl/certs/ud.ca.cert
+2026-04-30 15:31:17.259 MainThread udi_interface      INFO     udibroadlink:<module>: Setting custom params documentation
+2026-04-30 15:31:17.259 MainThread udi_interface      INFO     udibroadlink:<module>: Constructing BroadlinkController node
+2026-04-30 15:31:17.259 MainThread udi_interface      INFO     nodes:__init__: [__init__] Constructing BroadlinkController
+2026-04-30 15:31:17.259 MainThread udi_interface.interface WARNING  interface:db_getNodeDrivers: setup not found in database.
+2026-04-30 15:31:17.259 MainThread udi_interface      DEBUG    nodes:__init__: [__init__] Initialized instance variables
+2026-04-30 15:31:17.259 Interface  udi_interface.interface INFO     interface:_startMqtt: MQTT keepalive is 300 seconds.
+2026-04-30 15:31:17.260 MainThread udi_interface      DEBUG    nodes:__init__: [__init__] Subscribing to polyglot events
+2026-04-30 15:31:17.260 MainThread udi_interface      DEBUG    nodes:__init__: [__init__] Event subscriptions registered
+2026-04-30 15:31:17.260 MainThread udi_interface.interface INFO     interface:addNode: Adding node Broadlink Setup(setup) [None]
+2026-04-30 15:31:17.260 MainThread udi_interface.interface INFO     interface:setController: Using node "setup", driver "ST" for connection status.
+2026-04-30 15:31:17.260 MainThread udi_interface      INFO     nodes:__init__: [__init__] Publishing JSON profile
+2026-04-30 15:31:17.261 MainThread udi_interface.interface INFO     interface:getJsonProfile: Sending request to get the existing profile to PG3.
+2026-04-30 15:31:17.261 MainThread udi_interface.interface INFO     interface:updateJsonProfile: Sending profile update request to Polyglot.
+2026-04-30 15:31:17.261 MainThread udi_interface      INFO     nodes:_publish_profile: [_publish_profile] Dynamic JSON profile published successfully
+2026-04-30 15:31:17.261 MainThread udi_interface      INFO     nodes:__init__: [__init__] Calling poly.ready() to signal PG3
+2026-04-30 15:31:17.261 MainThread udi_interface      INFO     nodes:__init__: [__init__] BroadlinkController construction complete
+2026-04-30 15:31:17.261 MainThread udi_interface      INFO     udibroadlink:<module>: BroadlinkController constructed successfully
+2026-04-30 15:31:17.261 MainThread udi_interface      INFO     udibroadlink:<module>: Entering polyglot runForever() loop
+2026-04-30 15:31:17.323 MQTT       udi_interface.interface INFO     interface:_connect: MQTT Connected with Reason code: Success
+2026-04-30 15:31:17.323 MQTT       udi_interface.interface INFO     interface:_connect: MQTT Subscribing to topic: udi/pg3/ns/clients/00:21:b9:02:6d:cd_24 -  MID: 2 Result: 0
+2026-04-30 15:31:17.367 MQTT       udi_interface.interface INFO     interface:_subscribe: MQTT Subscribed Successfully for Message ID: 2. Reason codes: ['Granted QoS 0']
+2026-04-30 15:31:17.409 MQTT       udi_interface.interface INFO     interface:_message: Successfully set key = customparamsdoc
+2026-04-30 15:31:17.430 Thread-2 (handle_log_level) udi_interface      INFO     nodes:handle_log_level: New log level: 10
+2026-04-30 15:31:17.454 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message getAll
+2026-04-30 15:31:17.454 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING getAll
+2026-04-30 15:31:17.454 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS getAll message {'id': 'c378696d-b311-43be-813f-8b7f8de5b6d0', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'key': 'customdata', 'value': '{"hub_macs":{"192.168.1.221":"e816567db007","192.168.1.226":"e87072dea50b"},"node_names":{"setup":"Broadlink Setup","e816567db007":"Broadlink Hub (192.168.1.221)","e87072dea50b":"Broadlink Hub (192.168.1.226)","e816567db007ir":"IR Controller (192.168.1.221)","e816567db007rf":"RF Controller (192.168.1.221)","e816567db007se":"Sensor (192.168.1.221)","e87072dea50bir":"IR Controller (192.168.1.226)","e87072dea50brf":"RF Controller (192.168.1.226)","16567db007r001":"ON OFF Cabinet","16567db007r002":"DIM UP Cabinet","16567db007r003":"DIM Down Cabinet","7072dea50br001":"RF Code 001"},"sensor_states":{"e816567db007":{"has_temp":true,"has_humidity":true}},"learned_codes":{}}', 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:17.455 Thread-3 (handle_custom_data) udi_interface.custom DEBUG    custom:load: CUSTOM: load {'hub_macs': {'192.168.1.221': 'e816567db007', '192.168.1.226': 'e87072dea50b'}, 'node_names': {'setup': 'Broadlink Setup', 'e816567db007': 'Broadlink Hub (192.168.1.221)', 'e87072dea50b': 'Broadlink Hub (192.168.1.226)', 'e816567db007ir': 'IR Controller (192.168.1.221)', 'e816567db007rf': 'RF Controller (192.168.1.221)', 'e816567db007se': 'Sensor (192.168.1.221)', 'e87072dea50bir': 'IR Controller (192.168.1.226)', 'e87072dea50brf': 'RF Controller (192.168.1.226)', '16567db007r001': 'ON OFF Cabinet', '16567db007r002': 'DIM UP Cabinet', '16567db007r003': 'DIM Down Cabinet', '7072dea50br001': 'RF Code 001'}, 'sensor_states': {'e816567db007': {'has_temp': True, 'has_humidity': True}}, 'learned_codes': {}}
+2026-04-30 15:31:17.455 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS getAll message {'id': '18f047dc-6a3b-4a0b-b349-50ea7615458b', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'key': 'customparams', 'value': '{"HUB_IP":"192.168.1.221 192.168.1.226","TEMP_UNIT":"Celsius"}', 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:17.455 Thread-3 (handle_custom_data) udi_interface.custom DEBUG    custom:load: CUSTOM:  -- checking hub_macs / {'192.168.1.221': 'e816567db007', '192.168.1.226': 'e87072dea50b'}
+2026-04-30 15:31:17.455 Thread-4 (handle_params) udi_interface      INFO     nodes:handle_params: [handle_params] CUSTOMPARAMS event received
+2026-04-30 15:31:17.455 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS getAll message {'id': '39e89e00-892f-4e89-85ca-8c9fee8ba4f5', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'key': 'customparamsdoc', 'value': '<h1>Broadlink Node Server Configuration</h1>\n\n<h2>Current Stage</h2>\n\n<p>This rewrite is currently in the hub-integration pass.</p>\n\n<p>What is implemented now:</p>\n\n<ul>\n<li>Controller startup and PG3x scaffolding</li>\n<li>Single-hub configuration parsing</li>\n<li>Structure and persistence groundwork</li>\n<li>Rename replay groundwork using PG3 database names as the first priority</li>\n<li>Hub initialization from the configured IP address</li>\n<li>Cached hub identity plus automatic reconnect and status reconciliation on startup and long poll</li>\n<li>Minimal in-code JSON profile publication for <code>setup</code></li>\n</ul>\n\n<p>What is intentionally deferred:</p>\n\n<ul>\n<li>IR and RF operational nodes</li>\n<li>Code send and learn flows</li>\n</ul>\n\n<h2>Profile Notes</h2>\n\n<p>The node server now publishes a minimal JSON profile from code for the currently implemented primary node.\nIf the installed <code>udi_interface</code> version does not support JSON profile publication, the code falls back to the legacy profile update path.</p>\n\n<h2>Required Parameters</h2>\n\n<ul>\n<li><code>HUB_IP</code>: IP address of the Broadlink hub managed by this PG3 instance</li>\n</ul>\n\n<p>The node server assumes each Broadlink device is already provisioned on the local Wi-Fi network.\nAP setup is not part of the normal workflow for this implementation stage.\nThe current implementation does not rely on <code>server.json</code> to seed runtime configuration values.\nEnter configuration through the PG3 configuration UI.</p>\n\n<p>The preferred UI path is now a code-defined typed parameter published by the node server.\nPlain custom parameter text is still accepted as a fallback while the rewrite is in progress.\nOlder list-style inputs such as <code>HUB_IPS</code> are still accepted for migration, but only the first IP is used.</p>\n\n<p>Supported <code>HUB_IP</code> formats:</p>\n\n<h3>Single IP</h3>\n\n<pre><code>192.168.1.120\n</code></pre>\n\n<h3>Legacy list input</h3>\n\n<pre><code>192.168.1.120, 192.168.1.121\n</code></pre>\n\n<p>Only the first IP is used from legacy list input.</p>\n\n<h2>Operational Notes</h2>\n\n<ul>\n<li><code>shortPoll</code> provides heartbeat updates on the controller.</li>\n<li><code>longPoll</code> refreshes hub connectivity, reconnects if needed, and syncs persisted node-name information from PG3.</li>\n<li>Run one PG3 node server instance per Broadlink hub.</li>\n<li>The next implementation pass will add IR/RF operational nodes and code handling on top of the current single-hub layer.</li>\n</ul>\n', 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:17.456 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message getNsInfo
+2026-04-30 15:31:17.456 Thread-3 (handle_custom_data) udi_interface.custom DEBUG    custom:load: CUSTOM:  -- checking node_names / {'setup': 'Broadlink Setup', 'e816567db007': 'Broadlink Hub (192.168.1.221)', 'e87072dea50b': 'Broadlink Hub (192.168.1.226)', 'e816567db007ir': 'IR Controller (192.168.1.221)', 'e816567db007rf': 'RF Controller (192.168.1.221)', 'e816567db007se': 'Sensor (192.168.1.221)', 'e87072dea50bir': 'IR Controller (192.168.1.226)', 'e87072dea50brf': 'RF Controller (192.168.1.226)', '16567db007r001': 'ON OFF Cabinet', '16567db007r002': 'DIM UP Cabinet', '16567db007r003': 'DIM Down Cabinet', '7072dea50br001': 'RF Code 001'}
+2026-04-30 15:31:17.456 Thread-4 (handle_params) udi_interface.custom DEBUG    custom:load: CUSTOM: load {'HUB_IP': '192.168.1.221 192.168.1.226', 'TEMP_UNIT': 'Celsius'}
+2026-04-30 15:31:17.456 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS getAll message {'id': '3e19c4dd-51d2-46d8-882e-359ae93544dc', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'key': 'customtypeddata', 'value': '{}', 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:17.456 Thread-3 (handle_custom_data) udi_interface.custom DEBUG    custom:load: CUSTOM:  -- checking sensor_states / {'e816567db007': {'has_temp': True, 'has_humidity': True}}
+2026-04-30 15:31:17.457 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message getprofile
+2026-04-30 15:31:17.460 Thread-4 (handle_params) udi_interface.custom DEBUG    custom:load: CUSTOM:  -- checking HUB_IP / 192.168.1.221 192.168.1.226
+2026-04-30 15:31:17.461 Thread-5 (handle_custom_data) udi_interface      DEBUG    nodes:handle_custom_data: [handle_custom_data] Ignoring empty custom_data payload to preserve persisted state
+2026-04-30 15:31:17.461 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS getAll message {'id': '5504821d-43a7-4422-84fa-2b7013bb1e70', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'key': 'notices', 'value': '{}', 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:17.461 Thread-3 (handle_custom_data) udi_interface.custom DEBUG    custom:load: CUSTOM:  -- checking learned_codes / {}
+2026-04-30 15:31:17.461 Thread-4 (handle_params) udi_interface.custom DEBUG    custom:load: CUSTOM:  -- checking TEMP_UNIT / Celsius
+2026-04-30 15:31:17.461 Command    udi_interface.custom DEBUG    custom:load: CUSTOM: load {}
+2026-04-30 15:31:17.462 Thread-4 (handle_params) udi_interface.custom DEBUG    custom:clear: CUSTOM: Clear  ...saving
+2026-04-30 15:31:17.462 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS getAll message {'id': 'dbe7b10e-02db-44dd-bb84-fb6103c3a223', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'key': 'nsdata', 'value': '', 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:17.462 Thread-4 (handle_params) udi_interface.custom INFO     custom:_save: Sending data notices to Polyglot.
+2026-04-30 15:31:17.462 Command    udi_interface.interface DEBUG    interface:_handleInput: Key nsdata should be passed to node server.
+2026-04-30 15:31:17.462 Thread-4 (handle_params) udi_interface      INFO     nodes:handle_params: [handle_params] Configured hub IPs: ['192.168.1.221', '192.168.1.226']
+2026-04-30 15:31:17.462 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS getAll message {'id': '7106fe16-12c8-4a9c-8c28-719292bacdae', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'key': 'oauth', 'value': '', 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:17.463 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: setup:Broadlink Setup Reporting set GV0 to 2 to Polyglot
+2026-04-30 15:31:17.463 Command    udi_interface.interface DEBUG    interface:_handleInput: Key oauth should be passed to node server.
+2026-04-30 15:31:17.463 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 2
+2026-04-30 15:31:17.463 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING getNsInfo
+2026-04-30 15:31:17.463 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_reconcile_hub_nodes: [_reconcile_hub_nodes][rec-000001] Begin pass configured_hubs=['192.168.1.221', '192.168.1.226'] known_hub_macs={'192.168.1.221': 'e816567db007', '192.168.1.226': 'e87072dea50b'}
+2026-04-30 15:31:17.463 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS getNsInfo message {'id': '1506599b-1827-46c8-91c4-f28fc8a9d885', 'uuid': '00:21:b9:02:6d:cd', 'name': 'TeslaEVstream', 'nsid': 'fc6f63ff-b210-4076-a111-c0f40c748a74', 'expires': 0, 'nickname': None, 'profileNum': 18, 'developerMode': 0, 'timeAdded': 1748019345855, 'timeStarted': 1770338293164, 'timeModified': 1770338315461, 'version': '0.2.14', 'edition': 'Free', 'branch': 'main', 'url': 'https://github.com/Panda88CO/TeslaEV3', 'home': '/var/polyglot/pg3/ns/0021b9026dcd_18', 'log': 'logs/debug.log', 'logLevel': 'DEBUG', 'logLevelList': '[{"id":4,"name":"Debug","value":"DEBUG","level":10},{"id":3,"name":"Info","value":"INFO","level":20},{"id":2,"name":"Warning","value":"WARNING","level":30},{"id":1,"name":"Error","value":"ERROR","level":40},{"id":0,"name":"Critical","value":"CRITICAL","level":50}]', 'enabled': 0, 'connected': 0, 'devMode': 0, 'type': 'python3', 'executable': 'TeslaEV3main.py', 'shortPoll': 300, 'longPoll': 7200, 'allowIsyAccess': 0, 'nsInfoPoll': 0, 'discover': 0, 'oauth': 1, 'requestId': 0, 'status_node': None, 'status_driver': None, 'orderId': None, 'store': 'Production', 'option': '5a4f2b45-0f05-4b6b-a634-f677e85e9c7b', 'noLicense': 1, 'latestVersion': '0.2.14', 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:17.463 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_reconcile_hub_nodes: [_reconcile_hub_nodes][rec-000001] Using stored MAC for ip=192.168.1.221 mac=e816567db007
+2026-04-30 15:31:17.464 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS getNsInfo message {'id': '36febc9e-1def-435b-a9a2-3820011d6f75', 'uuid': '00:21:b9:02:6d:cd', 'name': 'Netro_watering', 'nsid': 'dd5f609e-51c8-43d5-a06e-625b8f948a81', 'expires': 0, 'nickname': None, 'profileNum': 10, 'developerMode': 0, 'timeAdded': 1762799487659, 'timeStarted': 1762814980766, 'timeModified': 1764278562941, 'version': '0.1.18', 'edition': 'Standard', 'branch': 'main', 'url': 'https://github.com/Panda88CO/udiNetro', 'home': '/var/polyglot/pg3/ns/0021b9026dcd_10', 'log': 'logs/debug.log', 'logLevel': 'DEBUG', 'logLevelList': '[{"id":4,"name":"Debug","value":"DEBUG","level":10},{"id":3,"name":"Info","value":"INFO","level":20},{"id":2,"name":"Warning","value":"WARNING","level":30},{"id":1,"name":"Error","value":"ERROR","level":40},{"id":0,"name":"Critical","value":"CRITICAL","level":50}]', 'enabled': 0, 'connected': 0, 'devMode': 0, 'type': 'python3', 'executable': 'udiNetro.py', 'shortPoll': 60, 'longPoll': 1200, 'allowIsyAccess': 0, 'nsInfoPoll': 0, 'discover': 0, 'oauth': 0, 'requestId': 0, 'status_node': None, 'status_driver': None, 'orderId': None, 'store': 'Local', 'option': 'aabda037-cfb2-4e35-824a-48eebc9cfc48', 'noLicense': 1, 'latestVersion': '0.1.18', 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:17.464 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_create_hub_node: [_create_hub_node][rec-000001] Creating HubNode ip=192.168.1.221 mac=e816567db007 name=Broadlink Hub (192.168.1.221)
+2026-04-30 15:31:17.464 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS getNsInfo message {'id': '48cc858b-ffa8-4047-b6f7-8c1a950572c3', 'uuid': '00:21:b9:02:6d:cd', 'name': 'YolinkLocal', 'nsid': '0e152549-cca9-4835-9981-9028cbe258bb', 'expires': 0, 'nickname': None, 'profileNum': 8, 'developerMode': 0, 'timeAdded': 1763517642307, 'timeStarted': 1776788983330, 'timeModified': 1777572604616, 'version': '1.8.45', 'edition': 'Free', 'branch': 'REL260430', 'url': 'https://github.com/Panda88CO/udi-yolink', 'home': '/var/polyglot/pg3/ns/0021b9026dcd_8', 'log': 'logs/debug.log', 'logLevel': 'INFO', 'logLevelList': '[{"id":4,"name":"Debug","value":"DEBUG","level":10},{"id":3,"name":"Info","value":"INFO","level":20},{"id":2,"name":"Warning","value":"WARNING","level":30},{"id":1,"name":"Error","value":"ERROR","level":40},{"id":0,"name":"Critical","value":"CRITICAL","level":50}]', 'enabled': 0, 'connected': 0, 'devMode': 0, 'type': 'python3', 'executable': 'udiYoLinkLocal.py', 'shortPoll': 60, 'longPoll': 3600, 'allowIsyAccess': 0, 'nsInfoPoll': 0, 'discover': 0, 'oauth': 0, 'requestId': 0, 'status_node': None, 'status_driver': None, 'orderId': None, 'store': 'Local', 'option': 'b8c653c3-02b9-4fbc-a890-03dee8db6500', 'noLicense': 1, 'latestVersion': '1.8.44', 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:17.464 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e816567db007 default GV0 to 1 / 25
+2026-04-30 15:31:17.464 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS getNsInfo message {'id': '35dea668-283e-43a0-9a4c-71d277f0f990', 'uuid': '00:21:b9:02:6d:cd', 'name': 'Blink', 'nsid': '02b66257-0f05-4624-9c27-6855c828c844', 'expires': 0, 'nickname': None, 'profileNum': 13, 'developerMode': 0, 'timeAdded': 1763686393708, 'timeStarted': 1776704732792, 'timeModified': 1776713932509, 'version': '0.6.16', 'edition': 'Standard', 'branch': 'REL260329', 'url': 'https://github.com/Panda88CO/udi-Blink.git', 'home': '/var/polyglot/pg3/ns/0021b9026dcd_13', 'log': 'logs/debug.log', 'logLevel': 'DEBUG', 'logLevelList': '[{"id":4,"name":"Debug","value":"DEBUG","level":10},{"id":3,"name":"Info","value":"INFO","level":20},{"id":2,"name":"Warning","value":"WARNING","level":30},{"id":1,"name":"Error","value":"ERROR","level":40},{"id":0,"name":"Critical","value":"CRITICAL","level":50}]', 'enabled': 0, 'connected': 0, 'devMode': 0, 'type': 'python3', 'executable': 'udiBlinkController.py', 'shortPoll': 60, 'longPoll': 300, 'allowIsyAccess': 0, 'nsInfoPoll': 0, 'discover': 0, 'oauth': 0, 'requestId': 0, 'status_node': None, 'status_driver': None, 'orderId': None, 'store': 'Production', 'option': '6ef66d02-78bc-42d8-af42-449f36eff89d', 'noLicense': 1, 'latestVersion': '0.6.16', 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:17.464 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'key': 'notices', 'value': {}}]}
+2026-04-30 15:31:17.464 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e816567db007 default GV1 to 1 / 25
+2026-04-30 15:31:17.464 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS getNsInfo message {'id': 'f968726c-2723-488f-b25d-a8fcbdccb7b0', 'uuid': '00:21:b9:02:6d:cd', 'name': 'Hubitat2udi', 'nsid': 'c2ca20c9-0a57-48f9-a342-571d0a0b716d', 'expires': 0, 'nickname': None, 'profileNum': 15, 'developerMode': 0, 'timeAdded': 1768772952724, 'timeStarted': 1769201733443, 'timeModified': 1772040979668, 'version': '0.1.13', 'edition': 'Free', 'branch': 'develop', 'url': 'https://github.com/Panda88CO/udi-hubitat.git', 'home': '/var/polyglot/pg3/ns/0021b9026dcd_15', 'log': 'logs/debug.log', 'logLevel': 'DEBUG', 'logLevelList': '[{"id":4,"name":"Debug","value":"DEBUG","level":10},{"id":3,"name":"Info","value":"INFO","level":20},{"id":2,"name":"Warning","value":"WARNING","level":30},{"id":1,"name":"Error","value":"ERROR","level":40},{"id":0,"name":"Critical","value":"CRITICAL","level":50}]', 'enabled': 0, 'connected': 0, 'devMode': 0, 'type': 'python3', 'executable': 'udi-hubitat.py', 'shortPoll': 60, 'longPoll': 300, 'allowIsyAccess': 0, 'nsInfoPoll': 0, 'discover': 0, 'oauth': 0, 'requestId': 1, 'status_node': None, 'status_driver': None, 'orderId': None, 'store': 'Local', 'option': 'b9eabfee-b366-4cbc-a633-f84a40c2873a', 'noLicense': 1, 'latestVersion': '0.1.13', 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:17.465 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'setup', 'driver': 'GV0', 'value': '2', 'uom': 56, 'text': None}]}
+2026-04-30 15:31:17.465 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e816567db007 default ST to 1 / 25
+2026-04-30 15:31:17.465 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS getNsInfo message {'id': 'd792df1f-511c-411c-983d-4c616b73454c', 'uuid': '00:21:b9:02:6d:cd', 'name': 'YoLink', 'nsid': '78312440-23ea-4ed6-9361-9cdc2d5e7c6b', 'expires': 0, 'nickname': None, 'profileNum': 23, 'developerMode': 0, 'timeAdded': 1775413663859, 'timeStarted': 1777572600688, 'timeModified': 1777572601888, 'version': '1.8.45', 'edition': 'Standard', 'branch': 'REL260430', 'url': 'https://github.com/Panda88CO/udi-yolink', 'home': '/var/polyglot/pg3/ns/0021b9026dcd_23', 'log': 'logs/debug.log', 'logLevel': 'INFO', 'logLevelList': '[{"id":4,"name":"Debug","value":"DEBUG","level":10},{"id":3,"name":"Info","value":"INFO","level":20},{"id":2,"name":"Warning","value":"WARNING","level":30},{"id":1,"name":"Error","value":"ERROR","level":40},{"id":0,"name":"Critical","value":"CRITICAL","level":50}]', 'enabled': 1, 'connected': 1, 'devMode': 0, 'type': 'python3', 'executable': 'udi-YoLink.py', 'shortPoll': 600, 'longPoll': 3600, 'allowIsyAccess': 0, 'nsInfoPoll': 0, 'discover': 0, 'oauth': 0, 'requestId': 0, 'status_node': None, 'status_driver': None, 'orderId': None, 'store': 'Local', 'option': '4310fb80-b38f-4f0d-b80e-d06af77cdb12', 'noLicense': 1, 'latestVersion': '1.8.45', 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:17.465 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e816567db007 default TIME to 1777573724 / 151
+2026-04-30 15:31:17.465 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS getNsInfo message {'id': '0f05c1bd-4394-4291-b85b-bd14d001854f', 'uuid': '00:21:b9:02:6d:cd', 'name': 'BroadLink', 'nsid': '5bf099a4-e653-4644-b2d6-359db6a9c472', 'expires': 0, 'nickname': None, 'profileNum': 24, 'developerMode': 0, 'timeAdded': 1777308322118, 'timeStarted': 1777588276396, 'timeModified': 1777588277421, 'version': '0.2.6', 'edition': 'Free', 'branch': 'DEV', 'url': 'https://github.com/Panda88CO/udi_Broadlink', 'home': '/var/polyglot/pg3/ns/0021b9026dcd_24', 'log': 'logs/debug.log', 'logLevel': 'DEBUG', 'logLevelList': '[{"id":4,"name":"Debug","value":"DEBUG","level":10},{"id":3,"name":"Info","value":"INFO","level":20},{"id":2,"name":"Warning","value":"WARNING","level":30},{"id":1,"name":"Error","value":"ERROR","level":40},{"id":0,"name":"Critical","value":"CRITICAL","level":50}]', 'enabled': 1, 'connected': 1, 'devMode': 0, 'type': 'python3', 'executable': 'udibroadlink.py', 'shortPoll': 60, 'longPoll': 600, 'allowIsyAccess': 0, 'nsInfoPoll': 0, 'discover': 0, 'oauth': 0, 'requestId': 1, 'status_node': 'setup', 'status_driver': 'ST', 'orderId': None, 'store': 'Local', 'option': 'd41438e0-d521-4d31-beff-f5aed9b101f8', 'noLicense': 1, 'latestVersion': '0.2.3', 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:17.466 Thread-4 (handle_params) udi_interface.interface INFO     interface:addNode: Adding node Broadlink Hub (192.168.1.221)(e816567db007) [None]
+2026-04-30 15:31:17.466 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS getNsInfo message {'id': 'cfa24faa-b9c9-4625-85c2-1407c6869857', 'uuid': '00:21:b9:02:6d:cd', 'name': 'KiddeSmokeDet', 'nsid': 'e77affb3-184c-43a1-8960-6516430b3304', 'expires': 0, 'nickname': None, 'profileNum': 25, 'developerMode': 0, 'timeAdded': 1777424113998, 'timeStarted': 1777573539402, 'timeModified': 1777573540654, 'version': '0.1.4', 'edition': 'Standard', 'branch': 'RELEASE260428', 'url': 'https://github.com/Panda88CO/udi-Kidde', 'home': '/var/polyglot/pg3/ns/0021b9026dcd_25', 'log': 'logs/debug.log', 'logLevel': 'INFO', 'logLevelList': '[{"id":4,"name":"Debug","value":"DEBUG","level":10},{"id":3,"name":"Info","value":"INFO","level":20},{"id":2,"name":"Warning","value":"WARNING","level":30},{"id":1,"name":"Error","value":"ERROR","level":40},{"id":0,"name":"Critical","value":"CRITICAL","level":50}]', 'enabled': 1, 'connected': 1, 'devMode': 0, 'type': 'python3', 'executable': 'udi_kidde.py', 'shortPoll': 60, 'longPoll': 300, 'allowIsyAccess': 0, 'nsInfoPoll': 0, 'discover': 0, 'oauth': 0, 'requestId': 1, 'status_node': 'setup', 'status_driver': 'ST', 'orderId': None, 'store': 'Production', 'option': '4e953619-c8d7-4114-932a-186b81186e60', 'noLicense': 1, 'latestVersion': '0.1.4', 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:17.466 Thread-4 (handle_params) udi_interface      INFO     nodes:_create_hub_node: [_create_hub_node] Added HubNode ip=192.168.1.221 mac=e816567db007
+2026-04-30 15:31:17.466 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING getprofile
+2026-04-30 15:31:17.466 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_restore_hub_node_data: [_restore_hub_node_data][rec-000001] Retrieving persisted data for hub mac=e816567db007 ip=192.168.1.221
+2026-04-30 15:31:17.466 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS getprofile message {'editors': [{'id': 'binary_index', 'ranges': [{'uom': '25', 'subset': '0-1', 'names': {'0': 'No', '1': 'Yes'}}]}, {'id': 'frequency_mhz', 'ranges': [{'uom': '25', 'subset': '0-1', 'names': {'0': 'No Frequency Identified', '1': 'Frequency Identified'}}, {'uom': '56', 'prec': 1, 'min': 0, 'max': 1000}]}, {'id': 'hub_status', 'ranges': [{'uom': '25', 'subset': '0-3', 'names': {'0': 'No Hubs Configured', '1': 'All Online', '2': 'Partial', '3': 'None Online'}}]}, {'id': 'humidity_pct', 'ranges': [{'uom': '22', 'prec': 1, 'min': 0, 'max': 100}]}, {'id': 'ir_learn_status', 'ranges': [{'uom': '25', 'subset': '0-5', 'names': {'0': 'Idle', '1': 'Start Learning\\: press the IR button you want to learn', '2': 'Check Packet Data\\: keep remote aimed at hub', '3': 'Learned', '4': 'Failed', '5': 'Duplicate - Code Already Exists'}}]}, {'id': 'learn_status', 'ranges': [{'uom': '25', 'subset': '0-3', 'names': {'0': 'Idle', '1': 'Learning', '2': 'Learned OK', '3': 'Failed'}}]}, {'id': 'model_index', 'ranges': [{'uom': '25', 'subset': '0-6', 'names': {'0': 'Unknown', '1': 'RM4 Pro', '2': 'RM4 Mini', '3': 'RM Pro', '4': 'RM Mini', '5': 'RM2', '6': 'Other Broadlink'}}]}, {'id': 'raw_value', 'ranges': [{'uom': '56', 'prec': 0, 'min': 0, 'max': 65535}]}, {'id': 'rf_learn_status', 'ranges': [{'uom': '25', 'subset': '0-6', 'names': {'0': 'Idle', '1': 'Scanning - hold button until frequency locks', '2': 'Press button once to capture', '3': 'Learned', '4': 'No frequency found', '5': 'Duplicate - Code Already Exists', '6': 'Signal not captured'}}]}, {'id': 'status_index', 'ranges': [{'uom': '25', 'subset': '0-2', 'names': {'0': 'Not Configured', '1': 'Online', '2': 'Error'}}]}, {'id': 'temp_c', 'ranges': [{'uom': '17', 'prec': 1, 'min': -40, 'max': 125}]}, {'id': 'temp_f', 'ranges': [{'uom': '4', 'prec': 1, 'min': -40, 'max': 257}]}, {'id': 'timestamp', 'ranges': [{'uom': '151', 'prec': 0, 'min': 0, 'max': 4294967295}]}, {'id': 'tx_result', 'ranges': [{'uom': '25', 'subset': '0-2', 'names': {'0': 'Never', '1': 'Success', '2': 'Failed'}}]}, {'id': 'tx_status', 'ranges': [{'uom': '25', 'subset': '0-3', 'names': {'0': 'Ready', '1': 'Sending', '2': 'Sent OK', '3': 'Failed'}}]}], 'linkdefs': [], 'nodedefs': [{'id': 'setup', 'icon': 'GenericCtl', 'name': 'Broadlink', 'properties': [{'id': 'ST', 'editor': 'hub_status', 'name': 'Status'}, {'id': 'GV0', 'editor': 'raw_value', 'name': 'Hub Count'}, {'id': 'TIME', 'editor': 'timestamp', 'name': 'Last Update'}], 'cmds': {'sends': [{'id': 'DON', 'native': 'false', 'name': 'Heartbeat On'}, {'id': 'DOF', 'native': 'false', 'name': 'Heartbeat Off'}], 'accepts': [{'id': 'UPDATE', 'native': 'false', 'name': 'Update'}]}, 'links': {'ctl': [], 'rsp': []}}, {'id': 'blhub', 'icon': 'GenericCtl', 'name': 'Broadlink Hub', 'properties': [{'id': 'ST', 'editor': 'status_index', 'name': 'Status'}, {'id': 'GV0', 'editor': 'model_index', 'name': 'Model'}, {'id': 'GV1', 'editor': 'binary_index', 'name': 'Connected'}, {'id': 'TIME', 'editor': 'timestamp', 'name': 'Last Update'}], 'cmds': {'sends': [], 'accepts': [{'id': 'UPDATE', 'native': 'false', 'name': 'Update'}]}, 'links': {'ctl': [], 'rsp': []}}, {'id': 'blirctl', 'icon': 'GenericCtl', 'name': 'IR Controller', 'properties': [{'id': 'ST', 'editor': 'ir_learn_status', 'name': 'Status'}, {'id': 'TIME', 'editor': 'timestamp', 'name': 'Last Learn'}, {'id': 'GV1', 'editor': 'raw_value', 'name': 'Learn Count'}, {'id': 'GV2', 'editor': 'binary_index', 'name': 'Hub Connected'}], 'cmds': {'sends': [], 'accepts': [{'id': 'LEARNCODE', 'native': 'false', 'name': 'Learn IR Code'}]}, 'links': {'ctl': [], 'rsp': []}}, {'id': 'blrfctl', 'icon': 'GenericCtl', 'name': 'RF Controller', 'properties': [{'id': 'ST', 'editor': 'rf_learn_status', 'name': 'Status'}, {'id': 'TIME', 'editor': 'timestamp', 'name': 'Last Learn'}, {'id': 'GV1', 'editor': 'raw_value', 'name': 'Learn Count'}, {'id': 'GV2', 'editor': 'binary_index', 'name': 'Hub Connected'}], 'cmds': {'sends': [], 'accepts': [{'id': 'LEARNCODE', 'native': 'false', 'name': 'Learn RF Code'}]}, 'links': {'ctl': [], 'rsp': []}}, {'id': 'blircode', 'icon': 'GenericCtl', 'name': 'IR Code', 'properties': [{'id': 'ST', 'editor': 'tx_status', 'name': 'Status'}, {'id': 'TIME', 'editor': 'timestamp', 'name': 'Created'}, {'id': 'GV1', 'editor': 'timestamp', 'name': 'Last Sent'}, {'id': 'GV2', 'editor': 'tx_result', 'name': 'Last Result'}, {'id': 'GV3', 'editor': 'raw_value', 'name': 'TX Count'}], 'cmds': {'sends': [], 'accepts': [{'id': 'TXCODE', 'native': 'false', 'name': 'Send Code'}]}, 'links': {'ctl': [], 'rsp': []}}, {'id': 'blrfcode', 'icon': 'GenericCtl', 'name': 'RF Code', 'properties': [{'id': 'ST', 'editor': 'tx_status', 'name': 'Status'}, {'id': 'GV0', 'editor': 'frequency_mhz', 'name': 'Frequency (MHz)'}, {'id': 'TIME', 'editor': 'timestamp', 'name': 'Created'}, {'id': 'GV1', 'editor': 'timestamp', 'name': 'Last Sent'}, {'id': 'GV2', 'editor': 'tx_result', 'name': 'Last Result'}, {'id': 'GV3', 'editor': 'raw_value', 'name': 'TX Count'}], 'cmds': {'sends': [], 'accepts': [{'id': 'TXCODE', 'native': 'false', 'name': 'Send Code'}]}, 'links': {'ctl': [], 'rsp': []}}, {'id': 'blsensor', 'icon': 'GenericCtl', 'name': 'Hub Sensor', 'properties': [{'id': 'ST', 'editor': 'status_index', 'name': 'Status'}, {'id': 'GV2', 'editor': 'temp_c', 'name': 'Temperature'}, {'id': 'GV3', 'editor': 'humidity_pct', 'name': 'Humidity'}, {'id': 'TIME', 'editor': 'timestamp', 'name': 'Last Update'}], 'cmds': {'sends': [], 'accepts': [{'id': 'UPDATE', 'native': 'false', 'name': 'Update'}]}, 'links': {'ctl': [], 'rsp': []}}]} from Polyglot
+2026-04-30 15:31:17.466 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_restore_hub_node_data: [_restore_hub_node_data][rec-000001] Restored sensor options mac=e816567db007 has_temp=True has_humidity=True
+2026-04-30 15:31:17.467 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_restore_hub_node_data: [_restore_hub_node_data][rec-000001] Restored learned code metadata mac=e816567db007 code_count=0
+2026-04-30 15:31:17.467 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_reconcile_hub_nodes: [_reconcile_hub_nodes][rec-000001] Waiting for PG3 to confirm hub node ip=192.168.1.221 addr=e816567db007
+2026-04-30 15:31:17.476 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'addnode': [{'address': 'e816567db007', 'name': 'Broadlink Hub (192.168.1.221)', 'nodeDefId': 'blhub', 'primaryNode': 'e816567db007', 'drivers': [{'driver': 'ST', 'value': '1', 'uom': 25}, {'driver': 'GV0', 'value': '1', 'uom': 25}, {'driver': 'GV1', 'value': '1', 'uom': 25}, {'driver': 'TIME', 'value': '1777573724', 'uom': 151}], 'hint': [0, 0, 0, 0], 'private': None, 'rename': False}]}
+2026-04-30 15:31:17.477 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message custom
+2026-04-30 15:31:17.478 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING custom
+2026-04-30 15:31:17.478 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS custom message {'notices': '{}'} from Polyglot
+2026-04-30 15:31:17.478 Command    udi_interface.interface DEBUG    interface:_handleInput: Process custom message notices from Polyglot
+2026-04-30 15:31:17.478 Command    udi_interface.custom DEBUG    custom:load: CUSTOM: load {}
+2026-04-30 15:31:17.478 MQTT       udi_interface.interface INFO     interface:_message: Successfully set key = notices
+2026-04-30 15:31:17.527 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message updateprofile
+2026-04-30 15:31:17.527 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING updateprofile
+2026-04-30 15:31:17.527 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS updateprofile message {'requestId': 'bbfe3cad', 'success': True} from Polyglot
+2026-04-30 15:31:17.604 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message addnode
+2026-04-30 15:31:17.604 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING addnode
+2026-04-30 15:31:17.604 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS addnode message {'id': 'c4adaa39-210d-4fd8-8615-3035f7608c96', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'address': 'setup', 'name': 'Broadlink Setup', 'nodeDefId': 'setup', 'nls': None, 'hint': '0x00000000', 'controller': 1, 'primaryNode': 'setup', 'private': None, 'isPrimary': 1, 'enabled': 1, 'timeAdded': 1777308330246, 'timeModified': 1777588277400, 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:17.605 Command    udi_interface.interface DEBUG    interface:_handleAddNode: add node response: {'id': 'c4adaa39-210d-4fd8-8615-3035f7608c96', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'address': 'setup', 'name': 'Broadlink Setup', 'nodeDefId': 'setup', 'nls': None, 'hint': '0x00000000', 'controller': 1, 'primaryNode': 'setup', 'private': None, 'isPrimary': 1, 'enabled': 1, 'timeAdded': 1777308330246, 'timeModified': 1777588277400, 'dbVersion': 1}
+2026-04-30 15:31:17.605 Thread-8 (node_done) udi_interface      DEBUG    nodes:node_done: [node_done] Node setup is done
+2026-04-30 15:31:17.832 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message addnode
+2026-04-30 15:31:17.832 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING addnode
+2026-04-30 15:31:17.832 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS addnode message {'id': '7de1a69f-a7f3-4412-9b24-398321521c30', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'address': 'e816567db007', 'name': 'Broadlink Hub (192.168.1.221)', 'nodeDefId': 'blhub', 'nls': None, 'hint': '0x00000000', 'controller': 0, 'primaryNode': 'e816567db007', 'private': None, 'isPrimary': 1, 'enabled': 1, 'timeAdded': 1777308347224, 'timeModified': 1777308347224, 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:17.833 Command    udi_interface.interface DEBUG    interface:_handleAddNode: add node response: {'id': '7de1a69f-a7f3-4412-9b24-398321521c30', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'address': 'e816567db007', 'name': 'Broadlink Hub (192.168.1.221)', 'nodeDefId': 'blhub', 'nls': None, 'hint': '0x00000000', 'controller': 0, 'primaryNode': 'e816567db007', 'private': None, 'isPrimary': 1, 'enabled': 1, 'timeAdded': 1777308347224, 'timeModified': 1777308347224, 'dbVersion': 1}
+2026-04-30 15:31:17.833 Thread-11 (node_done) udi_interface      DEBUG    nodes:node_done: [node_done] Node e816567db007 is done
+2026-04-30 15:31:17.833 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_wait_for_node_confirmed: [_wait_for_node_confirmed] PG3 confirmed node e816567db007
+2026-04-30 15:31:17.833 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_reconcile_hub_nodes: [_reconcile_hub_nodes][rec-000001] Hub confirmed, reconciling children for ip=192.168.1.221
+2026-04-30 15:31:17.833 Thread-4 (handle_params) udi_interface      DEBUG    nodes:reconcile: [HubNode.reconcile][rec-000001] Starting reconcile for ip=192.168.1.221 addr=e816567db007
+2026-04-30 15:31:17.833 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:__init__: [BroadlinkHubClient.__init__] Creating client for ip=192.168.1.221
+2026-04-30 15:31:17.834 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:__init__: [BroadlinkHubClient.__init__] Client initialized
+2026-04-30 15:31:17.834 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:ensure_connected: [ensure_connected] Checking connection state
+2026-04-30 15:31:17.834 Thread-4 (handle_params) udi_interface      INFO     broadlink_client:ensure_connected: [ensure_connected] Connecting to 192.168.1.221
+2026-04-30 15:31:17.834 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:connect: [connect] Attempting to connect to 192.168.1.221
+2026-04-30 15:31:17.834 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:connect: [connect] Calling broadlink.hello(192.168.1.221)
+2026-04-30 15:31:17.875 MQTT       udi_interface.interface INFO     interface:_message: Successfully set setup :: GV0 to 2 UOM 56
+2026-04-30 15:31:17.959 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:connect: [connect] Device discovered, calling auth()
+2026-04-30 15:31:18.124 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:connect: [connect] Raw hub_info payload for 192.168.1.221: BroadlinkHubInfo(ip_address='192.168.1.221', mac_address='e816567db007', device_type='0x520b', model_name='rm4pro')
+2026-04-30 15:31:18.125 Thread-4 (handle_params) udi_interface      INFO     broadlink_client:connect: [connect] Connected to 192.168.1.221, model=rm4pro, mac=e816567db007
+2026-04-30 15:31:18.125 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:connect: [connect] Raw device attributes for 192.168.1.221:
+  ip          : 192.168.1.221
+  mac         : e816567db007
+  devtype     : 0x520b
+  model       : rm4pro
+  manufacturer: Broadlink
+  is_locked   : False
+  timeout     : 10
+2026-04-30 15:31:18.125 Thread-4 (handle_params) udi_interface      DEBUG    nodes:reconcile: [HubNode.reconcile][rec-000001] Blueprint resolved ip=192.168.1.221 connected=True model=rm4pro mac=e816567db007 error=
+2026-04-30 15:31:18.125 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007:Broadlink Hub (192.168.1.221) Reporting set ST to 1 to Polyglot
+2026-04-30 15:31:18.125 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 1
+2026-04-30 15:31:18.125 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007:Broadlink Hub (192.168.1.221) Reporting set GV0 to 1 to Polyglot
+2026-04-30 15:31:18.125 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 1
+2026-04-30 15:31:18.125 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007:Broadlink Hub (192.168.1.221) Reporting set GV1 to 1 to Polyglot
+2026-04-30 15:31:18.125 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 1
+2026-04-30 15:31:18.125 Thread-4 (handle_params) udi_interface      DEBUG    nodes:reconcile: [HubNode.reconcile][rec-000001] Hub connected, ensuring child nodes for ip=192.168.1.221
+2026-04-30 15:31:18.125 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_ensure_controller_nodes: [HubNode._ensure_controller_nodes][rec-000001] Ensuring IR/RF controllers for ip=192.168.1.221 addr=e816567db007
+2026-04-30 15:31:18.126 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_ensure_controller_nodes: [HubNode._ensure_controller_nodes][rec-000001] Creating IR controller addr=e816567db007ir name=IR Controller (192.168.1.221)
+2026-04-30 15:31:18.126 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e816567db007ir default GV1 to 0 / 56
+2026-04-30 15:31:18.126 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e816567db007ir default GV2 to 1 / 25
+2026-04-30 15:31:18.126 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e816567db007ir default ST to 0 / 25
+2026-04-30 15:31:18.126 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e816567db007ir default TIME to 0 / 151
+2026-04-30 15:31:18.126 Thread-4 (handle_params) udi_interface.interface INFO     interface:addNode: Adding node IR Controller (192.168.1.221)(e816567db007ir) [None]
+2026-04-30 15:31:18.126 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007ir:IR Controller (192.168.1.221) No change in GV1's value
+2026-04-30 15:31:18.126 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007ir:IR Controller (192.168.1.221) Reporting set GV2 to 1 to Polyglot
+2026-04-30 15:31:18.126 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 1
+2026-04-30 15:31:18.126 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007ir:IR Controller (192.168.1.221) No change in ST's value
+2026-04-30 15:31:18.126 Thread-4 (handle_params) udi_interface      INFO     nodes:_ensure_controller_nodes: [HubNode] Added IRControllerNode e816567db007ir
+2026-04-30 15:31:18.126 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_ensure_controller_nodes: [HubNode._ensure_controller_nodes][rec-000001] Creating RF controller addr=e816567db007rf name=RF Controller (192.168.1.221)
+2026-04-30 15:31:18.127 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e816567db007rf default GV1 to 1 / 56
+2026-04-30 15:31:18.127 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e816567db007rf default GV2 to 1 / 25
+2026-04-30 15:31:18.127 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e816567db007rf default ST to 0 / 25
+2026-04-30 15:31:18.127 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e816567db007rf default TIME to 1777572812 / 151
+2026-04-30 15:31:18.127 Thread-4 (handle_params) udi_interface.interface INFO     interface:addNode: Adding node RF Controller (192.168.1.221)(e816567db007rf) [None]
+2026-04-30 15:31:18.127 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) Reporting set GV1 to 0 to Polyglot
+2026-04-30 15:31:18.127 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 0
+2026-04-30 15:31:18.127 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) Reporting set GV2 to 1 to Polyglot
+2026-04-30 15:31:18.127 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 1
+2026-04-30 15:31:18.127 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) Reporting set ST to 0 to Polyglot
+2026-04-30 15:31:18.127 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 0
+2026-04-30 15:31:18.127 Thread-4 (handle_params) udi_interface      INFO     nodes:_ensure_controller_nodes: [HubNode] Added RFControllerNode e816567db007rf
+2026-04-30 15:31:18.127 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007ir:IR Controller (192.168.1.221) No change in GV1's value
+2026-04-30 15:31:18.128 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007ir:IR Controller (192.168.1.221) No change in GV2's value
+2026-04-30 15:31:18.128 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) No change in GV1's value
+2026-04-30 15:31:18.128 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) No change in GV2's value
+2026-04-30 15:31:18.128 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_detect_and_apply_sensors: [HubNode._detect_and_apply_sensors] Retrieving sensor capability for ip=192.168.1.221
+2026-04-30 15:31:18.133 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007', 'driver': 'ST', 'value': '1', 'uom': 25, 'text': None}]}
+2026-04-30 15:31:18.134 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007', 'driver': 'GV0', 'value': '1', 'uom': 25, 'text': None}]}
+2026-04-30 15:31:18.134 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007', 'driver': 'GV1', 'value': '1', 'uom': 25, 'text': None}]}
+2026-04-30 15:31:18.134 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'addnode': [{'address': 'e816567db007ir', 'name': 'IR Controller (192.168.1.221)', 'nodeDefId': 'blirctl', 'primaryNode': 'e816567db007ir', 'drivers': [{'driver': 'ST', 'value': 0, 'uom': 25}, {'driver': 'TIME', 'value': 0, 'uom': 151}, {'driver': 'GV1', 'value': 0, 'uom': 56}, {'driver': 'GV2', 'value': 1, 'uom': 25}], 'hint': [0, 0, 0, 0], 'private': None, 'rename': False}]}
+2026-04-30 15:31:18.135 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007ir', 'driver': 'GV2', 'value': '1', 'uom': 25, 'text': None}]}
+2026-04-30 15:31:18.135 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'addnode': [{'address': 'e816567db007rf', 'name': 'RF Controller (192.168.1.221)', 'nodeDefId': 'blrfctl', 'primaryNode': 'e816567db007rf', 'drivers': [{'driver': 'ST', 'value': 0, 'uom': 25}, {'driver': 'TIME', 'value': '1777572812', 'uom': 151}, {'driver': 'GV1', 'value': 0, 'uom': 56}, {'driver': 'GV2', 'value': 1, 'uom': 25}], 'hint': [0, 0, 0, 0], 'private': None, 'rename': False}]}
+2026-04-30 15:31:18.135 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007rf', 'driver': 'GV1', 'value': '0', 'uom': 56, 'text': None}]}
+2026-04-30 15:31:18.135 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007rf', 'driver': 'GV2', 'value': '1', 'uom': 25, 'text': None}]}
+2026-04-30 15:31:18.136 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007rf', 'driver': 'ST', 'value': '0', 'uom': 25, 'text': None}]}
+2026-04-30 15:31:18.161 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007 :: ST to 1 UOM 25
+2026-04-30 15:31:18.250 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007 :: GV0 to 1 UOM 25
+2026-04-30 15:31:18.256 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.221: {'temperature': 22.87, 'humidity': 50.18}
+2026-04-30 15:31:18.256 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.221:
+  humidity            : 50.18
+  temperature         : 22.87
+2026-04-30 15:31:18.256 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_detect_and_apply_sensors: [HubNode._detect_and_apply_sensors] Retrieved capability ip=192.168.1.221 has_temp=True has_humidity=True
+2026-04-30 15:31:18.257 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_ensure_sensor_node: [HubNode._ensure_sensor_node][rec-000001] Creating optional sensor node ip=192.168.1.221 addr=e816567db007se name=Sensor (192.168.1.221)
+2026-04-30 15:31:18.257 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e816567db007se default GV2 to 23.0 / 17
+2026-04-30 15:31:18.257 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e816567db007se default GV3 to 46.5 / 22
+2026-04-30 15:31:18.257 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e816567db007se default ST to 1 / 25
+2026-04-30 15:31:18.257 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e816567db007se default TIME to 1777573724 / 151
+2026-04-30 15:31:18.257 Thread-4 (handle_params) udi_interface.interface INFO     interface:addNode: Adding node Sensor (192.168.1.221)(e816567db007se) [None]
+2026-04-30 15:31:18.257 Thread-4 (handle_params) udi_interface      INFO     nodes:_ensure_sensor_node: [HubNode] Added HubSensorNode e816567db007se
+2026-04-30 15:31:18.257 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_load_learned_codes: [HubNode._load_learned_codes][rec-000001] Preparing to restore code nodes for ip=192.168.1.221 total_cached=0 already_loaded=0
+2026-04-30 15:31:18.257 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_load_learned_codes: [HubNode._load_learned_codes][rec-000001] No cached codes for ip=192.168.1.221
+2026-04-30 15:31:18.257 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007ir:IR Controller (192.168.1.221) No change in GV1's value
+2026-04-30 15:31:18.257 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007ir:IR Controller (192.168.1.221) No change in GV2's value
+2026-04-30 15:31:18.257 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) No change in GV1's value
+2026-04-30 15:31:18.257 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) No change in GV2's value
+2026-04-30 15:31:18.264 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'addnode': [{'address': 'e816567db007se', 'name': 'Sensor (192.168.1.221)', 'nodeDefId': 'blsensor', 'primaryNode': 'e816567db007', 'drivers': [{'driver': 'ST', 'value': '1', 'uom': 25}, {'driver': 'GV2', 'value': '23.0', 'uom': 17}, {'driver': 'GV3', 'value': '46.5', 'uom': 22}, {'driver': 'TIME', 'value': '1777573724', 'uom': 151}], 'hint': [0, 0, 0, 0], 'private': None, 'rename': False}]}
+2026-04-30 15:31:18.265 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007 :: GV1 to 1 UOM 25
+2026-04-30 15:31:18.285 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.221: {'temperature': 22.87, 'humidity': 50.18}
+2026-04-30 15:31:18.285 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.221:
+  humidity            : 50.18
+  temperature         : 22.87
+2026-04-30 15:31:18.285 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) Reporting set ST to 1 to Polyglot
+2026-04-30 15:31:18.285 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 1
+2026-04-30 15:31:18.286 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) Reporting set TIME to 1777588278 to Polyglot
+2026-04-30 15:31:18.286 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588278
+2026-04-30 15:31:18.286 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) Reporting set GV2 to 22.9 to Polyglot
+2026-04-30 15:31:18.286 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 22.9
+2026-04-30 15:31:18.286 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) Reporting set GV3 to 50.2 to Polyglot
+2026-04-30 15:31:18.286 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 50.2
+2026-04-30 15:31:18.286 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e816567db007:Broadlink Hub (192.168.1.221) Reporting set TIME to 1777588278 to Polyglot
+2026-04-30 15:31:18.286 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588278
+2026-04-30 15:31:18.286 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_reconcile_hub_nodes: [_reconcile_hub_nodes][rec-000001] Using stored MAC for ip=192.168.1.226 mac=e87072dea50b
+2026-04-30 15:31:18.286 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_create_hub_node: [_create_hub_node][rec-000001] Creating HubNode ip=192.168.1.226 mac=e87072dea50b name=Broadlink Hub (192.168.1.226)
+2026-04-30 15:31:18.286 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e87072dea50b default GV0 to 1 / 25
+2026-04-30 15:31:18.286 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e87072dea50b default GV1 to 1 / 25
+2026-04-30 15:31:18.286 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e87072dea50b default ST to 1 / 25
+2026-04-30 15:31:18.287 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e87072dea50b default TIME to 1777573724 / 151
+2026-04-30 15:31:18.287 Thread-4 (handle_params) udi_interface.interface INFO     interface:addNode: Adding node Broadlink Hub (192.168.1.226)(e87072dea50b) [None]
+2026-04-30 15:31:18.287 Thread-4 (handle_params) udi_interface      INFO     nodes:_create_hub_node: [_create_hub_node] Added HubNode ip=192.168.1.226 mac=e87072dea50b
+2026-04-30 15:31:18.287 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_restore_hub_node_data: [_restore_hub_node_data][rec-000001] Retrieving persisted data for hub mac=e87072dea50b ip=192.168.1.226
+2026-04-30 15:31:18.287 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_restore_hub_node_data: [_restore_hub_node_data][rec-000001] Restored sensor options mac=e87072dea50b has_temp=False has_humidity=False
+2026-04-30 15:31:18.287 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_restore_hub_node_data: [_restore_hub_node_data][rec-000001] Restored learned code metadata mac=e87072dea50b code_count=0
+2026-04-30 15:31:18.287 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_reconcile_hub_nodes: [_reconcile_hub_nodes][rec-000001] Waiting for PG3 to confirm hub node ip=192.168.1.226 addr=e87072dea50b
+2026-04-30 15:31:18.296 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007se', 'driver': 'ST', 'value': '1', 'uom': 25, 'text': None}]}
+2026-04-30 15:31:18.296 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007se', 'driver': 'TIME', 'value': '1777588278', 'uom': 151, 'text': None}]}
+2026-04-30 15:31:18.296 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007se', 'driver': 'GV2', 'value': '22.9', 'uom': 17, 'text': None}]}
+2026-04-30 15:31:18.297 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007se', 'driver': 'GV3', 'value': '50.2', 'uom': 22, 'text': None}]}
+2026-04-30 15:31:18.297 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007', 'driver': 'TIME', 'value': '1777588278', 'uom': 151, 'text': None}]}
+2026-04-30 15:31:18.297 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'addnode': [{'address': 'e87072dea50b', 'name': 'Broadlink Hub (192.168.1.226)', 'nodeDefId': 'blhub', 'primaryNode': 'e87072dea50b', 'drivers': [{'driver': 'ST', 'value': '1', 'uom': 25}, {'driver': 'GV0', 'value': '1', 'uom': 25}, {'driver': 'GV1', 'value': '1', 'uom': 25}, {'driver': 'TIME', 'value': '1777573724', 'uom': 151}], 'hint': [0, 0, 0, 0], 'private': None, 'rename': False}]}
+2026-04-30 15:31:18.602 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007 :: TIME to 1777588278 UOM 151
+2026-04-30 15:31:18.712 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message addnode
+2026-04-30 15:31:18.712 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING addnode
+2026-04-30 15:31:18.712 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS addnode message {'id': 'c3e36694-076a-4a4d-9e1a-773533ff2944', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'address': 'e816567db007ir', 'name': 'IR Controller (192.168.1.221)', 'nodeDefId': 'blirctl', 'nls': None, 'hint': '0x00000000', 'controller': 0, 'primaryNode': 'e816567db007ir', 'private': None, 'isPrimary': 1, 'enabled': 1, 'timeAdded': 1777308347677, 'timeModified': 1777308347677, 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:18.712 Command    udi_interface.interface DEBUG    interface:_handleAddNode: add node response: {'id': 'c3e36694-076a-4a4d-9e1a-773533ff2944', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'address': 'e816567db007ir', 'name': 'IR Controller (192.168.1.221)', 'nodeDefId': 'blirctl', 'nls': None, 'hint': '0x00000000', 'controller': 0, 'primaryNode': 'e816567db007ir', 'private': None, 'isPrimary': 1, 'enabled': 1, 'timeAdded': 1777308347677, 'timeModified': 1777308347677, 'dbVersion': 1}
+2026-04-30 15:31:18.713 Thread-15 (node_done) udi_interface      DEBUG    nodes:node_done: [node_done] Node e816567db007ir is done
+2026-04-30 15:31:18.758 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message addnode
+2026-04-30 15:31:18.758 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING addnode
+2026-04-30 15:31:18.758 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS addnode message {'id': '5a5f730a-27f1-4019-9ca2-d56b2cad012c', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'address': 'e816567db007rf', 'name': 'RF Controller (192.168.1.221)', 'nodeDefId': 'blrfctl', 'nls': None, 'hint': '0x00000000', 'controller': 0, 'primaryNode': 'e816567db007rf', 'private': None, 'isPrimary': 1, 'enabled': 1, 'timeAdded': 1777308347726, 'timeModified': 1777308347726, 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:18.758 Command    udi_interface.interface DEBUG    interface:_handleAddNode: add node response: {'id': '5a5f730a-27f1-4019-9ca2-d56b2cad012c', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'address': 'e816567db007rf', 'name': 'RF Controller (192.168.1.221)', 'nodeDefId': 'blrfctl', 'nls': None, 'hint': '0x00000000', 'controller': 0, 'primaryNode': 'e816567db007rf', 'private': None, 'isPrimary': 1, 'enabled': 1, 'timeAdded': 1777308347726, 'timeModified': 1777308347726, 'dbVersion': 1}
+2026-04-30 15:31:18.759 Thread-18 (node_done) udi_interface      DEBUG    nodes:node_done: [node_done] Node e816567db007rf is done
+2026-04-30 15:31:18.861 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message addnode
+2026-04-30 15:31:18.862 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING addnode
+2026-04-30 15:31:18.862 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS addnode message {'id': 'afde7767-d858-40ce-8d81-a67bda4b5c3a', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'address': 'e816567db007se', 'name': 'Sensor (192.168.1.221)', 'nodeDefId': 'blsensor', 'nls': None, 'hint': '0x00000000', 'controller': 0, 'primaryNode': 'e816567db007', 'private': None, 'isPrimary': 0, 'enabled': 1, 'timeAdded': 1777308347778, 'timeModified': 1777308347778, 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:18.862 Command    udi_interface.interface DEBUG    interface:_handleAddNode: add node response: {'id': 'afde7767-d858-40ce-8d81-a67bda4b5c3a', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'address': 'e816567db007se', 'name': 'Sensor (192.168.1.221)', 'nodeDefId': 'blsensor', 'nls': None, 'hint': '0x00000000', 'controller': 0, 'primaryNode': 'e816567db007', 'private': None, 'isPrimary': 0, 'enabled': 1, 'timeAdded': 1777308347778, 'timeModified': 1777308347778, 'dbVersion': 1}
+2026-04-30 15:31:18.862 Thread-21 (node_done) udi_interface      DEBUG    nodes:node_done: [node_done] Node e816567db007se is done
+2026-04-30 15:31:19.006 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007ir :: GV2 to 1 UOM 25
+2026-04-30 15:31:19.046 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007rf :: GV1 to 0 UOM 56
+2026-04-30 15:31:19.099 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007rf :: GV2 to 1 UOM 25
+2026-04-30 15:31:19.145 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007rf :: ST to 0 UOM 25
+2026-04-30 15:31:19.187 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message addnode
+2026-04-30 15:31:19.188 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING addnode
+2026-04-30 15:31:19.188 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS addnode message {'id': 'a688fae0-1e84-4a27-be24-01b6018b6ac9', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'address': 'e87072dea50b', 'name': 'Broadlink Hub (192.168.1.226)', 'nodeDefId': 'blhub', 'nls': None, 'hint': '0x00000000', 'controller': 0, 'primaryNode': 'e87072dea50b', 'private': None, 'isPrimary': 1, 'enabled': 1, 'timeAdded': 1777308347875, 'timeModified': 1777308347875, 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:19.188 Command    udi_interface.interface DEBUG    interface:_handleAddNode: add node response: {'id': 'a688fae0-1e84-4a27-be24-01b6018b6ac9', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'address': 'e87072dea50b', 'name': 'Broadlink Hub (192.168.1.226)', 'nodeDefId': 'blhub', 'nls': None, 'hint': '0x00000000', 'controller': 0, 'primaryNode': 'e87072dea50b', 'private': None, 'isPrimary': 1, 'enabled': 1, 'timeAdded': 1777308347875, 'timeModified': 1777308347875, 'dbVersion': 1}
+2026-04-30 15:31:19.188 Thread-24 (node_done) udi_interface      DEBUG    nodes:node_done: [node_done] Node e87072dea50b is done
+2026-04-30 15:31:19.189 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_wait_for_node_confirmed: [_wait_for_node_confirmed] PG3 confirmed node e87072dea50b
+2026-04-30 15:31:19.189 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_reconcile_hub_nodes: [_reconcile_hub_nodes][rec-000001] Hub confirmed, reconciling children for ip=192.168.1.226
+2026-04-30 15:31:19.189 Thread-4 (handle_params) udi_interface      DEBUG    nodes:reconcile: [HubNode.reconcile][rec-000001] Starting reconcile for ip=192.168.1.226 addr=e87072dea50b
+2026-04-30 15:31:19.189 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:__init__: [BroadlinkHubClient.__init__] Creating client for ip=192.168.1.226
+2026-04-30 15:31:19.189 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:__init__: [BroadlinkHubClient.__init__] Client initialized
+2026-04-30 15:31:19.189 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:ensure_connected: [ensure_connected] Checking connection state
+2026-04-30 15:31:19.189 Thread-4 (handle_params) udi_interface      INFO     broadlink_client:ensure_connected: [ensure_connected] Connecting to 192.168.1.226
+2026-04-30 15:31:19.189 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:connect: [connect] Attempting to connect to 192.168.1.226
+2026-04-30 15:31:19.189 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:connect: [connect] Calling broadlink.hello(192.168.1.226)
+2026-04-30 15:31:19.350 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007se :: ST to 1 UOM 25
+2026-04-30 15:31:19.398 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007se :: TIME to 1777588278 UOM 151
+2026-04-30 15:31:19.449 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007se :: GV2 to 22.9 UOM 17
+2026-04-30 15:31:19.493 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007se :: GV3 to 50.2 UOM 22
+2026-04-30 15:31:20.272 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:connect: [connect] Device discovered, calling auth()
+2026-04-30 15:31:20.286 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:connect: [connect] Raw hub_info payload for 192.168.1.226: BroadlinkHubInfo(ip_address='192.168.1.226', mac_address='e87072dea50b', device_type='0x520b', model_name='rm4pro')
+2026-04-30 15:31:20.286 Thread-4 (handle_params) udi_interface      INFO     broadlink_client:connect: [connect] Connected to 192.168.1.226, model=rm4pro, mac=e87072dea50b
+2026-04-30 15:31:20.286 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:connect: [connect] Raw device attributes for 192.168.1.226:
+  ip          : 192.168.1.226
+  mac         : e87072dea50b
+  devtype     : 0x520b
+  model       : rm4pro
+  manufacturer: Broadlink
+  is_locked   : False
+  timeout     : 10
+2026-04-30 15:31:20.287 Thread-4 (handle_params) udi_interface      DEBUG    nodes:reconcile: [HubNode.reconcile][rec-000001] Blueprint resolved ip=192.168.1.226 connected=True model=rm4pro mac=e87072dea50b error=
+2026-04-30 15:31:20.287 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e87072dea50b:Broadlink Hub (192.168.1.226) Reporting set ST to 1 to Polyglot
+2026-04-30 15:31:20.287 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 1
+2026-04-30 15:31:20.287 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e87072dea50b:Broadlink Hub (192.168.1.226) Reporting set GV0 to 1 to Polyglot
+2026-04-30 15:31:20.287 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 1
+2026-04-30 15:31:20.287 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e87072dea50b:Broadlink Hub (192.168.1.226) Reporting set GV1 to 1 to Polyglot
+2026-04-30 15:31:20.287 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 1
+2026-04-30 15:31:20.287 Thread-4 (handle_params) udi_interface      DEBUG    nodes:reconcile: [HubNode.reconcile][rec-000001] Hub connected, ensuring child nodes for ip=192.168.1.226
+2026-04-30 15:31:20.287 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_ensure_controller_nodes: [HubNode._ensure_controller_nodes][rec-000001] Ensuring IR/RF controllers for ip=192.168.1.226 addr=e87072dea50b
+2026-04-30 15:31:20.287 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_ensure_controller_nodes: [HubNode._ensure_controller_nodes][rec-000001] Creating IR controller addr=e87072dea50bir name=IR Controller (192.168.1.226)
+2026-04-30 15:31:20.287 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e87072dea50bir default GV1 to 0 / 56
+2026-04-30 15:31:20.287 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e87072dea50bir default GV2 to 1 / 25
+2026-04-30 15:31:20.288 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e87072dea50bir default ST to 0 / 25
+2026-04-30 15:31:20.288 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e87072dea50bir default TIME to 0 / 151
+2026-04-30 15:31:20.288 Thread-4 (handle_params) udi_interface.interface INFO     interface:addNode: Adding node IR Controller (192.168.1.226)(e87072dea50bir) [None]
+2026-04-30 15:31:20.288 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e87072dea50bir:IR Controller (192.168.1.226) No change in GV1's value
+2026-04-30 15:31:20.288 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e87072dea50bir:IR Controller (192.168.1.226) Reporting set GV2 to 1 to Polyglot
+2026-04-30 15:31:20.288 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 1
+2026-04-30 15:31:20.288 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e87072dea50bir:IR Controller (192.168.1.226) No change in ST's value
+2026-04-30 15:31:20.288 Thread-4 (handle_params) udi_interface      INFO     nodes:_ensure_controller_nodes: [HubNode] Added IRControllerNode e87072dea50bir
+2026-04-30 15:31:20.288 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_ensure_controller_nodes: [HubNode._ensure_controller_nodes][rec-000001] Creating RF controller addr=e87072dea50brf name=RF Controller (192.168.1.226)
+2026-04-30 15:31:20.288 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e87072dea50brf default GV1 to 0 / 56
+2026-04-30 15:31:20.288 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e87072dea50brf default GV2 to 1 / 25
+2026-04-30 15:31:20.288 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e87072dea50brf default ST to 0 / 25
+2026-04-30 15:31:20.288 Thread-4 (handle_params) udi_interface.node DEBUG    node:_updateDrivers: Update e87072dea50brf default TIME to 1777316471 / 151
+2026-04-30 15:31:20.289 Thread-4 (handle_params) udi_interface.interface INFO     interface:addNode: Adding node RF Controller (192.168.1.226)(e87072dea50brf) [None]
+2026-04-30 15:31:20.289 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e87072dea50brf:RF Controller (192.168.1.226) Reporting set GV1 to 0 to Polyglot
+2026-04-30 15:31:20.289 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 0
+2026-04-30 15:31:20.289 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e87072dea50brf:RF Controller (192.168.1.226) Reporting set GV2 to 1 to Polyglot
+2026-04-30 15:31:20.289 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 1
+2026-04-30 15:31:20.289 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e87072dea50brf:RF Controller (192.168.1.226) Reporting set ST to 0 to Polyglot
+2026-04-30 15:31:20.289 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 0
+2026-04-30 15:31:20.289 Thread-4 (handle_params) udi_interface      INFO     nodes:_ensure_controller_nodes: [HubNode] Added RFControllerNode e87072dea50brf
+2026-04-30 15:31:20.289 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e87072dea50bir:IR Controller (192.168.1.226) No change in GV1's value
+2026-04-30 15:31:20.289 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e87072dea50bir:IR Controller (192.168.1.226) No change in GV2's value
+2026-04-30 15:31:20.289 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e87072dea50brf:RF Controller (192.168.1.226) No change in GV1's value
+2026-04-30 15:31:20.289 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e87072dea50brf:RF Controller (192.168.1.226) No change in GV2's value
+2026-04-30 15:31:20.289 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_detect_and_apply_sensors: [HubNode._detect_and_apply_sensors] Retrieving sensor capability for ip=192.168.1.226
+2026-04-30 15:31:20.297 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e87072dea50b', 'driver': 'ST', 'value': '1', 'uom': 25, 'text': None}]}
+2026-04-30 15:31:20.298 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e87072dea50b', 'driver': 'GV0', 'value': '1', 'uom': 25, 'text': None}]}
+2026-04-30 15:31:20.298 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e87072dea50b', 'driver': 'GV1', 'value': '1', 'uom': 25, 'text': None}]}
+2026-04-30 15:31:20.298 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'addnode': [{'address': 'e87072dea50bir', 'name': 'IR Controller (192.168.1.226)', 'nodeDefId': 'blirctl', 'primaryNode': 'e87072dea50bir', 'drivers': [{'driver': 'ST', 'value': 0, 'uom': 25}, {'driver': 'TIME', 'value': 0, 'uom': 151}, {'driver': 'GV1', 'value': 0, 'uom': 56}, {'driver': 'GV2', 'value': 1, 'uom': 25}], 'hint': [0, 0, 0, 0], 'private': None, 'rename': False}]}
+2026-04-30 15:31:20.299 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e87072dea50bir', 'driver': 'GV2', 'value': '1', 'uom': 25, 'text': None}]}
+2026-04-30 15:31:20.299 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'addnode': [{'address': 'e87072dea50brf', 'name': 'RF Controller (192.168.1.226)', 'nodeDefId': 'blrfctl', 'primaryNode': 'e87072dea50brf', 'drivers': [{'driver': 'ST', 'value': 0, 'uom': 25}, {'driver': 'TIME', 'value': '1777316471', 'uom': 151}, {'driver': 'GV1', 'value': 0, 'uom': 56}, {'driver': 'GV2', 'value': 1, 'uom': 25}], 'hint': [0, 0, 0, 0], 'private': None, 'rename': False}]}
+2026-04-30 15:31:20.299 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e87072dea50brf', 'driver': 'GV1', 'value': '0', 'uom': 56, 'text': None}]}
+2026-04-30 15:31:20.299 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e87072dea50brf', 'driver': 'GV2', 'value': '1', 'uom': 25, 'text': None}]}
+2026-04-30 15:31:20.300 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e87072dea50brf', 'driver': 'ST', 'value': '0', 'uom': 25, 'text': None}]}
+2026-04-30 15:31:20.324 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.226: {'temperature': 0.0, 'humidity': 0.0}
+2026-04-30 15:31:20.324 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.226:
+  humidity            : 0.0
+  temperature         : 0.0
+2026-04-30 15:31:20.324 Thread-4 (handle_params) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] All-zero sensor response from 192.168.1.226 — treating as no sensor attached
+2026-04-30 15:31:20.324 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_detect_and_apply_sensors: [HubNode._detect_and_apply_sensors] Retrieved capability ip=192.168.1.226 has_temp=False has_humidity=False
+2026-04-30 15:31:20.324 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_ensure_sensor_node: [HubNode._ensure_sensor_node][rec-000001] Skipping sensor node for ip=192.168.1.226 (no sensor capability)
+2026-04-30 15:31:20.324 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_load_learned_codes: [HubNode._load_learned_codes][rec-000001] Preparing to restore code nodes for ip=192.168.1.226 total_cached=0 already_loaded=0
+2026-04-30 15:31:20.325 Thread-4 (handle_params) udi_interface      DEBUG    nodes:_load_learned_codes: [HubNode._load_learned_codes][rec-000001] No cached codes for ip=192.168.1.226
+2026-04-30 15:31:20.325 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e87072dea50bir:IR Controller (192.168.1.226) No change in GV1's value
+2026-04-30 15:31:20.325 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e87072dea50bir:IR Controller (192.168.1.226) No change in GV2's value
+2026-04-30 15:31:20.325 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e87072dea50brf:RF Controller (192.168.1.226) No change in GV1's value
+2026-04-30 15:31:20.325 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e87072dea50brf:RF Controller (192.168.1.226) No change in GV2's value
+2026-04-30 15:31:20.325 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: e87072dea50b:Broadlink Hub (192.168.1.226) Reporting set TIME to 1777588280 to Polyglot
+2026-04-30 15:31:20.325 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588280
+2026-04-30 15:31:20.325 Thread-4 (handle_params) udi_interface.node DEBUG    node:setDriver: setup:Broadlink Setup Reporting set ST to 1 to Polyglot
+2026-04-30 15:31:20.325 Thread-4 (handle_params) udi_interface.node DEBUG    node:reportDriver: Updating value to 1
+2026-04-30 15:31:20.325 Thread-4 (handle_params) udi_interface.interface INFO     interface:getJsonProfile: Sending request to get the existing profile to PG3.
+2026-04-30 15:31:20.325 Thread-4 (handle_params) udi_interface.interface INFO     interface:updateJsonProfile: Sending profile update request to Polyglot.
+2026-04-30 15:31:20.326 Thread-4 (handle_params) udi_interface      INFO     nodes:_publish_profile: [_publish_profile] Dynamic JSON profile published successfully
+2026-04-30 15:31:20.327 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e87072dea50b :: ST to 1 UOM 25
+2026-04-30 15:31:20.332 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e87072dea50b', 'driver': 'TIME', 'value': '1777588280', 'uom': 151, 'text': None}]}
+2026-04-30 15:31:20.332 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'setup', 'driver': 'ST', 'value': '1', 'uom': 25, 'text': None}]}
+2026-04-30 15:31:20.333 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'getprofile': {}}
+2026-04-30 15:31:20.333 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'updateprofile': {'editors': [{'id': 'hub_status', 'ranges': [{'uom': '25', 'subset': '0-3', 'names': {'0': 'No Hubs Configured', '1': 'All Online', '2': 'Partial', '3': 'None Online'}}]}, {'id': 'status_index', 'ranges': [{'uom': '25', 'subset': '0-2', 'names': {'0': 'Not Configured', '1': 'Online', '2': 'Error'}}]}, {'id': 'binary_index', 'ranges': [{'uom': '25', 'subset': '0-1', 'names': {'0': 'No', '1': 'Yes'}}]}, {'id': 'model_index', 'ranges': [{'uom': '25', 'subset': '0-6', 'names': {'0': 'Unknown', '1': 'RM4 Pro', '2': 'RM4 Mini', '3': 'RM Pro', '4': 'RM Mini', '5': 'RM2', '6': 'Other Broadlink'}}]}, {'id': 'raw_value', 'ranges': [{'uom': '56', 'min': 0, 'max': 65535, 'prec': 0}]}, {'id': 'timestamp', 'ranges': [{'uom': '151', 'min': 0, 'max': 4294967295, 'prec': 0}]}, {'id': 'ir_learn_status', 'ranges': [{'uom': '25', 'subset': '0-5', 'names': {'0': 'Idle', '1': 'Start Learning: press the IR button you want to learn', '2': 'Check Packet Data: keep remote aimed at hub', '3': 'Learned', '4': 'Failed', '5': 'Duplicate - Code Already Exists'}}]}, {'id': 'rf_learn_status', 'ranges': [{'uom': '25', 'subset': '0-6', 'names': {'0': 'Idle', '1': 'Scanning - hold button until frequency locks', '2': 'Press button once to capture', '3': 'Learned', '4': 'No frequency found', '5': 'Duplicate - Code Already Exists', '6': 'Signal not captured'}}]}, {'id': 'tx_status', 'ranges': [{'uom': '25', 'subset': '0-3', 'names': {'0': 'Ready', '1': 'Sending', '2': 'Sent OK', '3': 'Failed'}}]}, {'id': 'tx_result', 'ranges': [{'uom': '25', 'subset': '0-2', 'names': {'0': 'Never', '1': 'Success', '2': 'Failed'}}]}, {'id': 'frequency_mhz', 'ranges': [{'uom': '56', 'min': 0, 'max': 1000, 'prec': 1}, {'uom': '25', 'subset': '0-1', 'names': {'0': 'No Frequency Identified', '1': 'Frequency Identified'}}]}, {'id': 'temp_c', 'ranges': [{'uom': '17', 'min': -40, 'max': 125, 'prec': 1}]}, {'id': 'temp_f', 'ranges': [{'uom': '4', 'min': -40, 'max': 257, 'prec': 1}]}, {'id': 'humidity_pct', 'ranges': [{'uom': '22', 'min': 0, 'max': 100, 'prec': 1}]}], 'nodedefs': [{'id': 'setup', 'name': 'Broadlink', 'icon': 'GenericCtl', 'properties': [{'id': 'ST', 'name': 'Status', 'editor': 'hub_status'}, {'id': 'GV0', 'name': 'Hub Count', 'editor': 'raw_value'}, {'id': 'TIME', 'name': 'Last Update', 'editor': 'timestamp'}], 'cmds': {'accepts': [{'id': 'UPDATE', 'name': 'Update'}], 'sends': [{'id': 'DON', 'name': 'Heartbeat On'}, {'id': 'DOF', 'name': 'Heartbeat Off'}]}, 'links': {'ctl': [], 'rsp': []}}, {'id': 'blhub', 'name': 'Broadlink Hub', 'icon': 'GenericCtl', 'properties': [{'id': 'ST', 'name': 'Status', 'editor': 'status_index'}, {'id': 'GV0', 'name': 'Model', 'editor': 'model_index'}, {'id': 'GV1', 'name': 'Connected', 'editor': 'binary_index'}, {'id': 'TIME', 'name': 'Last Update', 'editor': 'timestamp'}], 'cmds': {'accepts': [{'id': 'UPDATE', 'name': 'Update'}], 'sends': []}, 'links': {'ctl': [], 'rsp': []}}, {'id': 'blirctl', 'name': 'IR Controller', 'icon': 'GenericCtl', 'properties': [{'id': 'ST', 'name': 'Status', 'editor': 'ir_learn_status'}, {'id': 'TIME', 'name': 'Last Learn', 'editor': 'timestamp'}, {'id': 'GV1', 'name': 'Learn Count', 'editor': 'raw_value'}, {'id': 'GV2', 'name': 'Hub Connected', 'editor': 'binary_index'}], 'cmds': {'accepts': [{'id': 'LEARNCODE', 'name': 'Learn IR Code'}], 'sends': []}, 'links': {'ctl': [], 'rsp': []}}, {'id': 'blrfctl', 'name': 'RF Controller', 'icon': 'GenericCtl', 'properties': [{'id': 'ST', 'name': 'Status', 'editor': 'rf_learn_status'}, {'id': 'TIME', 'name': 'Last Learn', 'editor': 'timestamp'}, {'id': 'GV1', 'name': 'Learn Count', 'editor': 'raw_value'}, {'id': 'GV2', 'name': 'Hub Connected', 'editor': 'binary_index'}], 'cmds': {'accepts': [{'id': 'LEARNCODE', 'name': 'Learn RF Code'}], 'sends': []}, 'links': {'ctl': [], 'rsp': []}}, {'id': 'blircode', 'name': 'IR Code', 'icon': 'GenericCtl', 'properties': [{'id': 'ST', 'name': 'Status', 'editor': 'tx_status'}, {'id': 'TIME', 'name': 'Created', 'editor': 'timestamp'}, {'id': 'GV1', 'name': 'Last Sent', 'editor': 'timestamp'}, {'id': 'GV2', 'name': 'Last Result', 'editor': 'tx_result'}, {'id': 'GV3', 'name': 'TX Count', 'editor': 'raw_value'}], 'cmds': {'accepts': [{'id': 'TXCODE', 'name': 'Send Code'}], 'sends': []}, 'links': {'ctl': [], 'rsp': []}}, {'id': 'blrfcode', 'name': 'RF Code', 'icon': 'GenericCtl', 'properties': [{'id': 'ST', 'name': 'Status', 'editor': 'tx_status'}, {'id': 'GV0', 'name': 'Frequency (MHz)', 'editor': 'frequency_mhz'}, {'id': 'TIME', 'name': 'Created', 'editor': 'timestamp'}, {'id': 'GV1', 'name': 'Last Sent', 'editor': 'timestamp'}, {'id': 'GV2', 'name': 'Last Result', 'editor': 'tx_result'}, {'id': 'GV3', 'name': 'TX Count', 'editor': 'raw_value'}], 'cmds': {'accepts': [{'id': 'TXCODE', 'name': 'Send Code'}], 'sends': []}, 'links': {'ctl': [], 'rsp': []}}, {'id': 'blsensor', 'name': 'Hub Sensor', 'icon': 'GenericCtl', 'properties': [{'id': 'ST', 'name': 'Status', 'editor': 'status_index'}, {'id': 'GV2', 'name': 'Temperature', 'editor': 'temp_c'}, {'id': 'GV3', 'name': 'Humidity', 'editor': 'humidity_pct'}, {'id': 'TIME', 'name': 'Last Update', 'editor': 'timestamp'}], 'cmds': {'accepts': [{'id': 'UPDATE', 'name': 'Update'}], 'sends': []}, 'links': {'ctl': [], 'rsp': []}}], 'linkdefs': [], 'requestId': '3cc4a594'}}
+2026-04-30 15:31:20.371 Thread-26 (config_done) udi_interface      DEBUG    nodes:config_done: [config_done] Configuration done
+2026-04-30 15:31:20.375 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e87072dea50b :: GV0 to 1 UOM 25
+2026-04-30 15:31:20.415 MQTT       udi_interface.interface INFO     interface:_message: Successfully set setup :: ST to 1 UOM 25
+2026-04-30 15:31:20.459 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message getprofile
+2026-04-30 15:31:20.459 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING getprofile
+2026-04-30 15:31:20.459 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e87072dea50b :: GV1 to 1 UOM 25
+2026-04-30 15:31:20.459 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS getprofile message {'editors': [{'id': 'binary_index', 'ranges': [{'uom': '25', 'subset': '0-1', 'names': {'0': 'No', '1': 'Yes'}}]}, {'id': 'frequency_mhz', 'ranges': [{'uom': '25', 'subset': '0-1', 'names': {'0': 'No Frequency Identified', '1': 'Frequency Identified'}}, {'uom': '56', 'prec': 1, 'min': 0, 'max': 1000}]}, {'id': 'hub_status', 'ranges': [{'uom': '25', 'subset': '0-3', 'names': {'0': 'No Hubs Configured', '1': 'All Online', '2': 'Partial', '3': 'None Online'}}]}, {'id': 'humidity_pct', 'ranges': [{'uom': '22', 'prec': 1, 'min': 0, 'max': 100}]}, {'id': 'ir_learn_status', 'ranges': [{'uom': '25', 'subset': '0-5', 'names': {'0': 'Idle', '1': 'Start Learning\\: press the IR button you want to learn', '2': 'Check Packet Data\\: keep remote aimed at hub', '3': 'Learned', '4': 'Failed', '5': 'Duplicate - Code Already Exists'}}]}, {'id': 'learn_status', 'ranges': [{'uom': '25', 'subset': '0-3', 'names': {'0': 'Idle', '1': 'Learning', '2': 'Learned OK', '3': 'Failed'}}]}, {'id': 'model_index', 'ranges': [{'uom': '25', 'subset': '0-6', 'names': {'0': 'Unknown', '1': 'RM4 Pro', '2': 'RM4 Mini', '3': 'RM Pro', '4': 'RM Mini', '5': 'RM2', '6': 'Other Broadlink'}}]}, {'id': 'raw_value', 'ranges': [{'uom': '56', 'prec': 0, 'min': 0, 'max': 65535}]}, {'id': 'rf_learn_status', 'ranges': [{'uom': '25', 'subset': '0-6', 'names': {'0': 'Idle', '1': 'Scanning - hold button until frequency locks', '2': 'Press button once to capture', '3': 'Learned', '4': 'No frequency found', '5': 'Duplicate - Code Already Exists', '6': 'Signal not captured'}}]}, {'id': 'status_index', 'ranges': [{'uom': '25', 'subset': '0-2', 'names': {'0': 'Not Configured', '1': 'Online', '2': 'Error'}}]}, {'id': 'temp_c', 'ranges': [{'uom': '17', 'prec': 1, 'min': -40, 'max': 125}]}, {'id': 'temp_f', 'ranges': [{'uom': '4', 'prec': 1, 'min': -40, 'max': 257}]}, {'id': 'timestamp', 'ranges': [{'uom': '151', 'prec': 0, 'min': 0, 'max': 4294967295}]}, {'id': 'tx_result', 'ranges': [{'uom': '25', 'subset': '0-2', 'names': {'0': 'Never', '1': 'Success', '2': 'Failed'}}]}, {'id': 'tx_status', 'ranges': [{'uom': '25', 'subset': '0-3', 'names': {'0': 'Ready', '1': 'Sending', '2': 'Sent OK', '3': 'Failed'}}]}], 'linkdefs': [], 'nodedefs': [{'id': 'setup', 'icon': 'GenericCtl', 'name': 'Broadlink', 'properties': [{'id': 'ST', 'editor': 'hub_status', 'name': 'Status'}, {'id': 'GV0', 'editor': 'raw_value', 'name': 'Hub Count'}, {'id': 'TIME', 'editor': 'timestamp', 'name': 'Last Update'}], 'cmds': {'sends': [{'id': 'DON', 'native': 'false', 'name': 'Heartbeat On'}, {'id': 'DOF', 'native': 'false', 'name': 'Heartbeat Off'}], 'accepts': [{'id': 'UPDATE', 'native': 'false', 'name': 'Update'}]}, 'links': {'ctl': [], 'rsp': []}}, {'id': 'blhub', 'icon': 'GenericCtl', 'name': 'Broadlink Hub', 'properties': [{'id': 'ST', 'editor': 'status_index', 'name': 'Status'}, {'id': 'GV0', 'editor': 'model_index', 'name': 'Model'}, {'id': 'GV1', 'editor': 'binary_index', 'name': 'Connected'}, {'id': 'TIME', 'editor': 'timestamp', 'name': 'Last Update'}], 'cmds': {'sends': [], 'accepts': [{'id': 'UPDATE', 'native': 'false', 'name': 'Update'}]}, 'links': {'ctl': [], 'rsp': []}}, {'id': 'blirctl', 'icon': 'GenericCtl', 'name': 'IR Controller', 'properties': [{'id': 'ST', 'editor': 'ir_learn_status', 'name': 'Status'}, {'id': 'TIME', 'editor': 'timestamp', 'name': 'Last Learn'}, {'id': 'GV1', 'editor': 'raw_value', 'name': 'Learn Count'}, {'id': 'GV2', 'editor': 'binary_index', 'name': 'Hub Connected'}], 'cmds': {'sends': [], 'accepts': [{'id': 'LEARNCODE', 'native': 'false', 'name': 'Learn IR Code'}]}, 'links': {'ctl': [], 'rsp': []}}, {'id': 'blrfctl', 'icon': 'GenericCtl', 'name': 'RF Controller', 'properties': [{'id': 'ST', 'editor': 'rf_learn_status', 'name': 'Status'}, {'id': 'TIME', 'editor': 'timestamp', 'name': 'Last Learn'}, {'id': 'GV1', 'editor': 'raw_value', 'name': 'Learn Count'}, {'id': 'GV2', 'editor': 'binary_index', 'name': 'Hub Connected'}], 'cmds': {'sends': [], 'accepts': [{'id': 'LEARNCODE', 'native': 'false', 'name': 'Learn RF Code'}]}, 'links': {'ctl': [], 'rsp': []}}, {'id': 'blircode', 'icon': 'GenericCtl', 'name': 'IR Code', 'properties': [{'id': 'ST', 'editor': 'tx_status', 'name': 'Status'}, {'id': 'TIME', 'editor': 'timestamp', 'name': 'Created'}, {'id': 'GV1', 'editor': 'timestamp', 'name': 'Last Sent'}, {'id': 'GV2', 'editor': 'tx_result', 'name': 'Last Result'}, {'id': 'GV3', 'editor': 'raw_value', 'name': 'TX Count'}], 'cmds': {'sends': [], 'accepts': [{'id': 'TXCODE', 'native': 'false', 'name': 'Send Code'}]}, 'links': {'ctl': [], 'rsp': []}}, {'id': 'blrfcode', 'icon': 'GenericCtl', 'name': 'RF Code', 'properties': [{'id': 'ST', 'editor': 'tx_status', 'name': 'Status'}, {'id': 'GV0', 'editor': 'frequency_mhz', 'name': 'Frequency (MHz)'}, {'id': 'TIME', 'editor': 'timestamp', 'name': 'Created'}, {'id': 'GV1', 'editor': 'timestamp', 'name': 'Last Sent'}, {'id': 'GV2', 'editor': 'tx_result', 'name': 'Last Result'}, {'id': 'GV3', 'editor': 'raw_value', 'name': 'TX Count'}], 'cmds': {'sends': [], 'accepts': [{'id': 'TXCODE', 'native': 'false', 'name': 'Send Code'}]}, 'links': {'ctl': [], 'rsp': []}}, {'id': 'blsensor', 'icon': 'GenericCtl', 'name': 'Hub Sensor', 'properties': [{'id': 'ST', 'editor': 'status_index', 'name': 'Status'}, {'id': 'GV2', 'editor': 'temp_c', 'name': 'Temperature'}, {'id': 'GV3', 'editor': 'humidity_pct', 'name': 'Humidity'}, {'id': 'TIME', 'editor': 'timestamp', 'name': 'Last Update'}], 'cmds': {'sends': [], 'accepts': [{'id': 'UPDATE', 'native': 'false', 'name': 'Update'}]}, 'links': {'ctl': [], 'rsp': []}}]} from Polyglot
+2026-04-30 15:31:20.502 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message updateprofile
+2026-04-30 15:31:20.502 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING updateprofile
+2026-04-30 15:31:20.502 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS updateprofile message {'requestId': '3cc4a594', 'success': True} from Polyglot
+2026-04-30 15:31:20.617 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e87072dea50b :: TIME to 1777588280 UOM 151
+2026-04-30 15:31:20.728 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message addnode
+2026-04-30 15:31:20.728 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING addnode
+2026-04-30 15:31:20.728 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS addnode message {'id': '1ab4ea38-8df8-4eac-91e1-c6552fe78e27', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'address': 'e87072dea50bir', 'name': 'IR Controller (192.168.1.226)', 'nodeDefId': 'blirctl', 'nls': None, 'hint': '0x00000000', 'controller': 0, 'primaryNode': 'e87072dea50bir', 'private': None, 'isPrimary': 1, 'enabled': 1, 'timeAdded': 1777308349078, 'timeModified': 1777308349078, 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:20.728 Command    udi_interface.interface DEBUG    interface:_handleAddNode: add node response: {'id': '1ab4ea38-8df8-4eac-91e1-c6552fe78e27', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'address': 'e87072dea50bir', 'name': 'IR Controller (192.168.1.226)', 'nodeDefId': 'blirctl', 'nls': None, 'hint': '0x00000000', 'controller': 0, 'primaryNode': 'e87072dea50bir', 'private': None, 'isPrimary': 1, 'enabled': 1, 'timeAdded': 1777308349078, 'timeModified': 1777308349078, 'dbVersion': 1}
+2026-04-30 15:31:20.728 Thread-28 (node_done) udi_interface      DEBUG    nodes:node_done: [node_done] Node e87072dea50bir is done
+2026-04-30 15:31:20.774 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message addnode
+2026-04-30 15:31:20.774 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING addnode
+2026-04-30 15:31:20.774 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS addnode message {'id': 'dcfe379c-2421-492e-a1ed-d87ddd1fee3b', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'address': 'e87072dea50brf', 'name': 'RF Controller (192.168.1.226)', 'nodeDefId': 'blrfctl', 'nls': None, 'hint': '0x00000000', 'controller': 0, 'primaryNode': 'e87072dea50brf', 'private': None, 'isPrimary': 1, 'enabled': 1, 'timeAdded': 1777308349126, 'timeModified': 1777308349126, 'dbVersion': 1} from Polyglot
+2026-04-30 15:31:20.775 Command    udi_interface.interface DEBUG    interface:_handleAddNode: add node response: {'id': 'dcfe379c-2421-492e-a1ed-d87ddd1fee3b', 'uuid': '00:21:b9:02:6d:cd', 'profileNum': 24, 'address': 'e87072dea50brf', 'name': 'RF Controller (192.168.1.226)', 'nodeDefId': 'blrfctl', 'nls': None, 'hint': '0x00000000', 'controller': 0, 'primaryNode': 'e87072dea50brf', 'private': None, 'isPrimary': 1, 'enabled': 1, 'timeAdded': 1777308349126, 'timeModified': 1777308349126, 'dbVersion': 1}
+2026-04-30 15:31:20.775 Thread-30 (node_done) udi_interface      DEBUG    nodes:node_done: [node_done] Node e87072dea50brf is done
+2026-04-30 15:31:20.867 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e87072dea50bir :: GV2 to 1 UOM 25
+2026-04-30 15:31:21.021 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e87072dea50brf :: GV1 to 0 UOM 56
+2026-04-30 15:31:21.064 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e87072dea50brf :: GV2 to 1 UOM 25
+2026-04-30 15:31:21.117 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e87072dea50brf :: ST to 0 UOM 25
+2026-04-30 15:32:15.679 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message command
+2026-04-30 15:32:15.679 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING command
+2026-04-30 15:32:15.680 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS command message {'address': 'e816567db007rf', 'cmd': 'LEARNCODE', 'query': {}} from Polyglot
+2026-04-30 15:32:15.680 Command    udi_interface      INFO     nodes:learn_code: [RFControllerNode.learn_code] LEARNCODE requested; type=rf timeout=45s
+2026-04-30 15:32:15.680 Command    udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) Reporting set ST to 1 to Polyglot
+2026-04-30 15:32:15.680 Command    udi_interface.node DEBUG    node:reportDriver: Updating value to 1
+2026-04-30 15:32:15.680 Command    udi_interface      DEBUG    nodes:learn_code: [RFControllerNode.learn_code] Starting learn thread rf-learn
+2026-04-30 15:32:15.680 rf-learn   udi_interface      INFO     nodes:_do_learn: [RFControllerNode._do_learn] Starting RF learn (45s window)
+2026-04-30 15:32:15.681 rf-learn   udi_interface      INFO     nodes:_do_learn: [RFControllerNode._do_learn] Invoking hub_client.learn_rf
+2026-04-30 15:32:15.681 rf-learn   udi_interface      INFO     broadlink_client:learn_rf: [learn_rf] Using RF sweep flow (timeout=45s poll=1.00s)
+2026-04-30 15:32:15.686 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007rf', 'driver': 'ST', 'value': '1', 'uom': 25, 'text': None}]}
+2026-04-30 15:32:15.713 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007rf :: ST to 1 UOM 25
+2026-04-30 15:32:15.718 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Cancelled any previous sweep state
+2026-04-30 15:32:16.129 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Emitting progress event=rf_sweep_completed
+2026-04-30 15:32:16.129 rf-learn   udi_interface      INFO     nodes:_handle_learn_progress: [RFControllerNode._handle_learn_progress] event=rf_sweep_completed mapped_state=1 code_type=rf
+2026-04-30 15:32:16.129 rf-learn   udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) No change in ST's value
+2026-04-30 15:32:16.129 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Sweep started at t=1777588336.130 timeout=45s
+2026-04-30 15:32:16.399 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message shortPoll
+2026-04-30 15:32:16.399 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING shortPoll
+2026-04-30 15:32:16.400 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS shortPoll message {} from Polyglot
+2026-04-30 15:32:16.400 Thread-31 (poll) udi_interface      WARNING  nodes:_run_startup_once: [_run_startup_once] START event not observed, running startup via POLL
+2026-04-30 15:32:16.400 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: setup:Broadlink Setup Reporting set TIME to 1777588336 to Polyglot
+2026-04-30 15:32:16.400 Thread-31 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588336
+2026-04-30 15:32:16.400 Thread-31 (poll) udi_interface      DEBUG    nodes:_detect_and_apply_sensors: [HubNode._detect_and_apply_sensors] Retrieving sensor capability for ip=192.168.1.221
+2026-04-30 15:32:16.409 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'setup', 'driver': 'TIME', 'value': '1777588336', 'uom': 151, 'text': None}]}
+2026-04-30 15:32:16.439 MQTT       udi_interface.interface INFO     interface:_message: Successfully set setup :: TIME to 1777588336 UOM 151
+2026-04-30 15:32:17.176 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:17.176 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] check_frequency attempt=1 found=False frequency=305.0 result_type=tuple
+2026-04-30 15:32:18.389 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:19.522 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:20.847 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:22.218 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:22.218 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] check_frequency attempt=5 found=False frequency=305.0 result_type=tuple
+2026-04-30 15:32:23.423 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 430.0)
+2026-04-30 15:32:24.471 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 430.0)
+2026-04-30 15:32:25.660 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:26.745 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:27.952 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:27.953 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] check_frequency attempt=10 found=False frequency=305.0 result_type=tuple
+2026-04-30 15:32:29.142 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:30.232 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:31.353 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:32.481 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 430.0)
+2026-04-30 15:32:33.523 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 430.0)
+2026-04-30 15:32:33.523 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] check_frequency attempt=15 found=False frequency=430.0 result_type=tuple
+2026-04-30 15:32:34.559 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:35.586 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:36.680 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:37.842 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:39.034 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:39.034 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] check_frequency attempt=20 found=False frequency=305.0 result_type=tuple
+2026-04-30 15:32:40.306 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:41.685 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 430.0)
+2026-04-30 15:32:43.061 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 430.0)
+2026-04-30 15:32:44.092 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:45.132 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:45.132 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] check_frequency attempt=25 found=False frequency=305.0 result_type=tuple
+2026-04-30 15:32:46.405 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:47.774 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:48.866 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:49.990 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:51.345 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 430.0)
+2026-04-30 15:32:51.345 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] check_frequency attempt=30 found=False frequency=430.0 result_type=tuple
+2026-04-30 15:32:52.445 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 430.0)
+2026-04-30 15:32:53.482 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:54.551 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:55.598 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (False, 305.0)
+2026-04-30 15:32:56.954 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Check Results (True, 305.0)
+2026-04-30 15:32:56.954 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] check_frequency attempt=35 found=True frequency=305.0 result_type=tuple
+2026-04-30 15:32:56.954 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Sweep loop ended found=True checks=35 elapsed=40.83s timeout=45s last_frequency=305.0
+2026-04-30 15:32:57.091 rf-learn   udi_interface      INFO     broadlink_client:learn_rf: [learn_rf] Frequency lock found after 35 checks; waiting for RF packet
+2026-04-30 15:32:57.092 rf-learn   udi_interface      DEBUG    broadlink_client:learn_rf: [learn_rf] Emitting progress event=rf_find_packet_completed
+2026-04-30 15:32:57.092 rf-learn   udi_interface      INFO     nodes:_handle_learn_progress: [RFControllerNode._handle_learn_progress] event=rf_find_packet_completed mapped_state=2 code_type=rf
+2026-04-30 15:32:57.092 rf-learn   udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) Reporting set ST to 2 to Polyglot
+2026-04-30 15:32:57.092 rf-learn   udi_interface.node DEBUG    node:reportDriver: Updating value to 2
+2026-04-30 15:32:57.092 rf-learn   udi_interface      DEBUG    broadlink_client:_wait_for_learned_packet: [_wait_for_learned_packet] waiting_event=rf_check_data timeout=30s poll=1.00s
+2026-04-30 15:32:57.092 rf-learn   udi_interface      INFO     nodes:_handle_learn_progress: [RFControllerNode._handle_learn_progress] event=rf_check_data mapped_state=2 code_type=rf
+2026-04-30 15:32:57.092 rf-learn   udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) No change in ST's value
+2026-04-30 15:32:57.098 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007rf', 'driver': 'ST', 'value': '2', 'uom': 25, 'text': None}]}
+2026-04-30 15:32:57.182 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007rf :: ST to 2 UOM 25
+2026-04-30 15:33:16.403 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message shortPoll
+2026-04-30 15:33:16.403 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING shortPoll
+2026-04-30 15:33:16.403 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS shortPoll message {} from Polyglot
+2026-04-30 15:33:16.403 Thread-32 (poll) udi_interface      WARNING  nodes:_run_startup_once: [_run_startup_once] START event not observed, running startup via POLL
+2026-04-30 15:33:16.404 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: setup:Broadlink Setup Reporting set TIME to 1777588396 to Polyglot
+2026-04-30 15:33:16.404 Thread-32 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588396
+2026-04-30 15:33:16.404 Thread-32 (poll) udi_interface      DEBUG    nodes:_detect_and_apply_sensors: [HubNode._detect_and_apply_sensors] Retrieving sensor capability for ip=192.168.1.221
+2026-04-30 15:33:16.413 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'setup', 'driver': 'TIME', 'value': '1777588396', 'uom': 151, 'text': None}]}
+2026-04-30 15:33:16.441 MQTT       udi_interface.interface INFO     interface:_message: Successfully set setup :: TIME to 1777588396 UOM 151
+2026-04-30 15:33:27.680 rf-learn   udi_interface      WARNING  broadlink_client:_wait_for_learned_packet: [_wait_for_learned_packet] Timed out after 25 polls
+2026-04-30 15:33:27.680 rf-learn   udi_interface      INFO     nodes:_handle_learn_progress: [RFControllerNode._handle_learn_progress] event=rf_check_data_timeout mapped_state=6 code_type=rf
+2026-04-30 15:33:27.680 rf-learn   udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) Reporting set ST to 6 to Polyglot
+2026-04-30 15:33:27.680 rf-learn   udi_interface.node DEBUG    node:reportDriver: Updating value to 6
+2026-04-30 15:33:27.680 rf-learn   udi_interface      WARNING  nodes:_do_learn: [RFControllerNode._do_learn] Learn timed out after 45s
+2026-04-30 15:33:27.681 rf-learn   udi_interface      INFO     nodes:_handle_learn_progress: [RFControllerNode._handle_learn_progress] event=rf_check_data_timeout mapped_state=6 code_type=rf
+2026-04-30 15:33:27.681 rf-learn   udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) No change in ST's value
+2026-04-30 15:33:27.684 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007rf', 'driver': 'ST', 'value': '6', 'uom': 25, 'text': None}]}
+2026-04-30 15:33:27.694 Thread-31 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.221: {'temperature': 22.91, 'humidity': 50.13}
+2026-04-30 15:33:27.694 Thread-31 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.221:
+  humidity            : 50.13
+  temperature         : 22.91
+2026-04-30 15:33:27.694 Thread-31 (poll) udi_interface      DEBUG    nodes:_detect_and_apply_sensors: [HubNode._detect_and_apply_sensors] Retrieved capability ip=192.168.1.221 has_temp=True has_humidity=True
+2026-04-30 15:33:27.694 Thread-31 (poll) udi_interface      DEBUG    nodes:reconcile: [HubNode.reconcile][direct] Starting reconcile for ip=192.168.1.221 addr=e816567db007
+2026-04-30 15:33:27.713 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007rf :: ST to 6 UOM 25
+2026-04-30 15:33:27.715 Thread-32 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.221: {'temperature': 22.91, 'humidity': 50.13}
+2026-04-30 15:33:27.715 Thread-32 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.221:
+  humidity            : 50.13
+  temperature         : 22.91
+2026-04-30 15:33:27.715 Thread-32 (poll) udi_interface      DEBUG    nodes:_detect_and_apply_sensors: [HubNode._detect_and_apply_sensors] Retrieved capability ip=192.168.1.221 has_temp=True has_humidity=True
+2026-04-30 15:33:27.715 Thread-31 (poll) udi_interface      DEBUG    broadlink_client:ensure_connected: [ensure_connected] Checking connection state
+2026-04-30 15:33:27.715 Thread-32 (poll) udi_interface      DEBUG    nodes:reconcile: [HubNode.reconcile][direct] Starting reconcile for ip=192.168.1.221 addr=e816567db007
+2026-04-30 15:33:27.715 Thread-31 (poll) udi_interface      DEBUG    broadlink_client:ensure_connected: [ensure_connected] Testing cached device with ping
+2026-04-30 15:33:27.716 Thread-31 (poll) udi_interface      DEBUG    broadlink_client:ensure_connected: [ensure_connected] Device already connected
+2026-04-30 15:33:27.716 Thread-31 (poll) udi_interface      DEBUG    nodes:reconcile: [HubNode.reconcile][direct] Blueprint resolved ip=192.168.1.221 connected=True model=rm4pro mac=e816567db007 error=
+2026-04-30 15:33:27.716 Thread-32 (poll) udi_interface      DEBUG    broadlink_client:ensure_connected: [ensure_connected] Checking connection state
+2026-04-30 15:33:27.716 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007:Broadlink Hub (192.168.1.221) No change in ST's value
+2026-04-30 15:33:27.716 Thread-32 (poll) udi_interface      DEBUG    broadlink_client:ensure_connected: [ensure_connected] Testing cached device with ping
+2026-04-30 15:33:27.716 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007:Broadlink Hub (192.168.1.221) No change in GV0's value
+2026-04-30 15:33:27.716 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007:Broadlink Hub (192.168.1.221) No change in GV1's value
+2026-04-30 15:33:27.716 Thread-32 (poll) udi_interface      DEBUG    broadlink_client:ensure_connected: [ensure_connected] Device already connected
+2026-04-30 15:33:27.716 Thread-31 (poll) udi_interface      DEBUG    nodes:reconcile: [HubNode.reconcile][direct] Hub connected, ensuring child nodes for ip=192.168.1.221
+2026-04-30 15:33:27.716 Thread-32 (poll) udi_interface      DEBUG    nodes:reconcile: [HubNode.reconcile][direct] Blueprint resolved ip=192.168.1.221 connected=True model=rm4pro mac=e816567db007 error=
+2026-04-30 15:33:27.716 Thread-31 (poll) udi_interface      DEBUG    nodes:_ensure_controller_nodes: [HubNode._ensure_controller_nodes][direct] Ensuring IR/RF controllers for ip=192.168.1.221 addr=e816567db007
+2026-04-30 15:33:27.716 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007:Broadlink Hub (192.168.1.221) No change in ST's value
+2026-04-30 15:33:27.717 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007ir:IR Controller (192.168.1.221) No change in GV1's value
+2026-04-30 15:33:27.717 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007:Broadlink Hub (192.168.1.221) No change in GV0's value
+2026-04-30 15:33:27.717 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007ir:IR Controller (192.168.1.221) No change in GV2's value
+2026-04-30 15:33:27.717 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007:Broadlink Hub (192.168.1.221) No change in GV1's value
+2026-04-30 15:33:27.717 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) No change in GV1's value
+2026-04-30 15:33:27.717 Thread-32 (poll) udi_interface      DEBUG    nodes:reconcile: [HubNode.reconcile][direct] Hub connected, ensuring child nodes for ip=192.168.1.221
+2026-04-30 15:33:27.717 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) No change in GV2's value
+2026-04-30 15:33:27.717 Thread-32 (poll) udi_interface      DEBUG    nodes:_ensure_controller_nodes: [HubNode._ensure_controller_nodes][direct] Ensuring IR/RF controllers for ip=192.168.1.221 addr=e816567db007
+2026-04-30 15:33:27.717 Thread-31 (poll) udi_interface      DEBUG    nodes:_detect_and_apply_sensors: [HubNode._detect_and_apply_sensors] Retrieving sensor capability for ip=192.168.1.221
+2026-04-30 15:33:27.717 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007ir:IR Controller (192.168.1.221) No change in GV1's value
+2026-04-30 15:33:27.718 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007ir:IR Controller (192.168.1.221) No change in GV2's value
+2026-04-30 15:33:27.718 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) No change in GV1's value
+2026-04-30 15:33:27.718 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) No change in GV2's value
+2026-04-30 15:33:27.718 Thread-32 (poll) udi_interface      DEBUG    nodes:_detect_and_apply_sensors: [HubNode._detect_and_apply_sensors] Retrieving sensor capability for ip=192.168.1.221
+2026-04-30 15:33:27.753 Thread-31 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.221: {'temperature': 22.91, 'humidity': 50.13}
+2026-04-30 15:33:27.753 Thread-31 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.221:
+  humidity            : 50.13
+  temperature         : 22.91
+2026-04-30 15:33:27.753 Thread-31 (poll) udi_interface      DEBUG    nodes:_detect_and_apply_sensors: [HubNode._detect_and_apply_sensors] Retrieved capability ip=192.168.1.221 has_temp=True has_humidity=True
+2026-04-30 15:33:27.753 Thread-31 (poll) udi_interface      DEBUG    nodes:_ensure_sensor_node: [HubNode._ensure_sensor_node][direct] Sensor node already exists for ip=192.168.1.221
+2026-04-30 15:33:27.753 Thread-31 (poll) udi_interface      DEBUG    nodes:_load_learned_codes: [HubNode._load_learned_codes][direct] Preparing to restore code nodes for ip=192.168.1.221 total_cached=0 already_loaded=0
+2026-04-30 15:33:27.753 Thread-31 (poll) udi_interface      DEBUG    nodes:_load_learned_codes: [HubNode._load_learned_codes][direct] No cached codes for ip=192.168.1.221
+2026-04-30 15:33:27.754 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007ir:IR Controller (192.168.1.221) No change in GV1's value
+2026-04-30 15:33:27.754 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007ir:IR Controller (192.168.1.221) No change in GV2's value
+2026-04-30 15:33:27.754 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) No change in GV1's value
+2026-04-30 15:33:27.754 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) No change in GV2's value
+2026-04-30 15:33:27.868 Thread-32 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.221: {'temperature': 22.91, 'humidity': 50.13}
+2026-04-30 15:33:27.868 Thread-32 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.221:
+  humidity            : 50.13
+  temperature         : 22.91
+2026-04-30 15:33:27.868 Thread-32 (poll) udi_interface      DEBUG    nodes:_detect_and_apply_sensors: [HubNode._detect_and_apply_sensors] Retrieved capability ip=192.168.1.221 has_temp=True has_humidity=True
+2026-04-30 15:33:27.868 Thread-32 (poll) udi_interface      DEBUG    nodes:_ensure_sensor_node: [HubNode._ensure_sensor_node][direct] Sensor node already exists for ip=192.168.1.221
+2026-04-30 15:33:27.868 Thread-32 (poll) udi_interface      DEBUG    nodes:_load_learned_codes: [HubNode._load_learned_codes][direct] Preparing to restore code nodes for ip=192.168.1.221 total_cached=0 already_loaded=0
+2026-04-30 15:33:27.868 Thread-32 (poll) udi_interface      DEBUG    nodes:_load_learned_codes: [HubNode._load_learned_codes][direct] No cached codes for ip=192.168.1.221
+2026-04-30 15:33:27.868 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007ir:IR Controller (192.168.1.221) No change in GV1's value
+2026-04-30 15:33:27.868 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007ir:IR Controller (192.168.1.221) No change in GV2's value
+2026-04-30 15:33:27.868 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) No change in GV1's value
+2026-04-30 15:33:27.868 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007rf:RF Controller (192.168.1.221) No change in GV2's value
+2026-04-30 15:33:27.882 Thread-31 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.221: {'temperature': 22.91, 'humidity': 50.13}
+2026-04-30 15:33:27.882 Thread-31 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.221:
+  humidity            : 50.13
+  temperature         : 22.91
+2026-04-30 15:33:27.882 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in ST's value
+2026-04-30 15:33:27.882 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) Reporting set TIME to 1777588407 to Polyglot
+2026-04-30 15:33:27.882 Thread-31 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588407
+2026-04-30 15:33:27.882 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in GV2's value
+2026-04-30 15:33:27.882 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) Reporting set GV3 to 50.1 to Polyglot
+2026-04-30 15:33:27.882 Thread-31 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 50.1
+2026-04-30 15:33:27.883 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007:Broadlink Hub (192.168.1.221) Reporting set TIME to 1777588407 to Polyglot
+2026-04-30 15:33:27.883 Thread-31 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588407
+2026-04-30 15:33:27.883 Thread-31 (poll) udi_interface      DEBUG    nodes:_detect_and_apply_sensors: [HubNode._detect_and_apply_sensors] Retrieving sensor capability for ip=192.168.1.226
+2026-04-30 15:33:27.885 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007se', 'driver': 'TIME', 'value': '1777588407', 'uom': 151, 'text': None}]}
+2026-04-30 15:33:27.886 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007se', 'driver': 'GV3', 'value': '50.1', 'uom': 22, 'text': None}]}
+2026-04-30 15:33:27.886 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007', 'driver': 'TIME', 'value': '1777588407', 'uom': 151, 'text': None}]}
+2026-04-30 15:33:27.898 Thread-32 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.221: {'temperature': 22.91, 'humidity': 50.13}
+2026-04-30 15:33:27.898 Thread-32 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.221:
+  humidity            : 50.13
+  temperature         : 22.91
+2026-04-30 15:33:27.899 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in ST's value
+2026-04-30 15:33:27.899 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in TIME's value
+2026-04-30 15:33:27.899 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in GV2's value
+2026-04-30 15:33:27.899 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in GV3's value
+2026-04-30 15:33:27.899 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007:Broadlink Hub (192.168.1.221) No change in TIME's value
+2026-04-30 15:33:27.899 Thread-32 (poll) udi_interface      DEBUG    nodes:_detect_and_apply_sensors: [HubNode._detect_and_apply_sensors] Retrieving sensor capability for ip=192.168.1.226
+2026-04-30 15:33:27.916 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007se :: TIME to 1777588407 UOM 151
+2026-04-30 15:33:27.982 Thread-31 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.226: {'temperature': 0.0, 'humidity': 0.0}
+2026-04-30 15:33:27.982 Thread-31 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.226:
+  humidity            : 0.0
+  temperature         : 0.0
+2026-04-30 15:33:27.983 Thread-31 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] All-zero sensor response from 192.168.1.226 — treating as no sensor attached
+2026-04-30 15:33:27.983 Thread-31 (poll) udi_interface      DEBUG    nodes:_detect_and_apply_sensors: [HubNode._detect_and_apply_sensors] Retrieved capability ip=192.168.1.226 has_temp=False has_humidity=False
+2026-04-30 15:33:27.983 Thread-31 (poll) udi_interface      DEBUG    nodes:reconcile: [HubNode.reconcile][direct] Starting reconcile for ip=192.168.1.226 addr=e87072dea50b
+2026-04-30 15:33:27.999 Thread-32 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.226: {'temperature': 0.0, 'humidity': 0.0}
+2026-04-30 15:33:27.999 Thread-32 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.226:
+  humidity            : 0.0
+  temperature         : 0.0
+2026-04-30 15:33:28.000 Thread-32 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] All-zero sensor response from 192.168.1.226 — treating as no sensor attached
+2026-04-30 15:33:28.000 Thread-32 (poll) udi_interface      DEBUG    nodes:_detect_and_apply_sensors: [HubNode._detect_and_apply_sensors] Retrieved capability ip=192.168.1.226 has_temp=False has_humidity=False
+2026-04-30 15:33:28.000 Thread-31 (poll) udi_interface      DEBUG    broadlink_client:ensure_connected: [ensure_connected] Checking connection state
+2026-04-30 15:33:28.000 Thread-32 (poll) udi_interface      DEBUG    nodes:reconcile: [HubNode.reconcile][direct] Starting reconcile for ip=192.168.1.226 addr=e87072dea50b
+2026-04-30 15:33:28.000 Thread-31 (poll) udi_interface      DEBUG    broadlink_client:ensure_connected: [ensure_connected] Testing cached device with ping
+2026-04-30 15:33:28.000 Thread-31 (poll) udi_interface      DEBUG    broadlink_client:ensure_connected: [ensure_connected] Device already connected
+2026-04-30 15:33:28.000 Thread-31 (poll) udi_interface      DEBUG    nodes:reconcile: [HubNode.reconcile][direct] Blueprint resolved ip=192.168.1.226 connected=True model=rm4pro mac=e87072dea50b error=
+2026-04-30 15:33:28.000 Thread-32 (poll) udi_interface      DEBUG    broadlink_client:ensure_connected: [ensure_connected] Checking connection state
+2026-04-30 15:33:28.001 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50b:Broadlink Hub (192.168.1.226) No change in ST's value
+2026-04-30 15:33:28.001 Thread-32 (poll) udi_interface      DEBUG    broadlink_client:ensure_connected: [ensure_connected] Testing cached device with ping
+2026-04-30 15:33:28.001 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50b:Broadlink Hub (192.168.1.226) No change in GV0's value
+2026-04-30 15:33:28.001 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50b:Broadlink Hub (192.168.1.226) No change in GV1's value
+2026-04-30 15:33:28.001 Thread-32 (poll) udi_interface      DEBUG    broadlink_client:ensure_connected: [ensure_connected] Device already connected
+2026-04-30 15:33:28.001 Thread-31 (poll) udi_interface      DEBUG    nodes:reconcile: [HubNode.reconcile][direct] Hub connected, ensuring child nodes for ip=192.168.1.226
+2026-04-30 15:33:28.001 Thread-32 (poll) udi_interface      DEBUG    nodes:reconcile: [HubNode.reconcile][direct] Blueprint resolved ip=192.168.1.226 connected=True model=rm4pro mac=e87072dea50b error=
+2026-04-30 15:33:28.001 Thread-31 (poll) udi_interface      DEBUG    nodes:_ensure_controller_nodes: [HubNode._ensure_controller_nodes][direct] Ensuring IR/RF controllers for ip=192.168.1.226 addr=e87072dea50b
+2026-04-30 15:33:28.001 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50b:Broadlink Hub (192.168.1.226) No change in ST's value
+2026-04-30 15:33:28.001 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50bir:IR Controller (192.168.1.226) No change in GV1's value
+2026-04-30 15:33:28.001 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50b:Broadlink Hub (192.168.1.226) No change in GV0's value
+2026-04-30 15:33:28.002 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50bir:IR Controller (192.168.1.226) No change in GV2's value
+2026-04-30 15:33:28.002 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50b:Broadlink Hub (192.168.1.226) No change in GV1's value
+2026-04-30 15:33:28.002 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50brf:RF Controller (192.168.1.226) No change in GV1's value
+2026-04-30 15:33:28.002 Thread-32 (poll) udi_interface      DEBUG    nodes:reconcile: [HubNode.reconcile][direct] Hub connected, ensuring child nodes for ip=192.168.1.226
+2026-04-30 15:33:28.002 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50brf:RF Controller (192.168.1.226) No change in GV2's value
+2026-04-30 15:33:28.002 Thread-32 (poll) udi_interface      DEBUG    nodes:_ensure_controller_nodes: [HubNode._ensure_controller_nodes][direct] Ensuring IR/RF controllers for ip=192.168.1.226 addr=e87072dea50b
+2026-04-30 15:33:28.002 Thread-31 (poll) udi_interface      DEBUG    nodes:_detect_and_apply_sensors: [HubNode._detect_and_apply_sensors] Retrieving sensor capability for ip=192.168.1.226
+2026-04-30 15:33:28.002 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50bir:IR Controller (192.168.1.226) No change in GV1's value
+2026-04-30 15:33:28.002 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50bir:IR Controller (192.168.1.226) No change in GV2's value
+2026-04-30 15:33:28.003 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50brf:RF Controller (192.168.1.226) No change in GV1's value
+2026-04-30 15:33:28.003 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50brf:RF Controller (192.168.1.226) No change in GV2's value
+2026-04-30 15:33:28.003 Thread-32 (poll) udi_interface      DEBUG    nodes:_detect_and_apply_sensors: [HubNode._detect_and_apply_sensors] Retrieving sensor capability for ip=192.168.1.226
+2026-04-30 15:33:28.004 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007se :: GV3 to 50.1 UOM 22
+2026-04-30 15:33:28.053 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007 :: TIME to 1777588407 UOM 151
+2026-04-30 15:33:29.095 Thread-31 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.226: {'temperature': 0.0, 'humidity': 0.0}
+2026-04-30 15:33:29.095 Thread-31 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.226:
+  humidity            : 0.0
+  temperature         : 0.0
+2026-04-30 15:33:29.095 Thread-31 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] All-zero sensor response from 192.168.1.226 — treating as no sensor attached
+2026-04-30 15:33:29.096 Thread-31 (poll) udi_interface      DEBUG    nodes:_detect_and_apply_sensors: [HubNode._detect_and_apply_sensors] Retrieved capability ip=192.168.1.226 has_temp=False has_humidity=False
+2026-04-30 15:33:29.096 Thread-31 (poll) udi_interface      DEBUG    nodes:_ensure_sensor_node: [HubNode._ensure_sensor_node][direct] Skipping sensor node for ip=192.168.1.226 (no sensor capability)
+2026-04-30 15:33:29.096 Thread-31 (poll) udi_interface      DEBUG    nodes:_load_learned_codes: [HubNode._load_learned_codes][direct] Preparing to restore code nodes for ip=192.168.1.226 total_cached=0 already_loaded=0
+2026-04-30 15:33:29.096 Thread-31 (poll) udi_interface      DEBUG    nodes:_load_learned_codes: [HubNode._load_learned_codes][direct] No cached codes for ip=192.168.1.226
+2026-04-30 15:33:29.096 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50bir:IR Controller (192.168.1.226) No change in GV1's value
+2026-04-30 15:33:29.096 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50bir:IR Controller (192.168.1.226) No change in GV2's value
+2026-04-30 15:33:29.096 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50brf:RF Controller (192.168.1.226) No change in GV1's value
+2026-04-30 15:33:29.096 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50brf:RF Controller (192.168.1.226) No change in GV2's value
+2026-04-30 15:33:29.096 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50b:Broadlink Hub (192.168.1.226) Reporting set TIME to 1777588409 to Polyglot
+2026-04-30 15:33:29.096 Thread-31 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588409
+2026-04-30 15:33:29.097 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: setup:Broadlink Setup No change in ST's value
+2026-04-30 15:33:29.097 Thread-31 (poll) udi_interface      INFO     nodes:_run_startup_once: [_run_startup_once] Startup reconciliation complete via POLL
+2026-04-30 15:33:29.097 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: setup:Broadlink Setup Reporting set TIME to 1777588409 to Polyglot
+2026-04-30 15:33:29.097 Thread-31 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588409
+2026-04-30 15:33:29.097 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007:Broadlink Hub (192.168.1.221) Reporting set TIME to 1777588409 to Polyglot
+2026-04-30 15:33:29.097 Thread-31 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588409
+2026-04-30 15:33:29.101 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e87072dea50b', 'driver': 'TIME', 'value': '1777588409', 'uom': 151, 'text': None}]}
+2026-04-30 15:33:29.102 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'setup', 'driver': 'TIME', 'value': '1777588409', 'uom': 151, 'text': None}]}
+2026-04-30 15:33:29.102 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'command': [{'address': 'setup', 'cmd': 'DON'}]}
+2026-04-30 15:33:29.102 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007', 'driver': 'TIME', 'value': '1777588409', 'uom': 151, 'text': None}]}
+2026-04-30 15:33:29.108 Thread-32 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.226: {'temperature': 0.0, 'humidity': 0.0}
+2026-04-30 15:33:29.109 Thread-32 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.226:
+  humidity            : 0.0
+  temperature         : 0.0
+2026-04-30 15:33:29.109 Thread-32 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] All-zero sensor response from 192.168.1.226 — treating as no sensor attached
+2026-04-30 15:33:29.109 Thread-31 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.221: {'temperature': 22.91, 'humidity': 50.13}
+2026-04-30 15:33:29.109 Thread-32 (poll) udi_interface      DEBUG    nodes:_detect_and_apply_sensors: [HubNode._detect_and_apply_sensors] Retrieved capability ip=192.168.1.226 has_temp=False has_humidity=False
+2026-04-30 15:33:29.109 Thread-31 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.221:
+  humidity            : 50.13
+  temperature         : 22.91
+2026-04-30 15:33:29.109 Thread-32 (poll) udi_interface      DEBUG    nodes:_ensure_sensor_node: [HubNode._ensure_sensor_node][direct] Skipping sensor node for ip=192.168.1.226 (no sensor capability)
+2026-04-30 15:33:29.109 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in ST's value
+2026-04-30 15:33:29.109 Thread-32 (poll) udi_interface      DEBUG    nodes:_load_learned_codes: [HubNode._load_learned_codes][direct] Preparing to restore code nodes for ip=192.168.1.226 total_cached=0 already_loaded=0
+2026-04-30 15:33:29.109 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) Reporting set TIME to 1777588409 to Polyglot
+2026-04-30 15:33:29.109 Thread-32 (poll) udi_interface      DEBUG    nodes:_load_learned_codes: [HubNode._load_learned_codes][direct] No cached codes for ip=192.168.1.226
+2026-04-30 15:33:29.110 Thread-31 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588409
+2026-04-30 15:33:29.110 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50bir:IR Controller (192.168.1.226) No change in GV1's value
+2026-04-30 15:33:29.110 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in GV2's value
+2026-04-30 15:33:29.110 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50bir:IR Controller (192.168.1.226) No change in GV2's value
+2026-04-30 15:33:29.110 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in GV3's value
+2026-04-30 15:33:29.110 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50brf:RF Controller (192.168.1.226) No change in GV1's value
+2026-04-30 15:33:29.110 Thread-31 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50b:Broadlink Hub (192.168.1.226) No change in TIME's value
+2026-04-30 15:33:29.110 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50brf:RF Controller (192.168.1.226) No change in GV2's value
+2026-04-30 15:33:29.111 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50b:Broadlink Hub (192.168.1.226) No change in TIME's value
+2026-04-30 15:33:29.111 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: setup:Broadlink Setup No change in ST's value
+2026-04-30 15:33:29.111 Thread-32 (poll) udi_interface      INFO     nodes:_run_startup_once: [_run_startup_once] Startup reconciliation complete via POLL
+2026-04-30 15:33:29.111 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: setup:Broadlink Setup No change in TIME's value
+2026-04-30 15:33:29.111 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007:Broadlink Hub (192.168.1.221) No change in TIME's value
+2026-04-30 15:33:29.113 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007se', 'driver': 'TIME', 'value': '1777588409', 'uom': 151, 'text': None}]}
+2026-04-30 15:33:29.114 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'command': [{'address': 'setup', 'cmd': 'DOF'}]}
+2026-04-30 15:33:29.124 Thread-32 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.221: {'temperature': 22.91, 'humidity': 50.13}
+2026-04-30 15:33:29.124 Thread-32 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.221:
+  humidity            : 50.13
+  temperature         : 22.91
+2026-04-30 15:33:29.124 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in ST's value
+2026-04-30 15:33:29.124 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in TIME's value
+2026-04-30 15:33:29.124 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in GV2's value
+2026-04-30 15:33:29.124 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in GV3's value
+2026-04-30 15:33:29.124 Thread-32 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50b:Broadlink Hub (192.168.1.226) No change in TIME's value
+2026-04-30 15:33:29.130 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e87072dea50b :: TIME to 1777588409 UOM 151
+2026-04-30 15:33:29.156 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message command
+2026-04-30 15:33:29.156 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING command
+2026-04-30 15:33:29.157 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS command message {'address': 'setup', 'success': True} from Polyglot
+2026-04-30 15:33:29.199 MQTT       udi_interface.interface INFO     interface:_message: Successfully set setup :: TIME to 1777588409 UOM 151
+2026-04-30 15:33:29.268 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message command
+2026-04-30 15:33:29.268 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING command
+2026-04-30 15:33:29.268 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS command message {'address': 'setup', 'success': True} from Polyglot
+2026-04-30 15:33:29.312 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007 :: TIME to 1777588409 UOM 151
+2026-04-30 15:33:29.354 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007se :: TIME to 1777588409 UOM 151
+2026-04-30 15:34:16.404 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message shortPoll
+2026-04-30 15:34:16.404 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING shortPoll
+2026-04-30 15:34:16.404 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS shortPoll message {} from Polyglot
+2026-04-30 15:34:16.405 Thread-33 (poll) udi_interface.node DEBUG    node:setDriver: setup:Broadlink Setup Reporting set TIME to 1777588456 to Polyglot
+2026-04-30 15:34:16.405 Thread-33 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588456
+2026-04-30 15:34:16.405 Thread-33 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007:Broadlink Hub (192.168.1.221) Reporting set TIME to 1777588456 to Polyglot
+2026-04-30 15:34:16.405 Thread-33 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588456
+2026-04-30 15:34:16.414 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'setup', 'driver': 'TIME', 'value': '1777588456', 'uom': 151, 'text': None}]}
+2026-04-30 15:34:16.415 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'command': [{'address': 'setup', 'cmd': 'DON'}]}
+2026-04-30 15:34:16.415 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007', 'driver': 'TIME', 'value': '1777588456', 'uom': 151, 'text': None}]}
+2026-04-30 15:34:16.443 MQTT       udi_interface.interface INFO     interface:_message: Successfully set setup :: TIME to 1777588456 UOM 151
+2026-04-30 15:34:16.466 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message command
+2026-04-30 15:34:16.466 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING command
+2026-04-30 15:34:16.466 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS command message {'address': 'setup', 'success': True} from Polyglot
+2026-04-30 15:34:16.517 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007 :: TIME to 1777588456 UOM 151
+2026-04-30 15:34:16.712 Thread-33 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.221: {'temperature': 22.92, 'humidity': 50.14}
+2026-04-30 15:34:16.712 Thread-33 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.221:
+  humidity            : 50.14
+  temperature         : 22.92
+2026-04-30 15:34:16.712 Thread-33 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in ST's value
+2026-04-30 15:34:16.712 Thread-33 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) Reporting set TIME to 1777588456 to Polyglot
+2026-04-30 15:34:16.712 Thread-33 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588456
+2026-04-30 15:34:16.712 Thread-33 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in GV2's value
+2026-04-30 15:34:16.712 Thread-33 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in GV3's value
+2026-04-30 15:34:16.712 Thread-33 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50b:Broadlink Hub (192.168.1.226) Reporting set TIME to 1777588456 to Polyglot
+2026-04-30 15:34:16.712 Thread-33 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588456
+2026-04-30 15:34:16.722 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007se', 'driver': 'TIME', 'value': '1777588456', 'uom': 151, 'text': None}]}
+2026-04-30 15:34:16.723 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e87072dea50b', 'driver': 'TIME', 'value': '1777588456', 'uom': 151, 'text': None}]}
+2026-04-30 15:34:16.753 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007se :: TIME to 1777588456 UOM 151
+2026-04-30 15:34:16.845 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e87072dea50b :: TIME to 1777588456 UOM 151
+2026-04-30 15:35:16.418 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message shortPoll
+2026-04-30 15:35:16.419 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING shortPoll
+2026-04-30 15:35:16.419 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS shortPoll message {} from Polyglot
+2026-04-30 15:35:16.419 Thread-34 (poll) udi_interface.node DEBUG    node:setDriver: setup:Broadlink Setup Reporting set TIME to 1777588516 to Polyglot
+2026-04-30 15:35:16.419 Thread-34 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588516
+2026-04-30 15:35:16.419 Thread-34 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007:Broadlink Hub (192.168.1.221) Reporting set TIME to 1777588516 to Polyglot
+2026-04-30 15:35:16.419 Thread-34 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588516
+2026-04-30 15:35:16.423 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'setup', 'driver': 'TIME', 'value': '1777588516', 'uom': 151, 'text': None}]}
+2026-04-30 15:35:16.423 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'command': [{'address': 'setup', 'cmd': 'DOF'}]}
+2026-04-30 15:35:16.424 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007', 'driver': 'TIME', 'value': '1777588516', 'uom': 151, 'text': None}]}
+2026-04-30 15:35:16.453 MQTT       udi_interface.interface INFO     interface:_message: Successfully set setup :: TIME to 1777588516 UOM 151
+2026-04-30 15:35:16.477 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message command
+2026-04-30 15:35:16.478 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING command
+2026-04-30 15:35:16.478 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS command message {'address': 'setup', 'success': True} from Polyglot
+2026-04-30 15:35:16.519 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007 :: TIME to 1777588516 UOM 151
+2026-04-30 15:35:16.568 Thread-34 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.221: {'temperature': 22.86, 'humidity': 50.21}
+2026-04-30 15:35:16.568 Thread-34 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.221:
+  humidity            : 50.21
+  temperature         : 22.86
+2026-04-30 15:35:16.568 Thread-34 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in ST's value
+2026-04-30 15:35:16.568 Thread-34 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) Reporting set TIME to 1777588516 to Polyglot
+2026-04-30 15:35:16.568 Thread-34 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588516
+2026-04-30 15:35:16.568 Thread-34 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in GV2's value
+2026-04-30 15:35:16.569 Thread-34 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) Reporting set GV3 to 50.2 to Polyglot
+2026-04-30 15:35:16.569 Thread-34 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 50.2
+2026-04-30 15:35:16.569 Thread-34 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50b:Broadlink Hub (192.168.1.226) Reporting set TIME to 1777588516 to Polyglot
+2026-04-30 15:35:16.569 Thread-34 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588516
+2026-04-30 15:35:16.572 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007se', 'driver': 'TIME', 'value': '1777588516', 'uom': 151, 'text': None}]}
+2026-04-30 15:35:16.572 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007se', 'driver': 'GV3', 'value': '50.2', 'uom': 22, 'text': None}]}
+2026-04-30 15:35:16.573 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e87072dea50b', 'driver': 'TIME', 'value': '1777588516', 'uom': 151, 'text': None}]}
+2026-04-30 15:35:16.602 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007se :: TIME to 1777588516 UOM 151
+2026-04-30 15:35:16.692 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007se :: GV3 to 50.2 UOM 22
+2026-04-30 15:35:16.753 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e87072dea50b :: TIME to 1777588516 UOM 151
+2026-04-30 15:36:16.426 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message shortPoll
+2026-04-30 15:36:16.426 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING shortPoll
+2026-04-30 15:36:16.426 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS shortPoll message {} from Polyglot
+2026-04-30 15:36:16.426 Thread-35 (poll) udi_interface.node DEBUG    node:setDriver: setup:Broadlink Setup Reporting set TIME to 1777588576 to Polyglot
+2026-04-30 15:36:16.426 Thread-35 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588576
+2026-04-30 15:36:16.426 Thread-35 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007:Broadlink Hub (192.168.1.221) Reporting set TIME to 1777588576 to Polyglot
+2026-04-30 15:36:16.426 Thread-35 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588576
+2026-04-30 15:36:16.436 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'setup', 'driver': 'TIME', 'value': '1777588576', 'uom': 151, 'text': None}]}
+2026-04-30 15:36:16.436 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'command': [{'address': 'setup', 'cmd': 'DON'}]}
+2026-04-30 15:36:16.436 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007', 'driver': 'TIME', 'value': '1777588576', 'uom': 151, 'text': None}]}
+2026-04-30 15:36:16.463 MQTT       udi_interface.interface INFO     interface:_message: Successfully set setup :: TIME to 1777588576 UOM 151
+2026-04-30 15:36:16.486 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message command
+2026-04-30 15:36:16.487 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING command
+2026-04-30 15:36:16.487 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS command message {'address': 'setup', 'success': True} from Polyglot
+2026-04-30 15:36:16.528 Thread-35 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.221: {'temperature': 22.81, 'humidity': 50.28}
+2026-04-30 15:36:16.529 Thread-35 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.221:
+  humidity            : 50.28
+  temperature         : 22.81
+2026-04-30 15:36:16.529 Thread-35 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in ST's value
+2026-04-30 15:36:16.529 Thread-35 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) Reporting set TIME to 1777588576 to Polyglot
+2026-04-30 15:36:16.529 Thread-35 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588576
+2026-04-30 15:36:16.529 Thread-35 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) Reporting set GV2 to 22.8 to Polyglot
+2026-04-30 15:36:16.529 Thread-35 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 22.8
+2026-04-30 15:36:16.529 Thread-35 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) Reporting set GV3 to 50.3 to Polyglot
+2026-04-30 15:36:16.529 Thread-35 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 50.3
+2026-04-30 15:36:16.530 Thread-35 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50b:Broadlink Hub (192.168.1.226) Reporting set TIME to 1777588576 to Polyglot
+2026-04-30 15:36:16.530 Thread-35 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588576
+2026-04-30 15:36:16.531 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007se', 'driver': 'TIME', 'value': '1777588576', 'uom': 151, 'text': None}]}
+2026-04-30 15:36:16.532 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007se', 'driver': 'GV2', 'value': '22.8', 'uom': 17, 'text': None}]}
+2026-04-30 15:36:16.532 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007se', 'driver': 'GV3', 'value': '50.3', 'uom': 22, 'text': None}]}
+2026-04-30 15:36:16.532 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007 :: TIME to 1777588576 UOM 151
+2026-04-30 15:36:16.533 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e87072dea50b', 'driver': 'TIME', 'value': '1777588576', 'uom': 151, 'text': None}]}
+2026-04-30 15:36:16.562 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007se :: TIME to 1777588576 UOM 151
+2026-04-30 15:36:16.653 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007se :: GV2 to 22.8 UOM 17
+2026-04-30 15:36:16.694 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007se :: GV3 to 50.3 UOM 22
+2026-04-30 15:36:16.783 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e87072dea50b :: TIME to 1777588576 UOM 151
+2026-04-30 15:37:16.428 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message shortPoll
+2026-04-30 15:37:16.429 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING shortPoll
+2026-04-30 15:37:16.429 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS shortPoll message {} from Polyglot
+2026-04-30 15:37:16.429 Thread-36 (poll) udi_interface.node DEBUG    node:setDriver: setup:Broadlink Setup Reporting set TIME to 1777588636 to Polyglot
+2026-04-30 15:37:16.429 Thread-36 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588636
+2026-04-30 15:37:16.429 Thread-36 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007:Broadlink Hub (192.168.1.221) Reporting set TIME to 1777588636 to Polyglot
+2026-04-30 15:37:16.429 Thread-36 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588636
+2026-04-30 15:37:16.430 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'setup', 'driver': 'TIME', 'value': '1777588636', 'uom': 151, 'text': None}]}
+2026-04-30 15:37:16.431 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'command': [{'address': 'setup', 'cmd': 'DOF'}]}
+2026-04-30 15:37:16.431 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007', 'driver': 'TIME', 'value': '1777588636', 'uom': 151, 'text': None}]}
+2026-04-30 15:37:16.461 MQTT       udi_interface.interface INFO     interface:_message: Successfully set setup :: TIME to 1777588636 UOM 151
+2026-04-30 15:37:16.486 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message command
+2026-04-30 15:37:16.486 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING command
+2026-04-30 15:37:16.486 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS command message {'address': 'setup', 'success': True} from Polyglot
+2026-04-30 15:37:16.526 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007 :: TIME to 1777588636 UOM 151
+2026-04-30 15:37:16.532 Thread-36 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.221: {'temperature': 22.85, 'humidity': 50.28}
+2026-04-30 15:37:16.532 Thread-36 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.221:
+  humidity            : 50.28
+  temperature         : 22.85
+2026-04-30 15:37:16.533 Thread-36 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in ST's value
+2026-04-30 15:37:16.533 Thread-36 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) Reporting set TIME to 1777588636 to Polyglot
+2026-04-30 15:37:16.533 Thread-36 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588636
+2026-04-30 15:37:16.533 Thread-36 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) Reporting set GV2 to 22.9 to Polyglot
+2026-04-30 15:37:16.533 Thread-36 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 22.9
+2026-04-30 15:37:16.533 Thread-36 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in GV3's value
+2026-04-30 15:37:16.533 Thread-36 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50b:Broadlink Hub (192.168.1.226) Reporting set TIME to 1777588636 to Polyglot
+2026-04-30 15:37:16.533 Thread-36 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588636
+2026-04-30 15:37:16.536 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007se', 'driver': 'TIME', 'value': '1777588636', 'uom': 151, 'text': None}]}
+2026-04-30 15:37:16.536 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007se', 'driver': 'GV2', 'value': '22.9', 'uom': 17, 'text': None}]}
+2026-04-30 15:37:16.537 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e87072dea50b', 'driver': 'TIME', 'value': '1777588636', 'uom': 151, 'text': None}]}
+2026-04-30 15:37:16.564 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007se :: TIME to 1777588636 UOM 151
+2026-04-30 15:37:16.654 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007se :: GV2 to 22.9 UOM 17
+2026-04-30 15:37:16.697 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e87072dea50b :: TIME to 1777588636 UOM 151
+2026-04-30 15:38:16.431 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message shortPoll
+2026-04-30 15:38:16.432 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING shortPoll
+2026-04-30 15:38:16.432 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS shortPoll message {} from Polyglot
+2026-04-30 15:38:16.432 Thread-37 (poll) udi_interface.node DEBUG    node:setDriver: setup:Broadlink Setup Reporting set TIME to 1777588696 to Polyglot
+2026-04-30 15:38:16.432 Thread-37 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588696
+2026-04-30 15:38:16.432 Thread-37 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007:Broadlink Hub (192.168.1.221) Reporting set TIME to 1777588696 to Polyglot
+2026-04-30 15:38:16.432 Thread-37 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588696
+2026-04-30 15:38:16.441 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'setup', 'driver': 'TIME', 'value': '1777588696', 'uom': 151, 'text': None}]}
+2026-04-30 15:38:16.442 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'command': [{'address': 'setup', 'cmd': 'DON'}]}
+2026-04-30 15:38:16.442 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007', 'driver': 'TIME', 'value': '1777588696', 'uom': 151, 'text': None}]}
+2026-04-30 15:38:16.471 MQTT       udi_interface.interface INFO     interface:_message: Successfully set setup :: TIME to 1777588696 UOM 151
+2026-04-30 15:38:16.496 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message command
+2026-04-30 15:38:16.496 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING command
+2026-04-30 15:38:16.496 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS command message {'address': 'setup', 'success': True} from Polyglot
+2026-04-30 15:38:16.537 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007 :: TIME to 1777588696 UOM 151
+2026-04-30 15:38:16.538 Thread-37 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.221: {'temperature': 22.87, 'humidity': 50.26}
+2026-04-30 15:38:16.538 Thread-37 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.221:
+  humidity            : 50.26
+  temperature         : 22.87
+2026-04-30 15:38:16.538 Thread-37 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in ST's value
+2026-04-30 15:38:16.538 Thread-37 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) Reporting set TIME to 1777588696 to Polyglot
+2026-04-30 15:38:16.538 Thread-37 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588696
+2026-04-30 15:38:16.538 Thread-37 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in GV2's value
+2026-04-30 15:38:16.538 Thread-37 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in GV3's value
+2026-04-30 15:38:16.538 Thread-37 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50b:Broadlink Hub (192.168.1.226) Reporting set TIME to 1777588696 to Polyglot
+2026-04-30 15:38:16.538 Thread-37 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588696
+2026-04-30 15:38:16.547 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007se', 'driver': 'TIME', 'value': '1777588696', 'uom': 151, 'text': None}]}
+2026-04-30 15:38:16.547 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e87072dea50b', 'driver': 'TIME', 'value': '1777588696', 'uom': 151, 'text': None}]}
+2026-04-30 15:38:16.575 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007se :: TIME to 1777588696 UOM 151
+2026-04-30 15:38:16.673 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e87072dea50b :: TIME to 1777588696 UOM 151
+2026-04-30 15:39:16.459 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message shortPoll
+2026-04-30 15:39:16.459 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING shortPoll
+2026-04-30 15:39:16.459 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS shortPoll message {} from Polyglot
+2026-04-30 15:39:16.459 Thread-38 (poll) udi_interface.node DEBUG    node:setDriver: setup:Broadlink Setup Reporting set TIME to 1777588756 to Polyglot
+2026-04-30 15:39:16.459 Thread-38 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588756
+2026-04-30 15:39:16.459 Thread-38 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007:Broadlink Hub (192.168.1.221) Reporting set TIME to 1777588756 to Polyglot
+2026-04-30 15:39:16.459 Thread-38 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588756
+2026-04-30 15:39:16.463 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'setup', 'driver': 'TIME', 'value': '1777588756', 'uom': 151, 'text': None}]}
+2026-04-30 15:39:16.464 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'command': [{'address': 'setup', 'cmd': 'DOF'}]}
+2026-04-30 15:39:16.464 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007', 'driver': 'TIME', 'value': '1777588756', 'uom': 151, 'text': None}]}
+2026-04-30 15:39:16.493 MQTT       udi_interface.interface INFO     interface:_message: Successfully set setup :: TIME to 1777588756 UOM 151
+2026-04-30 15:39:16.518 MQTT       udi_interface.interface DEBUG    interface:_message: QUEUING incoming message command
+2026-04-30 15:39:16.518 Command    udi_interface.interface DEBUG    interface:_parseInput: DEQUEING command
+2026-04-30 15:39:16.518 Command    udi_interface.interface DEBUG    interface:_handleInput: PROCESS command message {'address': 'setup', 'success': True} from Polyglot
+2026-04-30 15:39:16.544 Thread-38 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor payload from 192.168.1.221: {'temperature': 22.9, 'humidity': 50.23}
+2026-04-30 15:39:16.544 Thread-38 (poll) udi_interface      DEBUG    broadlink_client:check_sensors: [check_sensors] Raw sensor data from 192.168.1.221:
+  humidity            : 50.23
+  temperature         : 22.9
+2026-04-30 15:39:16.544 Thread-38 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in ST's value
+2026-04-30 15:39:16.544 Thread-38 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) Reporting set TIME to 1777588756 to Polyglot
+2026-04-30 15:39:16.544 Thread-38 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588756
+2026-04-30 15:39:16.544 Thread-38 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) No change in GV2's value
+2026-04-30 15:39:16.544 Thread-38 (poll) udi_interface.node DEBUG    node:setDriver: e816567db007se:Sensor (192.168.1.221) Reporting set GV3 to 50.2 to Polyglot
+2026-04-30 15:39:16.545 Thread-38 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 50.2
+2026-04-30 15:39:16.545 Thread-38 (poll) udi_interface.node DEBUG    node:setDriver: e87072dea50b:Broadlink Hub (192.168.1.226) Reporting set TIME to 1777588756 to Polyglot
+2026-04-30 15:39:16.545 Thread-38 (poll) udi_interface.node DEBUG    node:reportDriver: Updating value to 1777588756
+2026-04-30 15:39:16.549 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007se', 'driver': 'TIME', 'value': '1777588756', 'uom': 151, 'text': None}]}
+2026-04-30 15:39:16.550 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e816567db007se', 'driver': 'GV3', 'value': '50.2', 'uom': 22, 'text': None}]}
+2026-04-30 15:39:16.550 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007 :: TIME to 1777588756 UOM 151
+2026-04-30 15:39:16.550 Thread-1 (send_thread) udi_interface.interface DEBUG    interface:_send: PUBLISHING {'set': [{'address': 'e87072dea50b', 'driver': 'TIME', 'value': '1777588756', 'uom': 151, 'text': None}]}
+2026-04-30 15:39:16.633 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007se :: TIME to 1777588756 UOM 151
+2026-04-30 15:39:16.676 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e816567db007se :: GV3 to 50.2 UOM 22
+2026-04-30 15:39:16.736 MQTT       udi_interface.interface INFO     interface:_message: Successfully set e87072dea50b :: TIME to 1777588756 UOM 151
