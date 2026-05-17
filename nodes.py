@@ -1711,6 +1711,32 @@ class BroadlinkController(BaseNode):
                 return f"{normalized_mac}{controller_suffix}"
         return ""
 
+    def _addresses_for_hub_mac(self, mac: str, candidates: set[str]) -> set[str]:
+        """Return candidate node addresses that belong to a MAC-derived hub subtree."""
+        normalized_mac = self._normalize_hub_address(mac)
+        if not normalized_mac:
+            return set()
+
+        exact = {
+            normalized_mac,
+            f"{normalized_mac}ir",
+            f"{normalized_mac}rf",
+            f"{normalized_mac}se",
+        }
+        code_prefixes = (
+            f"{normalized_mac[-10:]}i",
+            f"{normalized_mac[-10:]}r",
+        )
+
+        matches: set[str] = set()
+        for addr in candidates:
+            text = str(addr or "")
+            if not text:
+                continue
+            if text in exact or text.startswith(code_prefixes):
+                matches.add(text)
+        return matches
+
     def _prune_unconfigured_hubs(self, trace_id: str = "") -> None:
         """Remove plugin nodes not assigned to currently configured hubs."""
         trace = trace_id or "none"
@@ -1725,6 +1751,19 @@ class BroadlinkController(BaseNode):
 
         assigned_addrs = self._assigned_plugin_addresses()
         existing_nodes = self._existing_plugin_nodes()
+        stale_hub_macs = {
+            self._normalize_hub_address(mac)
+            for ip, mac in dict(self.data_store.get("hub_macs") or {}).items()
+            if ip not in configured_ips
+        }
+        stale_hub_macs.discard("")
+
+        candidate_addrs = set(existing_nodes.keys())
+        candidate_addrs.update(str(addr or "") for addr in self.node_name_cache.keys())
+        stale_from_removed_hubs: set[str] = set()
+        for mac in stale_hub_macs:
+            stale_from_removed_hubs.update(self._addresses_for_hub_mac(mac, candidate_addrs))
+
         stale_core_addrs = [
             addr
             for addr in existing_nodes
@@ -1749,8 +1788,18 @@ class BroadlinkController(BaseNode):
             if owner_controller and owner_controller in removed_controller_addrs:
                 stale_code_addrs.append(addr)
 
-        stale_addrs = stale_core_addrs + stale_code_addrs
+        stale_addrs = sorted(set(stale_core_addrs + stale_code_addrs + list(stale_from_removed_hubs)))
         if not stale_addrs:
+            # Keep persisted hub MAC map aligned with active configuration.
+            stored_hub_macs = dict(self.data_store.get("hub_macs") or {})
+            filtered_hub_macs = {
+                ip: mac
+                for ip, mac in stored_hub_macs.items()
+                if ip in configured_ips
+            }
+            if stored_hub_macs != filtered_hub_macs:
+                self.data_store["hub_macs"] = filtered_hub_macs
+            self._persist_node_name_cache()
             return
 
         LOGGER.info(
@@ -1770,7 +1819,7 @@ class BroadlinkController(BaseNode):
         }
         stale_sorted = sorted(stale_addrs, key=lambda addr: delete_order.get(existing_nodes.get(addr, ""), 1))
         for addr in stale_sorted:
-            if existing_nodes.get(addr) == "blhub":
+            if existing_nodes.get(addr) == "blhub" or len(addr) == 12:
                 self._remove_hub_error_notice(addr)
             if self._delete_node_api(addr, trace):
                 self._deleted_node_addresses.add(addr)
