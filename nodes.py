@@ -1691,6 +1691,26 @@ class BroadlinkController(BaseNode):
             )
         return False
 
+    def _infer_code_controller_addr(self, code_addr: str, node_id: str, all_codes: dict[str, dict], hub_macs: dict[str, str]) -> str:
+        """Best-effort resolve a learned code node to its owning controller address."""
+        meta = all_codes.get(code_addr) if isinstance(all_codes, dict) else None
+        if isinstance(meta, dict):
+            stored = str(meta.get("controller_addr") or "").strip()
+            if stored:
+                return stored
+
+        # Fallback from node type + address prefix when metadata is missing.
+        is_rf = node_id == "blrfcode"
+        suffix = "r" if is_rf else "i"
+        controller_suffix = "rf" if is_rf else "ir"
+        for mac in hub_macs.values():
+            normalized_mac = self._normalize_hub_address(mac)
+            if not normalized_mac:
+                continue
+            if code_addr.startswith(f"{normalized_mac[-10:]}{suffix}"):
+                return f"{normalized_mac}{controller_suffix}"
+        return ""
+
     def _prune_unconfigured_hubs(self, trace_id: str = "") -> None:
         """Remove plugin nodes not assigned to currently configured hubs."""
         trace = trace_id or "none"
@@ -1705,13 +1725,31 @@ class BroadlinkController(BaseNode):
 
         assigned_addrs = self._assigned_plugin_addresses()
         existing_nodes = self._existing_plugin_nodes()
-        stale_addrs = [
+        stale_core_addrs = [
             addr
             for addr in existing_nodes
             if addr != self.address
             and addr not in assigned_addrs
             and existing_nodes.get(addr) in {"blhub", "blirctl", "blrfctl", "blsensor"}
         ]
+
+        removed_controller_addrs = {
+            addr
+            for addr in stale_core_addrs
+            if existing_nodes.get(addr) in {"blirctl", "blrfctl"}
+        }
+
+        all_codes = self._safe_code_map(self.data_store.get("learned_codes", {}))
+        hub_macs = self._safe_hub_macs()
+        stale_code_addrs = []
+        for addr, node_id in existing_nodes.items():
+            if node_id not in {"blircode", "blrfcode"}:
+                continue
+            owner_controller = self._infer_code_controller_addr(addr, node_id, all_codes, hub_macs)
+            if owner_controller and owner_controller in removed_controller_addrs:
+                stale_code_addrs.append(addr)
+
+        stale_addrs = stale_core_addrs + stale_code_addrs
         if not stale_addrs:
             return
 
@@ -1721,8 +1759,16 @@ class BroadlinkController(BaseNode):
             stale_addrs,
         )
 
-        # Delete children first and parent hubs last.
-        stale_sorted = sorted(stale_addrs, key=lambda addr: existing_nodes.get(addr) == "blhub")
+        # Delete in dependency order: code nodes, then controllers/sensors, then hubs.
+        delete_order = {
+            "blircode": 0,
+            "blrfcode": 0,
+            "blsensor": 1,
+            "blirctl": 1,
+            "blrfctl": 1,
+            "blhub": 2,
+        }
+        stale_sorted = sorted(stale_addrs, key=lambda addr: delete_order.get(existing_nodes.get(addr, ""), 1))
         for addr in stale_sorted:
             if existing_nodes.get(addr) == "blhub":
                 self._remove_hub_error_notice(addr)
