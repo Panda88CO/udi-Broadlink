@@ -116,10 +116,10 @@ def build_config(custom_params: dict | None) -> PluginConfig:
     raw_hubs = _first_present(
         params,
         (
-            "hub_ip",
-            "hub_ips",
             "HUB_IP",
             "HUB_IPS",
+            "hub_ip",
+            "hub_ips",
             "Hub_IP",
             "Hub_IPs",
             "hubIp",

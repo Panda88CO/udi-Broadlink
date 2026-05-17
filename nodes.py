@@ -1295,6 +1295,7 @@ class BroadlinkController(BaseNode):
         self._startup_completed: bool = False
         self._reconcile_seq: int = 0
         self._confirmed_node_addresses: set[str] = set()
+        self._deleted_node_addresses: set[str] = set()
         LOGGER.debug("[__init__] Initialized instance variables")
 
         LOGGER.debug("[__init__] Subscribing to polyglot events")
@@ -1309,6 +1310,9 @@ class BroadlinkController(BaseNode):
         self.poly.subscribe(self.poly.LOGLEVEL, self.handle_log_level)
         self.poly.subscribe(self.poly.DISCOVER, self.discover)
         self.poly.subscribe(self.poly.ADDNODEDONE, self.node_done)
+        del_node_done_event = getattr(self.poly, "DELNODEDONE", None)
+        if del_node_done_event is not None:
+            self.poly.subscribe(del_node_done_event, self.node_deleted)
         self.poly.subscribe(self.poly.CONFIGDONE, self.config_done)
         LOGGER.debug("[__init__] Event subscriptions registered")
 
@@ -1402,6 +1406,15 @@ class BroadlinkController(BaseNode):
         if address:
             self._confirmed_node_addresses.add(address)
         LOGGER.debug("[node_done] Node %s is done", address or "unknown")
+
+    def node_deleted(self, node) -> None:
+        address = getattr(node, "address", None)
+        if address is None and isinstance(node, dict):
+            address = node.get("address") or node.get("node")
+        if address:
+            self._deleted_node_addresses.add(address)
+            self._confirmed_node_addresses.discard(address)
+        LOGGER.debug("[node_deleted] Node %s deletion complete", address or "unknown")
 
     def config_done(self, _config=None, *_args, **_kwargs) -> None:
         LOGGER.debug("[config_done] Configuration done")
@@ -1592,6 +1605,7 @@ class BroadlinkController(BaseNode):
         """
         self._reconcile_seq += 1
         trace_id = f"rec-{self._reconcile_seq:06d}"
+        self._prune_unconfigured_hubs(trace_id)
         hub_macs = self._safe_hub_macs()
         LOGGER.debug(
             "[_reconcile_hub_nodes][%s] Begin pass configured_hubs=%s known_hub_macs=%s",
@@ -1647,6 +1661,68 @@ class BroadlinkController(BaseNode):
                 )
 
         self._update_overall_status()
+
+    def _prune_unconfigured_hubs(self, trace_id: str = "") -> None:
+        """Drop in-memory/runtime hub nodes that are no longer configured."""
+        trace = trace_id or "none"
+        configured_ips = set(self.config.hub_ips)
+        stale_ips = [ip for ip in self.hub_nodes if ip not in configured_ips]
+        if not stale_ips:
+            return
+
+        LOGGER.info(
+            "[_prune_unconfigured_hubs][%s] Removing hubs not in config: %s",
+            trace,
+            stale_ips,
+        )
+
+        delete_node = getattr(self.poly, "delNode", None)
+        hub_macs = dict(self.data_store.get("hub_macs") or {})
+
+        for stale_ip in stale_ips:
+            hub_node = self.hub_nodes.pop(stale_ip, None)
+            if hub_node is None:
+                continue
+
+            # Clear notices and cached node names for this hub subtree.
+            self._remove_hub_error_notice(hub_node.hub_mac)
+            stale_addrs = [
+                hub_node.address,
+                hub_node._controller_address("ir"),
+                hub_node._controller_address("rf"),
+                hub_node._sensor_address(),
+            ]
+            stale_addrs.extend(hub_node.learned_codes.keys())
+            for addr in stale_addrs:
+                self.node_name_cache.pop(addr, None)
+                self._confirmed_node_addresses.discard(addr)
+
+            # Best-effort remove nodes from PG3 so only configured hubs remain.
+            if callable(delete_node):
+                # Delete leaves first, then parent.
+                for addr in sorted(set(stale_addrs), key=lambda value: value == hub_node.address):
+                    try:
+                        delete_node(addr)
+                    except Exception as err:
+                        LOGGER.debug(
+                            "[_prune_unconfigured_hubs][%s] Unable to remove node %s: %s",
+                            trace,
+                            addr,
+                            err,
+                        )
+            else:
+                LOGGER.warning(
+                    "[_prune_unconfigured_hubs][%s] delNode(address) unavailable on interface; stale PG3 nodes may persist",
+                    trace,
+                )
+
+            if stale_ip in hub_macs:
+                hub_macs.pop(stale_ip, None)
+
+        stored_hub_macs = self.data_store.get("hub_macs") or {}
+        if stored_hub_macs != hub_macs:
+            self.data_store["hub_macs"] = hub_macs
+        self._persist_node_name_cache()
 
     def _connect_hub_identity(self, ip: str, trace_id: str = "") -> tuple[str, BroadlinkHubClient | None]:
         """Connect to a hub and return its normalized MAC with active client."""
