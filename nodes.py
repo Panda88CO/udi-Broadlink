@@ -1818,13 +1818,21 @@ class BroadlinkController(BaseNode):
             "blhub": 2,
         }
         stale_sorted = sorted(stale_addrs, key=lambda addr: delete_order.get(existing_nodes.get(addr, ""), 1))
+        failed_deletes: set[str] = set()
         for addr in stale_sorted:
             if existing_nodes.get(addr) == "blhub" or len(addr) == 12:
                 self._remove_hub_error_notice(addr)
             if self._delete_node_api(addr, trace):
                 self._deleted_node_addresses.add(addr)
                 self._confirmed_node_addresses.discard(addr)
-            self.node_name_cache.pop(addr, None)
+                self.node_name_cache.pop(addr, None)
+            else:
+                failed_deletes.add(addr)
+                LOGGER.warning(
+                    "[_prune_unconfigured_hubs][%s] delNode failed for %s; keeping it in retry set",
+                    trace,
+                    addr,
+                )
 
         # Keep persisted hub MAC map aligned with active configuration.
         stored_hub_macs = dict(self.data_store.get("hub_macs") or {})
@@ -1832,6 +1840,11 @@ class BroadlinkController(BaseNode):
             ip: mac
             for ip, mac in stored_hub_macs.items()
             if ip in configured_ips
+            or self._normalize_hub_address(mac) in {
+                addr
+                for addr in failed_deletes
+                if len(addr) == 12
+            }
         }
         if stored_hub_macs != filtered_hub_macs:
             self.data_store["hub_macs"] = filtered_hub_macs
