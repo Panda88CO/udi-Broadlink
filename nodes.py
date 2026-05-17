@@ -1728,7 +1728,9 @@ class BroadlinkController(BaseNode):
             f"{normalized_mac[-10:]}r",
         )
 
-        matches: set[str] = set()
+        # Always target the core subtree addresses even if they are not
+        # currently present in runtime node caches.
+        matches: set[str] = set(exact)
         for addr in candidates:
             text = str(addr or "")
             if not text:
