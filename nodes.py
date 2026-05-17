@@ -17,7 +17,7 @@ from config_parser import PluginConfig, build_config
 
 LOGGER = udi_interface.LOGGER
 Custom = udi_interface.Custom
-VERSION = "0.2.7"
+VERSION = "0.2.8"
 DEFAULT_SETUP_ADDRESS = "setup"
 
 MODEL_INDEX_NAMES = {
@@ -1079,30 +1079,9 @@ class HubNode(BaseNode):
             )
         else:
             LOGGER.debug("[HubNode._load_learned_codes][%s] No cached codes for ip=%s", trace, self.hub_ip)
-        # Query PG3x once for all currently registered node addresses.  Any
-        # learned-code address that is absent from PG3x was deleted by the user
-        # before this startup and must not be re-added.
-        try:
-            pg3_nodes = self.poly.getNodes()
-            pg3_addresses: set[str] | None = set(pg3_nodes.keys()) if isinstance(pg3_nodes, dict) else None
-        except Exception as _e:
-            LOGGER.warning("[HubNode._load_learned_codes][%s] Could not query PG3x node list: %s — skipping deletion filter", trace, _e)
-            pg3_addresses = None
-
-        pruned_addrs: list[str] = []
         invalid_addrs: list[str] = []
         for addr, meta in self.learned_codes.items():
             if addr in self._loaded_code_addrs:
-                continue
-            # If PG3x does not have this node it was removed by the user;
-            # skip restoring it and prune it from local storage.
-            if pg3_addresses is not None and addr not in pg3_addresses:
-                LOGGER.info(
-                    "[HubNode._load_learned_codes][%s] Pruning %s — not found in PG3x node list (deleted by user)",
-                    trace,
-                    addr,
-                )
-                pruned_addrs.append(addr)
                 continue
             code_payload = meta.get("code_hex") or meta.get("code") or meta.get("data")
             if not code_payload:
@@ -1157,27 +1136,6 @@ class HubNode(BaseNode):
                     changed = True
             if changed:
                 self.controller.data_store["learned_codes"] = all_codes
-
-        if pruned_addrs:
-            self.learned_codes = {
-                addr: meta
-                for addr, meta in self.learned_codes.items()
-                if addr not in pruned_addrs
-            }
-            all_codes = dict(self.controller.data_store.get("learned_codes") or {})
-            changed = False
-            for addr in pruned_addrs:
-                if addr in all_codes:
-                    del all_codes[addr]
-                    changed = True
-            if changed:
-                self.controller.data_store["learned_codes"] = all_codes
-            LOGGER.info(
-                "[HubNode._load_learned_codes][%s] Pruned %d user-deleted code(s) from storage: %s",
-                trace,
-                len(pruned_addrs),
-                pruned_addrs,
-            )
 
         if self.ir_controller is not None:
             self.ir_controller.refresh_learn_state(reset_status=False)
@@ -1605,7 +1563,7 @@ class BroadlinkController(BaseNode):
         """
         self._reconcile_seq += 1
         trace_id = f"rec-{self._reconcile_seq:06d}"
-        self._prune_unconfigured_hubs(trace_id)
+        # Phase 1: assign/install nodes for the current configuration.
         hub_macs = self._safe_hub_macs()
         LOGGER.debug(
             "[_reconcile_hub_nodes][%s] Begin pass configured_hubs=%s known_hub_macs=%s",
@@ -1660,68 +1618,128 @@ class BroadlinkController(BaseNode):
                     trace_id, ip,
                 )
 
+        # Phase 2: remove plugin nodes that are no longer assigned.
+        self._prune_unconfigured_hubs(trace_id)
         self._update_overall_status()
 
+    def _assigned_plugin_addresses(self) -> set[str]:
+        """Return all plugin node addresses that should remain after reconcile."""
+        assigned: set[str] = {self.address}
+
+        # Keep addresses derived from configured hub MACs, even if a hub
+        # cannot be contacted in this pass.
+        configured_ips = set(self.config.hub_ips)
+        hub_macs = self._safe_hub_macs()
+        all_codes = self._safe_code_map(self.data_store.get("learned_codes", {}))
+        for ip in configured_ips:
+            mac = self._normalize_hub_address(hub_macs.get(ip, ""))
+            if not mac:
+                continue
+            assigned.add(mac)
+            assigned.add(f"{mac}ir")
+            assigned.add(f"{mac}rf")
+            assigned.add(f"{mac}se")
+            code_prefixes = {f"{mac[-10:]}i", f"{mac[-10:]}r"}
+            for addr in all_codes:
+                if any(addr.startswith(prefix) for prefix in code_prefixes):
+                    assigned.add(addr)
+
+        for hub_node in self.hub_nodes.values():
+            assigned.add(hub_node.address)
+            assigned.add(hub_node._controller_address("ir"))
+            assigned.add(hub_node._controller_address("rf"))
+            assigned.add(hub_node._sensor_address())
+            assigned.update(hub_node.learned_codes.keys())
+        return assigned
+
+    def _existing_plugin_nodes(self) -> dict[str, str]:
+        """Return existing PG3 plugin nodes as {address: node_id}."""
+        node_ids = {"setup", "blhub", "blirctl", "blrfctl", "blsensor", "blircode", "blrfcode"}
+        existing: dict[str, str] = {}
+        try:
+            nodes = self.poly.getNodes()
+            if isinstance(nodes, dict):
+                iterable = nodes.items()
+            else:
+                iterable = ((getattr(node, "address", ""), node) for node in nodes)
+
+            for addr, node in iterable:
+                address = str(addr or "")
+                node_id = str(getattr(node, "id", "") or "")
+                if address and node_id in node_ids:
+                    existing[address] = node_id
+        except Exception as err:
+            LOGGER.warning("[_existing_plugin_nodes] Failed to query PG3 nodes: %s", err)
+        return existing
+
+    def _delete_node_api(self, address: str, trace_id: str = "") -> bool:
+        """Delete one node via udi_interface delNode(address)."""
+        trace = trace_id or "none"
+        method = getattr(self.poly, "delNode", None)
+        if not callable(method):
+            LOGGER.warning("[_delete_node_api][%s] delNode(address) unavailable; cannot remove %s", trace, address)
+            return False
+        try:
+            method(address)
+            return True
+        except Exception as err:
+            LOGGER.debug(
+                "[_delete_node_api][%s] delNode(%s) failed: %s",
+                trace,
+                address,
+                err,
+            )
+        return False
+
     def _prune_unconfigured_hubs(self, trace_id: str = "") -> None:
-        """Drop in-memory/runtime hub nodes that are no longer configured."""
+        """Remove plugin nodes not assigned to currently configured hubs."""
         trace = trace_id or "none"
         configured_ips = set(self.config.hub_ips)
-        stale_ips = [ip for ip in self.hub_nodes if ip not in configured_ips]
-        if not stale_ips:
+
+        # Keep only configured hubs in runtime memory first.
+        self.hub_nodes = {
+            ip: hub_node
+            for ip, hub_node in self.hub_nodes.items()
+            if ip in configured_ips
+        }
+
+        assigned_addrs = self._assigned_plugin_addresses()
+        existing_nodes = self._existing_plugin_nodes()
+        stale_addrs = [
+            addr
+            for addr in existing_nodes
+            if addr != self.address
+            and addr not in assigned_addrs
+            and existing_nodes.get(addr) in {"blhub", "blirctl", "blrfctl", "blsensor"}
+        ]
+        if not stale_addrs:
             return
 
         LOGGER.info(
-            "[_prune_unconfigured_hubs][%s] Removing hubs not in config: %s",
+            "[_prune_unconfigured_hubs][%s] Removing unassigned plugin nodes: %s",
             trace,
-            stale_ips,
+            stale_addrs,
         )
 
-        delete_node = getattr(self.poly, "delNode", None)
-        hub_macs = dict(self.data_store.get("hub_macs") or {})
-
-        for stale_ip in stale_ips:
-            hub_node = self.hub_nodes.pop(stale_ip, None)
-            if hub_node is None:
-                continue
-
-            # Clear notices and cached node names for this hub subtree.
-            self._remove_hub_error_notice(hub_node.hub_mac)
-            stale_addrs = [
-                hub_node.address,
-                hub_node._controller_address("ir"),
-                hub_node._controller_address("rf"),
-                hub_node._sensor_address(),
-            ]
-            stale_addrs.extend(hub_node.learned_codes.keys())
-            for addr in stale_addrs:
-                self.node_name_cache.pop(addr, None)
+        # Delete children first and parent hubs last.
+        stale_sorted = sorted(stale_addrs, key=lambda addr: existing_nodes.get(addr) == "blhub")
+        for addr in stale_sorted:
+            if existing_nodes.get(addr) == "blhub":
+                self._remove_hub_error_notice(addr)
+            if self._delete_node_api(addr, trace):
+                self._deleted_node_addresses.add(addr)
                 self._confirmed_node_addresses.discard(addr)
+            self.node_name_cache.pop(addr, None)
 
-            # Best-effort remove nodes from PG3 so only configured hubs remain.
-            if callable(delete_node):
-                # Delete leaves first, then parent.
-                for addr in sorted(set(stale_addrs), key=lambda value: value == hub_node.address):
-                    try:
-                        delete_node(addr)
-                    except Exception as err:
-                        LOGGER.debug(
-                            "[_prune_unconfigured_hubs][%s] Unable to remove node %s: %s",
-                            trace,
-                            addr,
-                            err,
-                        )
-            else:
-                LOGGER.warning(
-                    "[_prune_unconfigured_hubs][%s] delNode(address) unavailable on interface; stale PG3 nodes may persist",
-                    trace,
-                )
-
-            if stale_ip in hub_macs:
-                hub_macs.pop(stale_ip, None)
-
-        stored_hub_macs = self.data_store.get("hub_macs") or {}
-        if stored_hub_macs != hub_macs:
-            self.data_store["hub_macs"] = hub_macs
+        # Keep persisted hub MAC map aligned with active configuration.
+        stored_hub_macs = dict(self.data_store.get("hub_macs") or {})
+        filtered_hub_macs = {
+            ip: mac
+            for ip, mac in stored_hub_macs.items()
+            if ip in configured_ips
+        }
+        if stored_hub_macs != filtered_hub_macs:
+            self.data_store["hub_macs"] = filtered_hub_macs
         self._persist_node_name_cache()
 
     def _connect_hub_identity(self, ip: str, trace_id: str = "") -> tuple[str, BroadlinkHubClient | None]:
@@ -1970,7 +1988,14 @@ class BroadlinkController(BaseNode):
             else:
                 existing_addrs = {node.address for node in existing_nodes}
             all_codes = self._safe_code_map(self.data_store.get("learned_codes", {}))
-            to_remove = [addr for addr in all_codes if addr not in existing_addrs]
+            # Only prune persisted codes after explicit DELNODEDONE events;
+            # startup node ordering can temporarily hide code nodes.
+            deleted_codes = {
+                addr
+                for addr in self._deleted_node_addresses
+                if addr in all_codes
+            }
+            to_remove = [addr for addr in deleted_codes if addr not in existing_addrs]
             if to_remove:
                 updated_codes = {k: v for k, v in all_codes.items() if k not in to_remove}
                 self.data_store["learned_codes"] = updated_codes
@@ -1981,6 +2006,7 @@ class BroadlinkController(BaseNode):
                         for addr, meta in hub_node.learned_codes.items()
                         if addr not in to_remove
                     }
+                self._deleted_node_addresses.difference_update(to_remove)
                 LOGGER.info("[_cleanup_deleted_codes] Cleaned up deleted code nodes: %s", to_remove)
         except Exception as err:
             LOGGER.warning("[_cleanup_deleted_codes] Failed: %s", err)
