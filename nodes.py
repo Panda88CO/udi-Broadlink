@@ -1737,6 +1737,45 @@ class BroadlinkController(BaseNode):
                 matches.add(text)
         return matches
 
+    def _stale_hub_macs(self, configured_ips: set[str]) -> set[str]:
+        """Return MACs that appear to belong to removed/unconfigured hubs."""
+        configured_macs = {
+            self._normalize_hub_address(mac)
+            for ip, mac in self._safe_hub_macs().items()
+            if ip in configured_ips
+        }
+        configured_macs.discard("")
+
+        candidate_macs: set[str] = set()
+
+        # Historical hub map from customdata.
+        for mac in dict(self.data_store.get("hub_macs") or {}).values():
+            normalized = self._normalize_hub_address(mac)
+            if normalized:
+                candidate_macs.add(normalized)
+
+        # Sensor-state map keys are hub MACs and may outlive hub_macs cleanup.
+        for mac in dict(self.data_store.get("sensor_states") or {}).keys():
+            normalized = self._normalize_hub_address(mac)
+            if normalized:
+                candidate_macs.add(normalized)
+
+        # Cached node addresses can include stale hub/controller/code addresses.
+        for addr in self.node_name_cache.keys():
+            text = str(addr or "")
+            if len(text) >= 12:
+                normalized = self._normalize_hub_address(text[:12])
+                if normalized:
+                    candidate_macs.add(normalized)
+
+        # Active runtime hubs are always assigned.
+        for hub_node in self.hub_nodes.values():
+            normalized = self._normalize_hub_address(hub_node.address)
+            if normalized:
+                configured_macs.add(normalized)
+
+        return {mac for mac in candidate_macs if mac not in configured_macs}
+
     def _prune_unconfigured_hubs(self, trace_id: str = "") -> None:
         """Remove plugin nodes not assigned to currently configured hubs."""
         trace = trace_id or "none"
@@ -1751,12 +1790,7 @@ class BroadlinkController(BaseNode):
 
         assigned_addrs = self._assigned_plugin_addresses()
         existing_nodes = self._existing_plugin_nodes()
-        stale_hub_macs = {
-            self._normalize_hub_address(mac)
-            for ip, mac in dict(self.data_store.get("hub_macs") or {}).items()
-            if ip not in configured_ips
-        }
-        stale_hub_macs.discard("")
+        stale_hub_macs = self._stale_hub_macs(configured_ips)
 
         candidate_addrs = set(existing_nodes.keys())
         candidate_addrs.update(str(addr or "") for addr in self.node_name_cache.keys())
