@@ -2044,8 +2044,8 @@ class BroadlinkController(BaseNode):
                 LOGGER.warning("[_publish_profile] Unable to read existing profile: %s", err)
 
         try:
-            #LOGGER.debug("[_publish_profile] Publishing profile: %s",
-            #             json.dumps(profile, sort_keys=True, indent=2, separators=(",", ": ")))
+            LOGGER.debug("[_publish_profile] Publishing profile: %s",
+                         json.dumps(profile, sort_keys=True, indent=2, separators=(",", ": ")))
             update_json_profile(profile, {"waitResponse": wait_response})
             LOGGER.info("[_publish_profile] Dynamic JSON profile published successfully")
             self.poly.Notices.delete("profile")
