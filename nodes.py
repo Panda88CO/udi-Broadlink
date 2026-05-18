@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import os
 import threading
 import time
 
@@ -1274,12 +1275,14 @@ class BroadlinkController(BaseNode):
         self.poly.subscribe(self.poly.CONFIGDONE, self.config_done)
         LOGGER.debug("[__init__] Event subscriptions registered")
 
-        # Register setup node immediately so startup does not depend on
-        # CUSTOMDATA/CUSTOMPARAMS event ordering.
-        self._ensure_registered()
+        self._warn_if_static_profile_folder_present()
 
         LOGGER.info("[__init__] Publishing JSON profile")
-        self._publish_profile()
+        self._publish_profile(wait_response=True)
+
+        # Register setup node after publishing the profile so nodedef names
+        # are available before any nodes are added.
+        self._ensure_registered()
 
         # Signal PG3 that the node server is ready. PG3 will then send
         # CUSTOMPARAMS, CUSTOMDATA, and START. Without this call the START
@@ -2013,7 +2016,7 @@ class BroadlinkController(BaseNode):
             if legacy_mac and isinstance(old_sensor_state, dict):
                 self.data_store["sensor_states"] = {legacy_mac: old_sensor_state}
 
-    def _publish_profile(self) -> None:
+    def _publish_profile(self, wait_response: bool = False) -> None:
         update_json_profile = getattr(self.poly, "updateJsonProfile", None)
         if not callable(update_json_profile):
             LOGGER.error("[_publish_profile] updateJsonProfile is unavailable")
@@ -2043,7 +2046,7 @@ class BroadlinkController(BaseNode):
         try:
             #LOGGER.debug("[_publish_profile] Publishing profile: %s",
             #             json.dumps(profile, sort_keys=True, indent=2, separators=(",", ": ")))
-            update_json_profile(profile, {"waitResponse": False})
+            update_json_profile(profile, {"waitResponse": wait_response})
             LOGGER.info("[_publish_profile] Dynamic JSON profile published successfully")
             self.poly.Notices.delete("profile")
         except TypeError:
@@ -2053,6 +2056,19 @@ class BroadlinkController(BaseNode):
         except Exception as err:
             LOGGER.error("[_publish_profile] Profile publish failed: %s", err)
             self.poly.Notices["profile"] = f"Dynamic profile publish failed: {err}"
+
+    def _warn_if_static_profile_folder_present(self) -> None:
+        profile_dir = os.path.join(os.path.dirname(__file__), "profile")
+        if not os.path.isdir(profile_dir):
+            return
+        self.poly.Notices["profile_static_folder"] = (
+            "Dynamic profile mode is enabled but a local profile/ folder exists. "
+            "Rename or remove it to avoid static profile upload conflicts."
+        )
+        LOGGER.warning(
+            "[_warn_if_static_profile_folder_present] profile/ folder exists while using dynamic profiles: %s",
+            profile_dir,
+        )
 
     def _profiles_match(self, current_profile, expected_profile) -> bool:
         if not isinstance(current_profile, dict) or not isinstance(expected_profile, dict):
