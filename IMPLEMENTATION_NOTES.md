@@ -17,8 +17,8 @@ When learning the same RF code multiple times, the system would create duplicate
 ```python
 def detect_and_clean_repeated_code(raw_code_hex: str, packets_found: dict[str, int], threshold: int = 3) -> tuple[str, bool, str]:
     """
-    Analyzes decoded RF payload for confidence level.
-    - If any code appears >threshold times: generates clean transmission code via generate_rf_string
+    Analyzes decoded RF payload for confidence level while preserving the raw captured packet for transmission.
+    - If any code appears >threshold times: records high-confidence dominant code and logs to unrecognized_codes.log
     - If no code exceeds threshold: preserves original, saves to log for analysis
     
     Returns: (final_code_hex, was_cleaned, dominant_code)
@@ -26,7 +26,7 @@ def detect_and_clean_repeated_code(raw_code_hex: str, packets_found: dict[str, i
 ```
 
 **Behavior:**
-- **High-confidence** (count > 3): Uses `generate_rf_string()` to create clean, repeatable code
+- **High-confidence** (count > 3): Preserves raw captured packet (`was_cleaned=False`), records `dominant_code`, and logs confidence details to `unrecognized_codes.log`
 - **Low-confidence** (count ≤ 3): Preserves original, saves metadata to `unrecognized_codes.log`
 - **Filtering**: Ignores single-character noise (likely decode errors)
 

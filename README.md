@@ -17,9 +17,22 @@ Learning an RF code is a two step task.  First the RF controller searches for te
 Note, you can rename the codes once learned - they should keep the name after a restart.
 
 
-### Broadlink Hub (`BLSETUP` / `BLHUB`)
+### Broadlink Setup (`BLSETUP`)
 
-Primary node. Created automatically on startup.
+Coordinator primary node. Created automatically on startup.
+
+| Driver | Name | Description |
+|--------|------|-------------|
+| `ST` | Status | `No Hubs Configured` / `All Online` / `Partial` / `None Online` |
+| `GV0` | Hub Count | Number of configured hubs |
+| `TIME` | Last Update | Timestamp of the most recent poll |
+
+Commands accepted: `UPDATE` (force immediate refresh).
+Heartbeat events `DON` / `DOF` are sent each short poll cycle.
+
+### Broadlink Hub (`BLHUB`)
+
+One node created per configured Broadlink hub.
 
 | Driver | Name | Description |
 |--------|------|-------------|
@@ -27,28 +40,25 @@ Primary node. Created automatically on startup.
 | `GV0` | Model | Detected device model (e.g., RM4 Pro, RM4 Mini) |
 | `GV1` | Connected | `Yes` / `No` |
 | `TIME` | Last Update | Timestamp of the most recent poll |
-| `GV2` | Temperature | Present only when a sensor cable is detected |
-| `GV3` | Humidity | Present only when a sensor cable is detected |
 
 Commands accepted: `UPDATE` (force immediate refresh).
-Heartbeat events `DON` / `DOF` are sent each short poll cycle.
 
 ### IR Controller (`BLIRCTL`)
 
-Created automatically under the hub node when the hub is online.
+Created automatically for each online hub.
 
 | Driver | Name | Description |
 |--------|------|-------------|
-| `ST` | Status | `Idle` / `Learning` / `Learned OK` / `Failed` |
+| `ST` | Status | `Idle` / `Start Learning` / `Check Packet Data` / `Learned` / `Failed` / `Duplicate` |
 | `TIME` | Last Learn | Timestamp of the most recently learned IR code |
 | `GV1` | Learn Count | Number of IR codes stored |
 | `GV2` | Hub Connected | Whether the hub is reachable |
 
-Commands accepted: `LEARNCODE` — starts a 30-second IR learning window. A new IR Code node is added automatically when a code is captured.
+Commands accepted: `LEARNCODE` — starts an IR learning window. A new IR Code node is added automatically when a code is captured.
 
 ### RF Controller (`BLRFCTL`)
 
-Same structure as the IR Controller. RF learning uses a 30-second sweep-and-capture window via the `python-broadlink` frequency sweep API (`sweep_frequency` / `check_frequency` / `find_rf_packet`). Falls back to the generic learn flow for devices that do not expose RF sweep.
+Same structure as the IR Controller. RF learning uses a sweep-and-capture window via the `python-broadlink` frequency sweep API (`sweep_frequency` / `check_frequency` / `find_rf_packet`). Falls back to the generic learn flow for devices that do not expose RF sweep.
 
 ### IR Code (`BLIRCODE`) / RF Code (`BLRFCODE`)
 
@@ -57,12 +67,13 @@ One node per learned code, parented to the appropriate controller.
 | Driver | Name | Description |
 |--------|------|-------------|
 | `ST` | Status | `Ready` / `Sending` / `Sent OK` / `Failed` |
+| `GV0` | Frequency (MHz) | Captured RF frequency in MHz (`BLRFCODE` only) |
 | `TIME` | Created | Timestamp when the code was learned |
 | `GV1` | Last Sent | Timestamp of the most recent transmission |
 | `GV2` | Last Result | `Never` / `Success` / `Failed` |
 | `GV3` | TX Count | Number of successful transmissions |
 
-Commands accepted: `Send Code` — transmits the stored packet via `device.send_data()`.
+Commands accepted: `TXCODE` (`Send Code`) — transmits the stored packet via `device.send_data()`.
 
 ### Hub Sensor (`BLSENSOR`)
 

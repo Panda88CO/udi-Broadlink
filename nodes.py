@@ -86,6 +86,18 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
     """
     # The profile is rebuilt at runtime so TEMP_UNIT can switch the exposed
     # temperature UOM without maintaining separate static profile files.
+    is_fahrenheit = str(temp_unit or "C").strip().upper() in ("F", "FAHRENHEIT")
+    temp_ranges = (
+        [
+            {"uom": "4", "min": -40, "max": 257, "prec": 1},
+            {"uom": "17", "min": -40, "max": 125, "prec": 1},
+        ]
+        if is_fahrenheit
+        else [
+            {"uom": "17", "min": -40, "max": 125, "prec": 1},
+            {"uom": "4", "min": -40, "max": 257, "prec": 1},
+        ]
+    )
     editors = [
         {
             "id": "HUBSTATUS",
@@ -138,10 +150,7 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
         },
         {
             "id": "BLTEMP",
-            "ranges": [
-                {"uom": "17", "min": -40, "max": 125, "prec": 1},
-                {"uom": "4", "min": -40, "max": 257, "prec": 1},
-            ],
+            "ranges": temp_ranges,
         },
         {"id": "BLHUM", "ranges": [{"uom": "22", "min": 0, "max": 100, "prec": 1}]},
     ]
@@ -470,6 +479,15 @@ class BaseNode(udi_interface.Node):
             LOGGER.warning("Failed to apply profile driver names for node %s: %s", getattr(self, "id", "?"), exc)
 
     def _set(self, driver: str, value, uom: int | None = None, force: bool = False) -> None:
+        if not getattr(self, "nodeDefineDone", False):
+            LOGGER.debug(
+                "[%s._set] Node %s not yet confirmed (nodeDefineDone=False); skipping driver %s=%s",
+                type(self).__name__,
+                getattr(self, "address", "?"),
+                driver,
+                value,
+            )
+            return
         if uom is None:
             self.setDriver(driver, value, True, force)
         else:
@@ -737,6 +755,8 @@ class _ControllerNode(BaseNode):
                 code_node = IRCodeNode(self.poly, self.address, addr, name, self.controller)
             code_node._code_meta = metadata
             code_node.apply_profile_driver_names()
+            if hasattr(self.controller, "code_nodes"):
+                self.controller.code_nodes[addr] = code_node
             self.poly.addNode(code_node)
             root_ctrl = getattr(self.controller, "controller", self.controller)
             wait_fn = getattr(root_ctrl, "_wait_for_node_confirmed", None)
@@ -926,6 +946,11 @@ class HubSensorNode(BaseNode):
     def __init__(self, polyglot, primary, address: str, name: str, hub_node) -> None:
         super().__init__(polyglot, primary, address, name)
         self.hub_node = hub_node
+        temp_unit = getattr(getattr(hub_node, "controller", None), "temp_unit", "C")
+        target_uom = 4 if str(temp_unit).upper() == "F" else 17
+        for drv in self.drivers:
+            if drv.get("driver") == "CLITEMP":
+                drv["uom"] = target_uom
 
     def start(self) -> None:
         self._set("ST", 1 if self.hub_node.hub_blueprint and self.hub_node.hub_blueprint.connected else 0)
@@ -965,9 +990,11 @@ class HubNode(BaseNode):
         self.rf_controller: RFControllerNode | None = None
         self.sensor_node: HubSensorNode | None = None
         self.learned_codes: dict[str, dict] = {}
+        self.code_nodes: dict[str, _CodeNode] = {}
         self._loaded_code_addrs: set[str] = set()
         self.has_temp_sensor: bool = False
         self.has_humidity_sensor: bool = False
+        self._reconciled_once: bool = False
 
     @property
     def hub_mac(self) -> str:
@@ -982,6 +1009,7 @@ class HubNode(BaseNode):
 
     def reconcile(self, update_time: bool = True, trace_id: str = "") -> None:
         """Connect to hub, update drivers, and ensure child nodes exist."""
+        self._reconciled_once = True
         trace = trace_id or "direct"
         LOGGER.debug("[HubNode.reconcile][%s] Starting reconcile for ip=%s addr=%s", trace, self.hub_ip, self.address)
         blueprint = self._build_blueprint()
@@ -1293,6 +1321,7 @@ class HubNode(BaseNode):
             node._code_meta = dict(meta)
             node._code_meta["controller_addr"] = ctrl_addr
             node.apply_profile_driver_names()
+            self.code_nodes[addr] = node
             self.poly.addNode(node)
             if self.controller._wait_for_node_confirmed(addr, timeout=15.0):
                 node.nodeDefineDone = True
@@ -1301,20 +1330,21 @@ class HubNode(BaseNode):
             LOGGER.info("[HubNode] Restored %s code node %s", code_type.upper(), addr)
 
         if invalid_addrs:
-            updated = {
-                addr: meta
-                for addr, meta in self.learned_codes.items()
-                if addr not in invalid_addrs
-            }
-            self.learned_codes = updated
-            all_codes = dict(self.controller.data_store.get("learned_codes") or {})
-            changed = False
-            for addr in invalid_addrs:
-                if addr in all_codes:
-                    del all_codes[addr]
-                    changed = True
-            if changed:
-                self.controller.data_store["learned_codes"] = all_codes
+            with self.controller._data_lock:
+                updated = {
+                    addr: meta
+                    for addr, meta in self.learned_codes.items()
+                    if addr not in invalid_addrs
+                }
+                self.learned_codes = updated
+                all_codes = dict(self.controller.data_store.get("learned_codes") or {})
+                changed = False
+                for addr in invalid_addrs:
+                    if addr in all_codes:
+                        del all_codes[addr]
+                        changed = True
+                if changed:
+                    self.controller.data_store["learned_codes"] = all_codes
 
         if self.ir_controller is not None:
             self.ir_controller.refresh_learn_state(reset_status=False)
@@ -1324,15 +1354,16 @@ class HubNode(BaseNode):
     # ------------------------------------------------------------------ persistence
 
     def _persist_learned_code(self, addr: str, metadata: dict) -> None:
-        updated = dict(self.learned_codes)
-        updated[addr] = dict(metadata)
-        self.learned_codes = updated
-        self._loaded_code_addrs.add(addr)
-        all_codes = dict(self.controller.data_store.get("learned_codes") or {})
-        all_codes[addr] = dict(metadata)
-        stored = self.controller.data_store.get("learned_codes") or {}
-        if stored != all_codes:
-            self.controller.data_store["learned_codes"] = all_codes
+        with self.controller._data_lock:
+            updated = dict(self.learned_codes)
+            updated[addr] = dict(metadata)
+            self.learned_codes = updated
+            self._loaded_code_addrs.add(addr)
+            all_codes = dict(self.controller.data_store.get("learned_codes") or {})
+            all_codes[addr] = dict(metadata)
+            stored = self.controller.data_store.get("learned_codes") or {}
+            if stored != all_codes:
+                self.controller.data_store["learned_codes"] = all_codes
 
     def _next_code_address(self, code_type: str) -> str:
         prefix = self._code_address_prefix(code_type)
@@ -1377,23 +1408,24 @@ class HubNode(BaseNode):
         db_name = self.poly.getNodeNameFromDb(sensor_addr)
         if db_name:
             self.controller.node_name_cache[sensor_addr] = db_name
-        codes_changed = False
-        updated_codes = dict(self.learned_codes)
-        for addr in list(self.learned_codes.keys()):
-            db_name = self.poly.getNodeNameFromDb(addr)
-            if db_name:
-                self.controller.node_name_cache[addr] = db_name
-                if updated_codes[addr].get("name") != db_name:
-                    updated_codes[addr] = dict(updated_codes[addr])
-                    updated_codes[addr]["name"] = db_name
-                    codes_changed = True
-        if codes_changed:
-            self.learned_codes = updated_codes
-            all_codes = dict(self.controller.data_store.get("learned_codes") or {})
-            all_codes.update(updated_codes)
-            stored = self.controller.data_store.get("learned_codes") or {}
-            if stored != all_codes:
-                self.controller.data_store["learned_codes"] = all_codes
+        with self.controller._data_lock:
+            codes_changed = False
+            updated_codes = dict(self.learned_codes)
+            for addr in list(self.learned_codes.keys()):
+                db_name = self.poly.getNodeNameFromDb(addr)
+                if db_name:
+                    self.controller.node_name_cache[addr] = db_name
+                    if updated_codes[addr].get("name") != db_name:
+                        updated_codes[addr] = dict(updated_codes[addr])
+                        updated_codes[addr]["name"] = db_name
+                        codes_changed = True
+            if codes_changed:
+                self.learned_codes = updated_codes
+                all_codes = dict(self.controller.data_store.get("learned_codes") or {})
+                all_codes.update(updated_codes)
+                stored = self.controller.data_store.get("learned_codes") or {}
+                if stored != all_codes:
+                    self.controller.data_store["learned_codes"] = all_codes
         self.controller._persist_node_name_cache()
 
     def force_update(self, command=None) -> None:
@@ -1411,7 +1443,7 @@ class BroadlinkController(BaseNode):
     drivers = [
         {"driver": "ST", "value": 0, "uom": 25, "name": "Status"},    # HUBSTATUS: 0=none configured, 1=all online, 2=partial, 3=none online
         {"driver": "GV0", "value": 0, "uom": 56, "name": "Hub Count"},   # hub count
-        {"driver": "TIME", "value": int(time.time()), "uom": 151, "name": "Last Update"},
+        {"driver": "TIME", "value": 0, "uom": 151, "name": "Last Update"},
     ]
 
     def __init__(self, polyglot, primary, address, name):
@@ -1430,6 +1462,9 @@ class BroadlinkController(BaseNode):
         self._bootstrap_applied: bool = False
         self._startup_completed: bool = False
         self._reconcile_seq: int = 0
+        self._data_lock = threading.RLock()
+        self._node_confirm_lock = threading.Lock()
+        self._node_confirm_events: dict[str, threading.Event] = {}
         self._confirmed_node_addresses: set[str] = set()
         self._deleted_node_addresses: set[str] = set()
         LOGGER.debug("[__init__] Initialized instance variables")
@@ -1480,8 +1515,8 @@ class BroadlinkController(BaseNode):
         if not self._node_added:
             # START can arrive before CUSTOMDATA; ensure the setup node exists.
             self._ensure_registered()
-        self._wait_for_node_confirmed(self.address, timeout=15.0)
-        self.nodeDefineDone = True
+        if self._wait_for_node_confirmed(self.address, timeout=15.0):
+            self.nodeDefineDone = True
         self._bootstrap_config_if_needed()
         self._set("TIME", int(time.time()), 151)
         if self.config.has_hub and not self.hub_nodes:
@@ -1489,7 +1524,8 @@ class BroadlinkController(BaseNode):
             # sequences deliver POLL before START/CUSTOMPARAMS settle.
             self._reconcile_hub_nodes()
         for hub_node in list(self.hub_nodes.values()):
-            hub_node.start()
+            if hub_node.nodeDefineDone and not hub_node._reconciled_once:
+                hub_node.start()
         self._update_overall_status()
         # Wait for all nodes to be done before publishing dynamic profile
         node_queue = getattr(self.poly, "node_queue", [])
@@ -1542,7 +1578,11 @@ class BroadlinkController(BaseNode):
         if address is None and isinstance(node, dict):
             address = node.get("address") or node.get("node")
         if address:
-            self._confirmed_node_addresses.add(address)
+            with self._node_confirm_lock:
+                self._confirmed_node_addresses.add(address)
+                event = self._node_confirm_events.get(address)
+                if event is not None:
+                    event.set()
             if address == self.address:
                 self.nodeDefineDone = True
             for hub_node in list(self.hub_nodes.values()):
@@ -1554,6 +1594,9 @@ class BroadlinkController(BaseNode):
                     hub_node.rf_controller.nodeDefineDone = True
                 if hub_node.sensor_node and hub_node.sensor_node.address == address:
                     hub_node.sensor_node.nodeDefineDone = True
+                code_node = hub_node.code_nodes.get(address)
+                if code_node is not None:
+                    code_node.nodeDefineDone = True
         LOGGER.debug("[node_done] Node %s is done", address or "unknown")
 
     def node_deleted(self, node) -> None:
@@ -1561,8 +1604,10 @@ class BroadlinkController(BaseNode):
         if address is None and isinstance(node, dict):
             address = node.get("address") or node.get("node")
         if address:
-            self._deleted_node_addresses.add(address)
-            self._confirmed_node_addresses.discard(address)
+            with self._node_confirm_lock:
+                self._deleted_node_addresses.add(address)
+                self._confirmed_node_addresses.discard(address)
+                self._node_confirm_events.pop(address, None)
         LOGGER.debug("[node_deleted] Node %s deletion complete", address or "unknown")
 
     def config_done(self, _config=None, *_args, **_kwargs) -> None:
@@ -1572,8 +1617,8 @@ class BroadlinkController(BaseNode):
         LOGGER.info("[handle_params] CUSTOMPARAMS event received")
         self._bootstrap_applied = True
         self._ensure_registered()
-        self._wait_for_node_confirmed(self.address, timeout=15.0)
-        self.nodeDefineDone = True
+        if self._wait_for_node_confirmed(self.address, timeout=15.0):
+            self.nodeDefineDone = True
         self.parameters.load(custom_params)
         self.poly.Notices.clear()
 
@@ -1625,17 +1670,18 @@ class BroadlinkController(BaseNode):
             LOGGER.debug("[handle_custom_data] Ignoring empty custom_data payload to preserve persisted state")
             return
 
-        if isinstance(custom_data, dict):
-            # Merge onto existing data so partial payloads don't drop keys like
-            # learned_codes/sensor_states/hub_macs.
-            merged = dict(self.data_store or {})
-            merged.update(custom_data)
-            self.data_store.load(merged)
-        else:
-            # Fallback for unexpected payload types.
-            self.data_store.load(custom_data)
-        self.node_name_cache = self._safe_name_map(self.data_store.get("node_names", {}))
-        self._migrate_legacy_data()
+        with self._data_lock:
+            if isinstance(custom_data, dict):
+                # Merge onto existing data so partial payloads don't drop keys like
+                # learned_codes/sensor_states/hub_macs.
+                merged = dict(self.data_store or {})
+                merged.update(custom_data)
+                self.data_store.load(merged)
+            else:
+                # Fallback for unexpected payload types.
+                self.data_store.load(custom_data)
+            self.node_name_cache = self._safe_name_map(self.data_store.get("node_names", {}))
+            self._migrate_legacy_data()
         self._ensure_registered()
         # Hub nodes are created by _reconcile_hub_nodes() so all configured hubs
         # can be connected first before any node is added.
@@ -1656,10 +1702,12 @@ class BroadlinkController(BaseNode):
             else:
                 self.reportCmd("DOF", 2)
             for hub_node in list(self.hub_nodes.values()):
-                hub_node.poll_short(self.temp_unit)
+                if hub_node.nodeDefineDone:
+                    hub_node.poll_short(self.temp_unit)
         else:
             for hub_node in list(self.hub_nodes.values()):
-                hub_node.poll_long()
+                if hub_node.nodeDefineDone:
+                    hub_node.poll_long()
             self._sync_node_names_from_db()
             self._cleanup_deleted_codes()
             self._update_overall_status()
@@ -1730,24 +1778,21 @@ class BroadlinkController(BaseNode):
         confirmed the parent.  PG3 signals confirmation via the ``addnode``
         response message which udi_interface publishes as ADDNODEDONE.
         """
-        if address in self._confirmed_node_addresses:
-            LOGGER.debug("[_wait_for_node_confirmed] Node %s already confirmed", address)
-            return True
+        with self._node_confirm_lock:
+            if address in self._confirmed_node_addresses:
+                LOGGER.debug("[_wait_for_node_confirmed] Node %s already confirmed", address)
+                return True
+            event = self._node_confirm_events.get(address)
+            if event is None:
+                event = threading.Event()
+                self._node_confirm_events[address] = event
 
-        event = threading.Event()
-
-        def _handler(node):
-            node_addr = node.get("address") if isinstance(node, dict) else getattr(node, "address", None)
-            if node_addr == address:
-                event.set()
-
-        self.poly.subscribe(self.poly.ADDNODEDONE, _handler)
-        if address in self._confirmed_node_addresses:
-            self.poly.unsubscribe(self.poly.ADDNODEDONE, _handler)
-            LOGGER.debug("[_wait_for_node_confirmed] Node %s confirmed before local wait", address)
-            return True
         confirmed = event.wait(timeout=timeout)
-        self.poly.unsubscribe(self.poly.ADDNODEDONE, _handler)
+        with self._node_confirm_lock:
+            self._node_confirm_events.pop(address, None)
+            if address in self._confirmed_node_addresses:
+                confirmed = True
+
         if not confirmed:
             LOGGER.warning("[_wait_for_node_confirmed] Timeout waiting for PG3 to confirm node %s", address)
         else:
@@ -1773,9 +1818,20 @@ class BroadlinkController(BaseNode):
 
         for ip in self.config.hub_ips:
             if ip in self.hub_nodes:
-                # Hub node already confirmed in a previous run — just reconcile.
+                existing_hub = self.hub_nodes[ip]
+                if not existing_hub.nodeDefineDone:
+                    if self._wait_for_node_confirmed(existing_hub.address, timeout=15.0):
+                        existing_hub.nodeDefineDone = True
+                    else:
+                        LOGGER.warning(
+                            "[_reconcile_hub_nodes][%s] Hub node ip=%s addr=%s still unconfirmed, skipping reconcile",
+                            trace_id,
+                            ip,
+                            existing_hub.address,
+                        )
+                        continue
                 LOGGER.debug("[_reconcile_hub_nodes][%s] Hub node already exists for ip=%s, reconciling", trace_id, ip)
-                self.hub_nodes[ip].reconcile(trace_id=trace_id)
+                existing_hub.reconcile(trace_id=trace_id)
                 continue
 
             # New hubs are resolved to a stable MAC-based address before node
@@ -2344,27 +2400,32 @@ class BroadlinkController(BaseNode):
                 existing_addrs = set(existing_nodes.keys())
             else:
                 existing_addrs = {node.address for node in existing_nodes}
-            all_codes = self._safe_code_map(self.data_store.get("learned_codes", {}))
-            # Only prune persisted codes after explicit DELNODEDONE events;
-            # startup node ordering can temporarily hide code nodes.
-            deleted_codes = {
-                addr
-                for addr in self._deleted_node_addresses
-                if addr in all_codes
-            }
-            to_remove = [addr for addr in deleted_codes if addr not in existing_addrs]
-            if to_remove:
-                updated_codes = {k: v for k, v in all_codes.items() if k not in to_remove}
-                self.data_store["learned_codes"] = updated_codes
-                # Update in-memory copies in hub nodes
-                for hub_node in self.hub_nodes.values():
-                    hub_node.learned_codes = {
-                        addr: meta
-                        for addr, meta in hub_node.learned_codes.items()
-                        if addr not in to_remove
+            with self._data_lock:
+                all_codes = self._safe_code_map(self.data_store.get("learned_codes", {}))
+                # Only prune persisted codes after explicit DELNODEDONE events;
+                # startup node ordering can temporarily hide code nodes.
+                with self._node_confirm_lock:
+                    deleted_codes = {
+                        addr
+                        for addr in self._deleted_node_addresses
+                        if addr in all_codes
                     }
-                self._deleted_node_addresses.difference_update(to_remove)
-                LOGGER.info("[_cleanup_deleted_codes] Cleaned up deleted code nodes: %s", to_remove)
+                to_remove = [addr for addr in deleted_codes if addr not in existing_addrs]
+                if to_remove:
+                    updated_codes = {k: v for k, v in all_codes.items() if k not in to_remove}
+                    self.data_store["learned_codes"] = updated_codes
+                    # Update in-memory copies in hub nodes
+                    for hub_node in self.hub_nodes.values():
+                        hub_node.learned_codes = {
+                            addr: meta
+                            for addr, meta in hub_node.learned_codes.items()
+                            if addr not in to_remove
+                        }
+                        for addr in to_remove:
+                            hub_node.code_nodes.pop(addr, None)
+                    with self._node_confirm_lock:
+                        self._deleted_node_addresses.difference_update(to_remove)
+                    LOGGER.info("[_cleanup_deleted_codes] Cleaned up deleted code nodes: %s", to_remove)
         except Exception as err:
             LOGGER.warning("[_cleanup_deleted_codes] Failed: %s", err)
 
