@@ -1502,6 +1502,18 @@ class BroadlinkController(BaseNode):
 
         LOGGER.info("[__init__] BroadlinkController construction complete")
 
+    def _set_missing_ip_notice(self) -> None:
+        """Ensure only a single notice stating that an IP address must be provided is active."""
+        msg = "IP address must be provided in Configuration (HUB_IP)."
+        try:
+            for key in list(self.poly.Notices.keys()):
+                if key != "required":
+                    self.poly.Notices.delete(key)
+        except Exception:
+            pass
+        if self.poly.Notices.get("required") != msg:
+            self.poly.Notices["required"] = msg
+
     def start(self, *_args, **_kwargs) -> None:
         LOGGER.info("[start] Received START event")
         self._run_startup_once("START")
@@ -1510,8 +1522,9 @@ class BroadlinkController(BaseNode):
         """Execute startup initialization once, even if START was missed."""
         if self._startup_completed:
             return
+        self._startup_completed = True
         if source != "START":
-            LOGGER.warning("[_run_startup_once] START event not observed, running startup via %s", source)
+            LOGGER.debug("[_run_startup_once] Running startup via %s", source)
         if not self._node_added:
             # START can arrive before CUSTOMDATA; ensure the setup node exists.
             self._ensure_registered()
@@ -1519,7 +1532,15 @@ class BroadlinkController(BaseNode):
             self.nodeDefineDone = True
         self._bootstrap_config_if_needed()
         self._set("TIME", int(time.time()), 151)
-        if self.config.has_hub and not self.hub_nodes:
+        if not self.config.has_hub:
+            self._set_missing_ip_notice()
+            self._set("ST", 0)
+            self._set("GV0", 0)
+            if not self._ready_signaled:
+                self.poly.ready()
+                self._ready_signaled = True
+            return
+        if not self.hub_nodes:
             # Reconcile hub nodes here as a fallback because some PG3 startup
             # sequences deliver POLL before START/CUSTOMPARAMS settle.
             self._reconcile_hub_nodes()
@@ -1536,7 +1557,6 @@ class BroadlinkController(BaseNode):
             LOGGER.info("[_run_startup_once] Signaling polyglot ready (late fallback)")
             self.poly.ready()
             self._ready_signaled = True
-        self._startup_completed = True
         LOGGER.info("[_run_startup_once] Startup reconciliation complete via %s", source)
 
     def _scan_for_duplicate_codes(self) -> None:
@@ -1620,32 +1640,37 @@ class BroadlinkController(BaseNode):
         if self._wait_for_node_confirmed(self.address, timeout=15.0):
             self.nodeDefineDone = True
         self.parameters.load(custom_params)
-        self.poly.Notices.clear()
 
         prev_temp_unit = self.temp_unit
         try:
             self.config = build_config(custom_params)
         except Exception as err:
+            for key in list(self.poly.Notices.keys()):
+                if key != "config":
+                    self.poly.Notices.delete(key)
             self.poly.Notices["config"] = f"Invalid configuration format: {err}"
             LOGGER.error("[handle_params] Failed to parse custom params: %s", err)
             if self._node_added:
                 self._set("ST", 0)
                 self._set("GV0", 0)
-            self._publish_profile()
+            self._startup_completed = True
             return
 
         self.temp_unit = _parse_temp_unit(custom_params)
 
         if not self.config.has_hub:
-            self.poly.Notices["required"] = (
-                "Set HUB_IP to the IP address(es) of your Broadlink hub(s). "
-                "Separate multiple IPs with commas."
-            )
+            self._set_missing_ip_notice()
+            if self.hub_nodes:
+                self._prune_unconfigured_hubs("no-ip")
             if self._node_added:
                 self._set("ST", 0)
                 self._set("GV0", 0)
-            self._publish_profile()
+            self._startup_completed = True
             return
+
+        for key in ("required", "config"):
+            if self.poly.Notices.get(key):
+                self.poly.Notices.delete(key)
 
         LOGGER.info("[handle_params] Configured hub IPs: %s", self.config.hub_ips)
         if self._node_added:
@@ -1659,6 +1684,7 @@ class BroadlinkController(BaseNode):
         while node_queue:
             time.sleep(0.1)
         self._publish_profile(wait_response=True)
+        self._startup_completed = True
 
     def handle_custom_data(self, custom_data) -> None:
         # PG3 can emit empty custom payload callbacks (e.g. customtypeddata),
@@ -1693,6 +1719,9 @@ class BroadlinkController(BaseNode):
             return
         if not self._startup_completed:
             self._run_startup_once("POLL")
+        if not self.config.has_hub:
+            self._set_missing_ip_notice()
+            return
         poll_name = poll_type if isinstance(poll_type, str) else "longPoll"
         self._set("TIME", int(time.time()), 151)
         if poll_name == "shortPoll":
@@ -1713,6 +1742,9 @@ class BroadlinkController(BaseNode):
             self._update_overall_status()
 
     def discover(self, *_) -> None:
+        if not self.config.has_hub:
+            self._set_missing_ip_notice()
+            return
         self._reconcile_hub_nodes()
         self._publish_profile()
 
@@ -2239,10 +2271,17 @@ class BroadlinkController(BaseNode):
         self._set("ST", 1 if connected == total else 2 if connected > 0 else 3)
 
     def _add_hub_error_notice(self, mac: str, ip: str, error: str) -> None:
-        self.poly.Notices[f"hub_err_{mac}"] = f"Hub {ip}: {error}"
+        if not self.config.has_hub:
+            return
+        key = f"hub_err_{mac}"
+        msg = f"Hub {ip}: {error}"
+        if self.poly.Notices.get(key) != msg:
+            self.poly.Notices[key] = msg
 
     def _remove_hub_error_notice(self, mac: str) -> None:
-        self.poly.Notices.delete(f"hub_err_{mac}")
+        key = f"hub_err_{mac}"
+        if self.poly.Notices.get(key):
+            self.poly.Notices.delete(key)
 
     # ------------------------------------------------------------------ data helpers
 
@@ -2276,7 +2315,8 @@ class BroadlinkController(BaseNode):
         update_json_profile = getattr(self.poly, "updateJsonProfile", None)
         if not callable(update_json_profile):
             LOGGER.error("[_publish_profile] updateJsonProfile is unavailable")
-            self.poly.Notices["profile"] = "Dynamic profile publish failed: updateJsonProfile() is unavailable."
+            if self.config.has_hub:
+                self.poly.Notices["profile"] = "Dynamic profile publish failed: updateJsonProfile() is unavailable."
             return
 
         profile = _build_profile_definition(self.temp_unit)
@@ -2301,25 +2341,24 @@ class BroadlinkController(BaseNode):
                          json.dumps(profile, sort_keys=True, indent=2, separators=(",", ": ")))
             update_json_profile(profile, {"waitResponse": wait_response})
             LOGGER.info("[_publish_profile] Dynamic JSON profile published successfully")
-            self.poly.Notices.delete("profile")
+            if self.poly.Notices.get("profile"):
+                self.poly.Notices.delete("profile")
         except TypeError:
             update_json_profile(profile)
             LOGGER.info("[_publish_profile] Dynamic JSON profile published successfully")
-            self.poly.Notices.delete("profile")
+            if self.poly.Notices.get("profile"):
+                self.poly.Notices.delete("profile")
         except Exception as err:
             LOGGER.error("[_publish_profile] Profile publish failed: %s", err)
-            self.poly.Notices["profile"] = f"Dynamic profile publish failed: {err}"
+            if self.config.has_hub:
+                self.poly.Notices["profile"] = f"Dynamic profile publish failed: {err}"
 
     def _warn_if_static_profile_folder_present(self) -> None:
         profile_dir = os.path.join(os.path.dirname(__file__), "profile")
         if not os.path.isdir(profile_dir):
             return
-        self.poly.Notices["profile_static_folder"] = (
-            "Dynamic profile mode is enabled but a local profile/ folder exists. "
-            "Rename or remove it to avoid static profile upload conflicts."
-        )
-        LOGGER.warning(
-            "[_warn_if_static_profile_folder_present] profile/ folder exists while using dynamic profiles: %s",
+        LOGGER.debug(
+            "[_warn_if_static_profile_folder_present] profile/ folder present: %s",
             profile_dir,
         )
 
@@ -2430,6 +2469,9 @@ class BroadlinkController(BaseNode):
             LOGGER.warning("[_cleanup_deleted_codes] Failed: %s", err)
 
     def force_update(self, command=None) -> None:
+        if not self.config.has_hub:
+            self._set_missing_ip_notice()
+            return
         self._reconcile_hub_nodes()
         self._publish_profile()
 
