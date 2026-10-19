@@ -1,20 +1,23 @@
 # udi-broadlink
 
 Broadlink node server for UDI Polyglot v3 (PG3/PG3x), implemented in Python using:
-
+- `udi_interface`
+- `python-broadlink`
 
 ## Overview
 
-Run one PG3 node server instance per Broadlink hub. Multiple hubs are supported by providing a list of IP addresses
+A single PG3 node server instance can manage one or more Broadlink hubs by providing a single IP address or a list of IP addresses in `HUB_IP`.
 
 ## Node Organization
-Each Hub creates a node - If temp and humidity sersor is present its data is shown in a child node 
-The hub also generates 2 seprate nodes RF Controller and IF controller (with the HUB IP appended).  Each learned code becomes a child to this controller node
+
+Each configured Broadlink hub creates a `BLHUB` node. If a temperature/humidity sensor cable is present, its readings are shown in a child `BLSENSOR` node.
+Each hub also creates two separate controller nodes: an IR Controller (`BLIRCTL`) and an RF Controller (`BLRFCTL`), with the hub's IP identifier appended. Each learned IR or RF code becomes a child node (`BLIRCODE` or `BLRFCODE`) under the respective controller node.
 
 
-## Learning RF codes
-Learning an RF code is a two step task.  First the RF controller searches for teh correct frequecy - During this time oneneed to press the key being learned - The HUBs LED remains on during this time.  once the LED goes off, the AC will ask you to press the key one more - and the actual code is learned.  If the code is alrady learned it cannot be stored again (you can erase the code in the polyglot interface or ungroup the RF controller, Delete and regroup)
-Note, you can rename the codes once learned - they should keep the name after a restart.
+## Learning RF Codes
+
+Learning an RF code is a two-step task. First, the RF controller searches for the correct frequency — during this time you need to press and hold (or repeatedly press) the remote button being learned while the hub's LED remains on. Once the LED turns off, the Admin Console status updates to `Check Packet Data`, prompting you to press the button once more to capture the actual RF packet. If the code has already been learned, it is flagged as `Duplicate` and will not create a duplicate node (you can delete learned codes from the PG3 interface or ungroup the controller, delete the node, and regroup).
+Note: you can rename code nodes in the Admin Console once learned — custom names are persisted across restarts.
 
 
 ### Broadlink Setup (`BLSETUP`)
@@ -109,12 +112,13 @@ Commands accepted: `UPDATE` — forces an immediate sensor reading refresh.
 
 The Broadlink device must already be provisioned onto the local Wi-Fi network before the plugin can connect to it. The plugin does not perform initial Wi-Fi setup automatically.
 
-## Persistence
+## Persistence & Dynamic Profiles
 
-Learned codes and node names are persisted to PG3 `customdata`. On restart:
-- Stored node names are replayed so user-defined names survive restarts.
-- All previously learned IR and RF code nodes are restored from `customdata` before the IR/RF controller nodes are added.
-- Sensor state (has_temperature / has_humidity) is restored from `customdata` so the profile can be published correctly before the first sensor poll.
+Learned codes, hub metadata, and custom node names are persisted in PG3 `customdata`. On startup:
+- Parent hub (`BLHUB`) and controller (`BLIRCTL` / `BLRFCTL`) nodes are registered and confirmed via `ADDNODEDONE` before child sensor (`BLSENSOR`) and learned code (`BLIRCODE` / `BLRFCODE`) nodes are added.
+- Stored node names are restored so user-defined renames in the Admin Console survive restarts.
+- Dynamic profile files (`profile/editor/custom.xml`, `profile/nodedef/custom.xml`, `profile/nls/en_us.txt`) are generated from `dynamic_profiles.json` and sent to ISY/IoX via `updateProfile()` only after all nodes have finished initializing (`ADDNODEDONE`).
 
-## Python interface
-    Utilizes [`python-broadlink`] interface (https://github.com/mjg59/python-broadlink)  open-source Broadlink device library by Matthew Garrett
+## Python Interface
+
+Utilizes [`python-broadlink`](https://github.com/mjg59/python-broadlink), an open-source Broadlink device library by Matthew Garrett.

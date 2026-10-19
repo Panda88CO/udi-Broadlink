@@ -88,13 +88,13 @@ Decision: was_cleaned=False (count=1, not >3)
 Action: Store original, save to unrecognized_codes.log
 ```
 
-### Scenario B: Hypothetical Repeated Pattern
+### Scenario B: Repeated Pattern (High Confidence)
 ```
 Input: (payload with repeated encoding)
 Decoded: {'E55F62': 6, '1E55F62': 1}
-Decision: was_cleaned=True (dominant count=6 > 3)
-Action: Generate clean code via generate_rf_string (510 chars)
-Result: Stored code is consistent format, shorter, better for transmission
+Decision: was_cleaned=False, dominant_code='E55F62' (dominant count=6 > 3)
+Action: Preserve original captured packet for reliable transmission; log high-confidence decode to unrecognized_codes.log
+Result: Original packet is stored intact alongside dominant_code metadata for duplicate detection
 ```
 
 ### Scenario C: Same Button Learned Twice
@@ -103,15 +103,14 @@ Learn 1: code_hex_variant_A → decode → detect → final_code_1
 Learn 2: code_hex_variant_B → decode → detect → final_code_2
 
 Duplicate check: 
-- If both decoded to same dominant code → detected as duplicate
-- Or if raw multi-signature matching finds overlap → detected as duplicate
+- Multi-signature matching across raw and decoded payloads detects overlap → flagged as duplicate
 Result: One node, not two
 ```
 
 ## Threshold Configuration
 
-- **Current:** `threshold=3` (code must appear >3 times to trigger cleaning)
-- **Rationale:** Conservative approach to avoid false cleaning on uncertain decodes
+- **Current:** `threshold=3` (code must appear >3 times to be classified as high-confidence)
+- **Rationale:** Distinguishes confident repeated decodes from low-count noise in `unrecognized_codes.log`
 - **Adjustable:** Can be tuned in `detect_and_clean_repeated_code(threshold=N)` calls
 
 ## Files Modified
@@ -124,8 +123,8 @@ Result: One node, not two
 
 2. **nodes.py**
    - Added imports: `extract_hex_codes`, `detect_and_clean_repeated_code`
-   - Modified `_do_learn()` (~432-515): Integrated decode/detect/clean logic
-   - Metadata now tracks `rf_code_was_cleaned` and `rf_dominant_code`
+   - Modified `_do_learn()`: Integrated decode/detect/clean logic
+   - Metadata tracks `rf_code_was_cleaned` and `rf_dominant_code`
 
 ## Testing
 
@@ -143,17 +142,16 @@ Run: `python demo_repeated_code_logic.py`
 **unrecognized_codes.log** reveals opportunities:
 - If most entries have `count=1`, consider adjusting extraction logic
 - If patterns emerge (e.g., always 2x or 4x), implement decode variants
-- If `generate_rf_string_failed` appears, debug encode logic
 - Could use log data to train better pattern detection
 
 ## Impact Summary
 
 | Aspect | Before | After |
 |--------|--------|-------|
-| **Duplicate RF codes** | Created new node | Single node (no duplicates) |
-| **Code quality** | Raw wrapper-variant bytes | Clean consistent format (if confident) |
-| **Forensics** | Lost data | Preserved in unrecognized_codes.log |
-| **Transmission** | Variable format | Consistent (cleaned) or original (preserved) |
+| **Duplicate RF codes** | Created new node | Single node (no duplicates via multi-signature matching) |
+| **Decoded metadata** | Not analyzed | Records `rf_dominant_code` and confidence level |
+| **Forensics** | Lost data | Preserved in `unrecognized_codes.log` |
+| **Transmission** | Raw captured packet | Raw captured packet preserved intact |
 | **Learning time** | N/A | Transparent (integrated into flow) |
 
 ## Next Steps (User Decision)

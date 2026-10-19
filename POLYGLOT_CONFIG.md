@@ -1,15 +1,13 @@
 # Broadlink Node Server Configuration
 
-
-
 ## Required Parameters
 
-- `HUB_IP`: IP address of the Broadlink hub managed by this PG3 instance
+- `HUB_IP`: IP address (or list of IP addresses) of the Broadlink hub(s) managed by this PG3 instance.
 
-The node server assumes each Broadlink device is already provisioned on the local Wi-Fi network.
-AP setup is not part of the normal workflow for this implementation stage.
+The node server requires each Broadlink device to be already provisioned on the local Wi-Fi network.
+Initial Wi-Fi AP setup is not performed by this plugin.
 
-You can serach the web on how to do this, but the simplest is to use the broadlink app to connect to the local network - once hub is registered Kill the app.  If you complete with teh APP the HUB get locked and cannot be controlled by this node.  
+To provision a new hub on Wi-Fi, use the Broadlink mobile app only up to the step where the hub joins your local Wi-Fi network, then close/quit the app before adding the device to a cloud room/account. Completing full cloud registration in the Broadlink app locks the hub, preventing local control until unlocked in the app's device properties.
 
 Supported `HUB_IP` formats:
 
@@ -18,13 +16,17 @@ Supported `HUB_IP` formats:
 192.168.1.120
 ```
 
-### Legacy list input
+### Multiple IPs (space, comma, semicolon, or newline separated)
 ```text
 192.168.1.120, 192.168.1.121
 ```
 
+## Optional Parameters
+
+- `TEMP_UNIT`: Temperature display unit for hubs with an external temperature/humidity sensor (`C` for Celsius by default, or `F` for Fahrenheit).
+
 ## Operational Notes
 
-- `shortPoll` provides heartbeat updates on the HUB and refreshes the sensor if present.
-- `longPoll` refreshes hub connectivity, reconnects if needed, and syncs persisted node-name information with PG3.
+- `shortPoll` sends heartbeat (`DON` / `DOF`) updates on the `BLSETUP` node and refreshes sensor readings on each hub's `BLSENSOR` node (if present).
+- `longPoll` checks hub connectivity, reconnects if needed, and syncs persisted node-name information with PG3 `customdata`.
 
