@@ -15,11 +15,11 @@ from broadlink_client import BroadlinkHubClient, BroadlinkHubInfo, FrequencyNotF
 from code_helpers import code_duplicate_fingerprint as _code_duplicate_fingerprint
 from code_helpers import code_duplicate_signatures as _code_duplicate_signatures
 from code_helpers import extract_hex_codes, detect_and_clean_repeated_code
-from config_parser import PluginConfig, build_config
+from config_parser import PluginConfig, build_config, _is_valid_hub_ip
 
 LOGGER = udi_interface.LOGGER
 Custom = udi_interface.Custom
-VERSION = "0.2.9"
+VERSION = "0.2.10"
 DEFAULT_SETUP_ADDRESS = "setup"
 
 MODEL_INDEX_NAMES = {
@@ -1461,6 +1461,7 @@ class BroadlinkController(BaseNode):
         self._ready_signaled: bool = False
         self._bootstrap_applied: bool = False
         self._startup_completed: bool = False
+        self._missing_ip_notice_set: bool = False
         self._reconcile_seq: int = 0
         self._data_lock = threading.RLock()
         self._node_confirm_lock = threading.Lock()
@@ -1505,6 +1506,11 @@ class BroadlinkController(BaseNode):
     def _set_missing_ip_notice(self) -> None:
         """Ensure only a single notice stating that an IP address must be provided is active."""
         msg = "IP address must be provided in Configuration (HUB_IP)."
+        if not self._missing_ip_notice_set:
+            self.poly.Notices.clear()
+            self.poly.Notices["required"] = msg
+            self._missing_ip_notice_set = True
+            return
         try:
             for key in list(self.poly.Notices.keys()):
                 if key != "required":
@@ -1645,9 +1651,8 @@ class BroadlinkController(BaseNode):
         try:
             self.config = build_config(custom_params)
         except Exception as err:
-            for key in list(self.poly.Notices.keys()):
-                if key != "config":
-                    self.poly.Notices.delete(key)
+            self._missing_ip_notice_set = False
+            self.poly.Notices.clear()
             self.poly.Notices["config"] = f"Invalid configuration format: {err}"
             LOGGER.error("[handle_params] Failed to parse custom params: %s", err)
             if self._node_added:
@@ -1668,9 +1673,8 @@ class BroadlinkController(BaseNode):
             self._startup_completed = True
             return
 
-        for key in ("required", "config"):
-            if self.poly.Notices.get(key):
-                self.poly.Notices.delete(key)
+        self._missing_ip_notice_set = False
+        self.poly.Notices.clear()
 
         LOGGER.info("[handle_params] Configured hub IPs: %s", self.config.hub_ips)
         if self._node_added:
@@ -2179,6 +2183,10 @@ class BroadlinkController(BaseNode):
     def _connect_hub_identity(self, ip: str, trace_id: str = "") -> tuple[str, BroadlinkHubClient | None]:
         """Connect to a hub and return its normalized MAC with active client."""
         trace = trace_id or "none"
+        if not _is_valid_hub_ip(ip):
+            LOGGER.debug("[_connect_hub_identity][%s] Skipping invalid hub IP token: %r", trace, ip)
+            return "", None
+        notice_key = f"hub_connect_{ip.replace('.', '_')}"
         try:
             LOGGER.debug("[_connect_hub_identity][%s] Connecting to hub ip=%s for identity retrieval", trace, ip)
             client = BroadlinkHubClient(hub_ip=ip)
@@ -2186,6 +2194,8 @@ class BroadlinkController(BaseNode):
             if hub_info and hub_info.mac_address:
                 mac = self._normalize_hub_address(hub_info.mac_address)
                 if mac:
+                    if self.poly.Notices.get(notice_key):
+                        self.poly.Notices.delete(notice_key)
                     hub_macs = dict(self.data_store.get("hub_macs") or {})
                     if hub_macs.get(ip) != mac:
                         hub_macs[ip] = mac
@@ -2201,7 +2211,7 @@ class BroadlinkController(BaseNode):
             LOGGER.debug("[_connect_hub_identity][%s] No MAC returned from hub identity ip=%s", trace, ip)
         except Exception as err:
             LOGGER.warning("[_connect_hub_identity][%s] Failed for %s: %s", trace, ip, err)
-            self.poly.Notices[f"hub_connect_{ip.replace('.', '_')}"] = (
+            self.poly.Notices[notice_key] = (
                 f"Could not connect to hub at {ip}: {err}"
             )
         return "", None

@@ -3,8 +3,25 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import ipaddress
 import json
 import re
+
+
+def _is_valid_hub_ip(value: str) -> bool:
+    """Return True only if *value* is a valid usable IPv4 address (e.g. 192.168.1.120)."""
+    try:
+        addr = ipaddress.IPv4Address(value)
+    except ValueError:
+        return False
+    if (
+        addr.is_unspecified
+        or addr.is_multicast
+        or addr.is_loopback
+        or str(addr) == "255.255.255.255"
+    ):
+        return False
+    return True
 
 
 @dataclass(slots=True)
@@ -29,7 +46,7 @@ class PluginConfig:
 
 
 def parse_ip_list(raw_value) -> list[str]:
-    """Parse hub IPs from JSON list, CSV, or newline-delimited text."""
+    """Parse valid IPv4 hub IPs from JSON list, CSV, or whitespace/newline-delimited text."""
     if not raw_value:
         return []
 
@@ -53,8 +70,8 @@ def parse_ip_list(raw_value) -> list[str]:
                 stripped = line.strip()
                 if not stripped or stripped.startswith("#"):
                     continue
-                # Accept comma and/or whitespace separated values in plain text.
-                candidates.extend(part.strip() for part in re.split(r"[\s,]+", stripped))
+                # Accept comma, semicolon, and/or whitespace separated values in plain text.
+                candidates.extend(part.strip() for part in re.split(r"[\s,;]+", stripped))
 
     parsed: list[str] = []
     seen: set[str] = set()
@@ -62,6 +79,8 @@ def parse_ip_list(raw_value) -> list[str]:
     for candidate in candidates:
         value = str(candidate).strip()
         if not value or value in seen:
+            continue
+        if not _is_valid_hub_ip(value):
             continue
         seen.add(value)
         parsed.append(value)
