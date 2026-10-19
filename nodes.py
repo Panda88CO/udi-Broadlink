@@ -7,6 +7,7 @@ import json
 import os
 import threading
 import time
+import xml.etree.ElementTree as ET
 
 import udi_interface
 
@@ -87,82 +88,82 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
     # temperature UOM without maintaining separate static profile files.
     editors = [
         {
-            "id": "hub_status",
+            "id": "HUBSTATUS",
             "ranges": [{"uom": "25", "subset": "0-3", "names": {
                 "0": "No Hubs Configured", "1": "All Online", "2": "Partial", "3": "None Online",
             }}],
         },
         {
-            "id": "status_index",
+            "id": "STATUSINDEX",
             "ranges": [{"uom": "25", "subset": "0-2", "names": {"0": "Not Configured", "1": "Online", "2": "Error"}}],
         },
         {
-            "id": "binary_index",
+            "id": "BINARYINDEX",
             "ranges": [{"uom": "25", "subset": "0-1", "names": {"0": "No", "1": "Yes"}}],
         },
         {
-            "id": "model_index",
+            "id": "MODELINDEX",
             "ranges": [{"uom": "25", "subset": "0-6", "names": MODEL_INDEX_NAMES}],
         },
         {
-            "id": "raw_value",
+            "id": "RAWVALUE",
             "ranges": [{"uom": "56", "min": 0, "max": 65535, "prec": 0}],
         },
         {
-            "id": "timestamp",
+            "id": "UNIXTIME",
             "ranges": [{"uom": "151", "min": 0, "max": 4294967295, "prec": 0}],
         },
         {
-            "id": "ir_learn_status",
+            "id": "IRLEARNSTATUS",
             "ranges": [{"uom": "25", "subset": "0-5", "names": IR_LEARN_STATUS_NAMES}],
         },
         {
-            "id": "rf_learn_status",
+            "id": "RFLEARNSTATUS",
             "ranges": [{"uom": "25", "subset": "0-6", "names": RF_LEARN_STATUS_NAMES}],
         },
         {
-            "id": "tx_status",
+            "id": "TXSTATUS",
             "ranges": [{"uom": "25", "subset": "0-3", "names": {"0": "Ready", "1": "Sending", "2": "Sent OK", "3": "Failed"}}],
         },
         {
-            "id": "tx_result",
+            "id": "TXRESULT",
             "ranges": [{"uom": "25", "subset": "0-2", "names": {"0": "Never", "1": "Success", "2": "Failed"}}],
         },
         {
-            "id": "frequency_mhz",
+            "id": "FREQUENCYMHZ",
             "ranges": [
                 {"uom": "56", "min": 0, "max": 1000, "prec": 1},
                 {"uom": "25", "subset": "0-1", "names": {"0": "No Frequency Identified", "1": "Frequency Identified"}},
             ],
         },
         {
-            "id": "CLITEMP",
+            "id": "BLTEMP",
             "ranges": [
                 {"uom": "17", "min": -40, "max": 125, "prec": 1},
                 {"uom": "4", "min": -40, "max": 257, "prec": 1},
             ],
         },
-        {"id": "CLIHUM", "ranges": [{"uom": "22", "min": 0, "max": 100, "prec": 1}]},
+        {"id": "BLHUM", "ranges": [{"uom": "22", "min": 0, "max": 100, "prec": 1}]},
     ]
 
     # Reuse the same hub property shape in both the node definition and any
     # profile comparisons so the published profile stays deterministic.
     blhub_properties = [
-        {"id": "ST", "name": "Status", "editor": "status_index"},
-        {"id": "GV0", "name": "Model", "editor": "model_index"},
-        {"id": "GV1", "name": "Connected", "editor": "binary_index"},
-        {"id": "TIME", "name": "Last Update", "editor": "timestamp"},
+        {"id": "ST", "name": "Status", "editor": "STATUSINDEX"},
+        {"id": "GV0", "name": "Model", "editor": "MODELINDEX"},
+        {"id": "GV1", "name": "Connected", "editor": "BINARYINDEX"},
+        {"id": "TIME", "name": "Last Update", "editor": "UNIXTIME"},
     ]
 
     nodedefs = [
         {
-            "id": "setup",
+            "id": "BLSETUP",
             "name": "Broadlink",
             "icon": "GenericCtl",
             "properties": [
-                {"id": "ST", "name": "Status", "editor": "hub_status"},
-                {"id": "GV0", "name": "Hub Count", "editor": "raw_value"},
-                {"id": "TIME", "name": "Last Update", "editor": "timestamp"},
+                {"id": "ST", "name": "Status", "editor": "HUBSTATUS"},
+                {"id": "GV0", "name": "Hub Count", "editor": "RAWVALUE"},
+                {"id": "TIME", "name": "Last Update", "editor": "UNIXTIME"},
             ],
             "cmds": {
                 "accepts": [
@@ -176,7 +177,7 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
             "links": {"ctl": [], "rsp": []},
         },
         {
-            "id": "blhub",
+            "id": "BLHUB",
             "name": "Broadlink Hub",
             "icon": "GenericCtl",
             "properties": blhub_properties,
@@ -189,14 +190,14 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
             "links": {"ctl": [], "rsp": []},
         },
         {
-            "id": "blirctl",
+            "id": "BLIRCTL",
             "name": "IR Controller",
             "icon": "GenericCtl",
             "properties": [
-                {"id": "ST", "name": "Status", "editor": "ir_learn_status"},
-                {"id": "TIME", "name": "Last Learn", "editor": "timestamp"},
-                {"id": "GV1", "name": "Learn Count", "editor": "raw_value"},
-                {"id": "GV2", "name": "Hub Connected", "editor": "binary_index"},
+                {"id": "ST", "name": "Status", "editor": "IRLEARNSTATUS"},
+                {"id": "TIME", "name": "Last Learn", "editor": "UNIXTIME"},
+                {"id": "GV1", "name": "Learn Count", "editor": "RAWVALUE"},
+                {"id": "GV2", "name": "Hub Connected", "editor": "BINARYINDEX"},
             ],
             "cmds": {
                 "accepts": [
@@ -207,14 +208,14 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
             "links": {"ctl": [], "rsp": []},
         },
         {
-            "id": "blrfctl",
+            "id": "BLRFCTL",
             "name": "RF Controller",
             "icon": "GenericCtl",
             "properties": [
-                {"id": "ST", "name": "Status", "editor": "rf_learn_status"},
-                {"id": "TIME", "name": "Last Learn", "editor": "timestamp"},
-                {"id": "GV1", "name": "Learn Count", "editor": "raw_value"},
-                {"id": "GV2", "name": "Hub Connected", "editor": "binary_index"},
+                {"id": "ST", "name": "Status", "editor": "RFLEARNSTATUS"},
+                {"id": "TIME", "name": "Last Learn", "editor": "UNIXTIME"},
+                {"id": "GV1", "name": "Learn Count", "editor": "RAWVALUE"},
+                {"id": "GV2", "name": "Hub Connected", "editor": "BINARYINDEX"},
             ],
             "cmds": {
                 "accepts": [
@@ -225,15 +226,15 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
             "links": {"ctl": [], "rsp": []},
         },
         {
-            "id": "blircode",
+            "id": "BLIRCODE",
             "name": "IR Code",
             "icon": "GenericCtl",
             "properties": [
-                {"id": "ST", "name": "Status", "editor": "tx_status"},
-                {"id": "TIME", "name": "Created", "editor": "timestamp"},
-                {"id": "GV1", "name": "Last Sent", "editor": "timestamp"},
-                {"id": "GV2", "name": "Last Result", "editor": "tx_result"},
-                {"id": "GV3", "name": "TX Count", "editor": "raw_value"},
+                {"id": "ST", "name": "Status", "editor": "TXSTATUS"},
+                {"id": "TIME", "name": "Created", "editor": "UNIXTIME"},
+                {"id": "GV1", "name": "Last Sent", "editor": "UNIXTIME"},
+                {"id": "GV2", "name": "Last Result", "editor": "TXRESULT"},
+                {"id": "GV3", "name": "TX Count", "editor": "RAWVALUE"},
             ],
             "cmds": {
                 "accepts": [
@@ -244,16 +245,16 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
             "links": {"ctl": [], "rsp": []},
         },
         {
-            "id": "blrfcode",
+            "id": "BLRFCODE",
             "name": "RF Code",
             "icon": "GenericCtl",
             "properties": [
-                {"id": "ST", "name": "Status", "editor": "tx_status"},
-                {"id": "GV0", "name": "Frequency (MHz)", "editor": "frequency_mhz"},
-                {"id": "TIME", "name": "Created", "editor": "timestamp"},
-                {"id": "GV1", "name": "Last Sent", "editor": "timestamp"},
-                {"id": "GV2", "name": "Last Result", "editor": "tx_result"},
-                {"id": "GV3", "name": "TX Count", "editor": "raw_value"},
+                {"id": "ST", "name": "Status", "editor": "TXSTATUS"},
+                {"id": "GV0", "name": "Frequency (MHz)", "editor": "FREQUENCYMHZ"},
+                {"id": "TIME", "name": "Created", "editor": "UNIXTIME"},
+                {"id": "GV1", "name": "Last Sent", "editor": "UNIXTIME"},
+                {"id": "GV2", "name": "Last Result", "editor": "TXRESULT"},
+                {"id": "GV3", "name": "TX Count", "editor": "RAWVALUE"},
             ],
             "cmds": {
                 "accepts": [
@@ -264,14 +265,14 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
             "links": {"ctl": [], "rsp": []},
         },
         {
-            "id": "blsensor",
+            "id": "BLSENSOR",
             "name": "Hub Sensor",
             "icon": "GenericCtl",
             "properties": [
-                {"id": "ST", "name": "Status", "editor": "status_index"},
-                {"id": "CLITEMP", "name": "Temperature", "editor": "CLITEMP"},
-                {"id": "CLIHUM", "name": "Humidity", "editor": "CLIHUM"},
-                {"id": "TIME", "name": "Last Update", "editor": "timestamp"},
+                {"id": "ST", "name": "Status", "editor": "STATUSINDEX"},
+                {"id": "CLITEMP", "name": "Temperature", "editor": "BLTEMP"},
+                {"id": "CLIHUM", "name": "Humidity", "editor": "BLHUM"},
+                {"id": "TIME", "name": "Last Update", "editor": "UNIXTIME"},
             ],
             "cmds": {
                 "accepts": [
@@ -283,7 +284,137 @@ def _build_profile_definition(temp_unit: str = "C") -> dict:
         },
     ]
 
+    # If a static profile directory is present, allow its NLS driver names to
+    # populate or override any dynamic profile property labels.
+    static_names = _load_static_profile_driver_names()
+    if static_names:
+        for nd in nodedefs:
+            nd_id = str(nd.get("id", "")).strip()
+            for prop in nd.get("properties", []):
+                prop_id = str(prop.get("id", "")).strip()
+                label = static_names.get((nd_id, prop_id)) or static_names.get((nd_id.upper(), prop_id))
+                if label and not prop.get("name"):
+                    prop["name"] = label
+
     return {"editors": editors, "nodedefs": nodedefs, "linkdefs": []}
+
+
+_STATIC_PROFILE_DRIVER_NAMES: dict[tuple[str, str], str] | None = None
+
+
+def _load_static_profile_driver_names() -> dict[tuple[str, str], str]:
+    """Load (nodeDef_id, driver_id) -> label from profile/nodedef + profile/nls if present."""
+    global _STATIC_PROFILE_DRIVER_NAMES
+    if _STATIC_PROFILE_DRIVER_NAMES is not None:
+        return _STATIC_PROFILE_DRIVER_NAMES
+
+    names: dict[tuple[str, str], str] = {}
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    nodedef_path = os.path.join(base_dir, "profile", "nodedef", "nodedefs.xml")
+    nls_path = os.path.join(base_dir, "profile", "nls", "en_us.txt")
+
+    if not (os.path.isfile(nodedef_path) and os.path.isfile(nls_path)):
+        _STATIC_PROFILE_DRIVER_NAMES = names
+        return names
+
+    try:
+        node_to_nls: dict[str, tuple[str, list[str]]] = {}
+        tree = ET.parse(nodedef_path)
+        root = tree.getroot()
+        for nd in root.findall(".//nodeDef"):
+            node_id = (nd.attrib.get("id") or "").strip()
+            nls_prefix = (nd.attrib.get("nls") or "").strip()
+            if not node_id or not nls_prefix:
+                continue
+            sts = [
+                (st.attrib.get("id") or "").strip()
+                for st in nd.findall("./sts/st")
+                if (st.attrib.get("id") or "").strip()
+            ]
+            node_to_nls[node_id] = (nls_prefix, sts)
+
+        nls_map: dict[str, str] = {}
+        with open(nls_path, "r", encoding="utf-8") as handle:
+            for raw_line in handle:
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                nls_map[key.strip()] = value.strip()
+
+        for node_id, (nls_prefix, sts) in node_to_nls.items():
+            for driver_id in sts:
+                nls_key = f"ST-{nls_prefix}-{driver_id}-NAME"
+                label = nls_map.get(nls_key)
+                if label:
+                    names[(node_id, driver_id)] = label
+                    names[(node_id.upper(), driver_id)] = label
+    except Exception as exc:
+        LOGGER.warning("Failed to load profile driver names from profile/: %s", exc)
+
+    _STATIC_PROFILE_DRIVER_NAMES = names
+    return names
+
+
+def _extract_driver_names_from_profile_dict(profile: dict | None) -> dict[tuple[str, str], str]:
+    """Extract (nodeDef_id, driver_id) -> label from a JSON profile dictionary."""
+    names: dict[tuple[str, str], str] = {}
+    if not isinstance(profile, dict):
+        return names
+    nodedefs = profile.get("nodedefs")
+    if not isinstance(nodedefs, list):
+        return names
+    for nd in nodedefs:
+        if not isinstance(nd, dict):
+            continue
+        node_id = str(nd.get("id") or "").strip()
+        if not node_id:
+            continue
+        props = nd.get("properties")
+        if not isinstance(props, list):
+            continue
+        for prop in props:
+            if not isinstance(prop, dict):
+                continue
+            driver_id = str(prop.get("id") or "").strip()
+            label = str(prop.get("name") or "").strip()
+            if driver_id and label:
+                names[(node_id, driver_id)] = label
+                names[(node_id.upper(), driver_id)] = label
+    return names
+
+
+def get_profile_driver_names(poly=None, temp_unit: str = "C") -> dict[tuple[str, str], str]:
+    """Return (node_id, driver_id) -> label from dynamic profile or profile/ directory."""
+    names: dict[tuple[str, str], str] = {}
+
+    # 1. Fallback base: static profile directory if present, then generated dynamic profile
+    static_names = _load_static_profile_driver_names()
+    if static_names:
+        names.update(static_names)
+
+    generated_profile = _build_profile_definition(temp_unit)
+    for key, label in _extract_driver_names_from_profile_dict(generated_profile).items():
+        names.setdefault(key, label)
+
+    # 2. Primary source: live dynamic profile from Polyglot if available
+    if poly is not None:
+        current_profile_getter = getattr(poly, "getJsonProfile", None)
+        if callable(current_profile_getter):
+            try:
+                live_profile = current_profile_getter({"waitResponse": False})
+            except TypeError:
+                try:
+                    live_profile = current_profile_getter()
+                except Exception:
+                    live_profile = None
+            except Exception:
+                live_profile = None
+            live_names = _extract_driver_names_from_profile_dict(live_profile)
+            if live_names:
+                names.update(live_names)
+
+    return names
 
 
 def _parse_temp_unit(custom_params: dict) -> str:
@@ -309,6 +440,34 @@ class HubBlueprint:
 
 class BaseNode(udi_interface.Node):
     """Common helpers shared by all nodes."""
+
+    def __init__(self, polyglot, primary, address: str, name: str) -> None:
+        super().__init__(polyglot, primary, address, name)
+        self.nodeDefineDone: bool = False
+        if hasattr(type(self), "drivers"):
+            self.drivers = [dict(driver) for driver in type(self).drivers]
+        self.apply_profile_driver_names()
+
+    def apply_profile_driver_names(self, node_id: str | None = None) -> None:
+        """Populate driver['name'] fields on self.drivers from dynamic or static profile."""
+        try:
+            target_id = (node_id or getattr(self, "id", "") or "").strip()
+            drivers = getattr(self, "drivers", None)
+            if not target_id or not isinstance(drivers, list):
+                return
+            poly = getattr(self, "poly", None)
+            names = get_profile_driver_names(poly=poly)
+            for d in drivers:
+                if not isinstance(d, dict):
+                    continue
+                drv = (d.get("driver") or "").strip()
+                if not drv:
+                    continue
+                label = names.get((target_id, drv)) or names.get((target_id.upper(), drv))
+                if label:
+                    d["name"] = label
+        except Exception as exc:
+            LOGGER.warning("Failed to apply profile driver names for node %s: %s", getattr(self, "id", "?"), exc)
 
     def _set(self, driver: str, value, uom: int | None = None, force: bool = False) -> None:
         if uom is None:
@@ -347,10 +506,10 @@ class _ControllerNode(BaseNode):
     _packet_timeout: int = 12
 
     drivers = [
-        {"driver": "ST", "value": 0, "uom": 25},
-        {"driver": "TIME", "value": 0, "uom": 151},
-        {"driver": "GV1", "value": 0, "uom": 56},
-        {"driver": "GV2", "value": 0, "uom": 25},
+        {"driver": "ST", "value": 0, "uom": 25, "name": "Status"},
+        {"driver": "TIME", "value": 0, "uom": 151, "name": "Last Learn"},
+        {"driver": "GV1", "value": 0, "uom": 56, "name": "Learn Count"},
+        {"driver": "GV2", "value": 0, "uom": 25, "name": "Hub Connected"},
     ]
 
     def __init__(self, polyglot, primary, address: str, name: str, controller) -> None:
@@ -577,9 +736,16 @@ class _ControllerNode(BaseNode):
             else:
                 code_node = IRCodeNode(self.poly, self.address, addr, name, self.controller)
             code_node._code_meta = metadata
+            code_node.apply_profile_driver_names()
             self.poly.addNode(code_node)
-            if isinstance(code_node, RFCodeNode):
-                code_node.sync_frequency_display()
+            root_ctrl = getattr(self.controller, "controller", self.controller)
+            wait_fn = getattr(root_ctrl, "_wait_for_node_confirmed", None)
+            if callable(wait_fn):
+                if wait_fn(addr, timeout=15.0):
+                    code_node.nodeDefineDone = True
+            else:
+                code_node.nodeDefineDone = True
+            code_node.start()
 
             self.refresh_learn_state(reset_status=False)
             self._set("TIME", int(time.time()), 151)
@@ -619,7 +785,7 @@ class _ControllerNode(BaseNode):
 class IRControllerNode(_ControllerNode):
     """IR remote controller node."""
 
-    id = "blirctl"
+    id = "BLIRCTL"
     _code_type = "ir"
     _learn_timeout = 12
 
@@ -627,7 +793,7 @@ class IRControllerNode(_ControllerNode):
 class RFControllerNode(_ControllerNode):
     """RF remote controller node."""
 
-    id = "blrfctl"
+    id = "BLRFCTL"
     _code_type = "rf"
     _learn_timeout = 20
     _packet_timeout = 6
@@ -641,11 +807,11 @@ class _CodeNode(BaseNode):
     """
 
     drivers = [
-        {"driver": "ST", "value": 0, "uom": 25},
-        {"driver": "TIME", "value": 0, "uom": 151},
-        {"driver": "GV1", "value": 0, "uom": 151},
-        {"driver": "GV2", "value": 0, "uom": 25},
-        {"driver": "GV3", "value": 0, "uom": 56},
+        {"driver": "ST", "value": 0, "uom": 25, "name": "Status"},
+        {"driver": "TIME", "value": 0, "uom": 151, "name": "Created"},
+        {"driver": "GV1", "value": 0, "uom": 151, "name": "Last Sent"},
+        {"driver": "GV2", "value": 0, "uom": 25, "name": "Last Result"},
+        {"driver": "GV3", "value": 0, "uom": 56, "name": "TX Count"},
     ]
     _tx_success_hold_sec = 2.0
 
@@ -711,20 +877,20 @@ class _CodeNode(BaseNode):
 class IRCodeNode(_CodeNode):
     """Learned IR code node."""
 
-    id = "blircode"
+    id = "BLIRCODE"
 
 
 class RFCodeNode(_CodeNode):
     """Learned RF code node."""
 
-    id = "blrfcode"
+    id = "BLRFCODE"
     drivers = [
-        {"driver": "ST", "value": 0, "uom": 25},
-        {"driver": "GV0", "value": 0, "uom": 56},
-        {"driver": "TIME", "value": 0, "uom": 151},
-        {"driver": "GV1", "value": 0, "uom": 151},
-        {"driver": "GV2", "value": 0, "uom": 25},
-        {"driver": "GV3", "value": 0, "uom": 56},
+        {"driver": "ST", "value": 0, "uom": 25, "name": "Status"},
+        {"driver": "GV0", "value": 0, "uom": 56, "name": "Frequency (MHz)"},
+        {"driver": "TIME", "value": 0, "uom": 151, "name": "Created"},
+        {"driver": "GV1", "value": 0, "uom": 151, "name": "Last Sent"},
+        {"driver": "GV2", "value": 0, "uom": 25, "name": "Last Result"},
+        {"driver": "GV3", "value": 0, "uom": 56, "name": "TX Count"},
     ]
 
     def start(self) -> None:
@@ -749,12 +915,12 @@ class RFCodeNode(_CodeNode):
 class HubSensorNode(BaseNode):
     """Temperature/humidity child node under a specific hub."""
 
-    id = "blsensor"
+    id = "BLSENSOR"
     drivers = [
-        {"driver": "ST", "value": 0, "uom": 25},
-        {"driver": "CLITEMP", "value": 0, "uom": 17},
-        {"driver": "CLIHUM", "value": 0, "uom": 22},
-        {"driver": "TIME", "value": 0, "uom": 151},
+        {"driver": "ST", "value": 0, "uom": 25, "name": "Status"},
+        {"driver": "CLITEMP", "value": 0, "uom": 17, "name": "Temperature"},
+        {"driver": "CLIHUM", "value": 0, "uom": 22, "name": "Humidity"},
+        {"driver": "TIME", "value": 0, "uom": 151, "name": "Last Update"},
     ]
 
     def __init__(self, polyglot, primary, address: str, name: str, hub_node) -> None:
@@ -772,7 +938,7 @@ class HubSensorNode(BaseNode):
 
 
 class HubNode(BaseNode):
-    """Node representing one Broadlink hub (type ``blhub``).
+    """Node representing one Broadlink hub (type ``BLHUB``).
 
     One instance is created per configured hub IP.  It owns the IR/RF controller
     nodes and all learned code nodes beneath it.  Hub-specific logic (client
@@ -780,12 +946,12 @@ class HubNode(BaseNode):
     ``BroadlinkController`` can remain a thin coordinator.
     """
 
-    id = "blhub"
+    id = "BLHUB"
     drivers = [
-        {"driver": "ST",   "value": 0, "uom": 25},   # status_index
-        {"driver": "GV0",  "value": 0, "uom": 25},   # model_index
-        {"driver": "GV1",  "value": 0, "uom": 25},   # binary_index
-        {"driver": "TIME", "value": 0, "uom": 151},
+        {"driver": "ST",   "value": 0, "uom": 25, "name": "Status"},   # STATUSINDEX
+        {"driver": "GV0",  "value": 0, "uom": 25, "name": "Model"},   # MODELINDEX
+        {"driver": "GV1",  "value": 0, "uom": 25, "name": "Connected"},   # BINARYINDEX
+        {"driver": "TIME", "value": 0, "uom": 151, "name": "Last Update"},
     ]
 
     def __init__(self, polyglot, primary, address, name, controller, hub_ip: str) -> None:
@@ -989,7 +1155,11 @@ class HubNode(BaseNode):
             sensor_name,
         )
         self.sensor_node = HubSensorNode(self.poly, self.address, sensor_addr, sensor_name, self)
+        self.sensor_node.apply_profile_driver_names()
         self.poly.addNode(self.sensor_node)
+        if self.controller._wait_for_node_confirmed(sensor_addr, timeout=15.0):
+            self.sensor_node.nodeDefineDone = True
+            self.sensor_node.start()
         LOGGER.info("[HubNode] Added HubSensorNode %s", sensor_addr)
 
     def _persist_sensor_state(self) -> None:
@@ -1016,8 +1186,11 @@ class HubNode(BaseNode):
             # Controller nodes must be top-level primaries so learned code
             # nodes can be their only direct children.
             self.ir_controller = IRControllerNode(self.poly, ir_addr, ir_addr, ir_name, self)
+            self.ir_controller.apply_profile_driver_names()
             self.poly.addNode(self.ir_controller)
-            self.ir_controller.refresh_learn_state(reset_status=True)
+            if self.controller._wait_for_node_confirmed(ir_addr, timeout=15.0):
+                self.ir_controller.nodeDefineDone = True
+                self.ir_controller.refresh_learn_state(reset_status=True)
             LOGGER.info("[HubNode] Added IRControllerNode %s", ir_addr)
         if self.rf_controller is None:
             rf_addr = self._controller_address("rf")
@@ -1026,8 +1199,11 @@ class HubNode(BaseNode):
             # Controller nodes must be top-level primaries so learned code
             # nodes can be their only direct children.
             self.rf_controller = RFControllerNode(self.poly, rf_addr, rf_addr, rf_name, self)
+            self.rf_controller.apply_profile_driver_names()
             self.poly.addNode(self.rf_controller)
-            self.rf_controller.refresh_learn_state(reset_status=True)
+            if self.controller._wait_for_node_confirmed(rf_addr, timeout=15.0):
+                self.rf_controller.nodeDefineDone = True
+                self.rf_controller.refresh_learn_state(reset_status=True)
             LOGGER.info("[HubNode] Added RFControllerNode %s", rf_addr)
 
     def _resolve_controller_node_name(self, controller_addr: str, code_type: str) -> str:
@@ -1116,9 +1292,11 @@ class HubNode(BaseNode):
             # updates do not mutate the shared persisted dict in place.
             node._code_meta = dict(meta)
             node._code_meta["controller_addr"] = ctrl_addr
+            node.apply_profile_driver_names()
             self.poly.addNode(node)
-            if isinstance(node, RFCodeNode):
-                node.sync_frequency_display()
+            if self.controller._wait_for_node_confirmed(addr, timeout=15.0):
+                node.nodeDefineDone = True
+                node.start()
             self._loaded_code_addrs.add(addr)
             LOGGER.info("[HubNode] Restored %s code node %s", code_type.upper(), addr)
 
@@ -1229,18 +1407,17 @@ class HubNode(BaseNode):
 class BroadlinkController(BaseNode):
     """Coordinator primary node for all configured Broadlink hubs."""
 
-    id = "setup"
+    id = "BLSETUP"
     drivers = [
-        {"driver": "ST", "value": 0, "uom": 25},    # hub_status: 0=none configured, 1=all online, 2=partial, 3=none online
-        {"driver": "GV0", "value": 0, "uom": 56},   # hub count
-        {"driver": "TIME", "value": int(time.time()), "uom": 151},
+        {"driver": "ST", "value": 0, "uom": 25, "name": "Status"},    # HUBSTATUS: 0=none configured, 1=all online, 2=partial, 3=none online
+        {"driver": "GV0", "value": 0, "uom": 56, "name": "Hub Count"},   # hub count
+        {"driver": "TIME", "value": int(time.time()), "uom": 151, "name": "Last Update"},
     ]
 
     def __init__(self, polyglot, primary, address, name):
         LOGGER.info("[__init__] Constructing BroadlinkController")
-        super().__init__(polyglot, primary, address, name)
-        self.drivers = [dict(driver) for driver in type(self).drivers]
         self.poly = polyglot
+        super().__init__(polyglot, primary, address, name)
         self.config = PluginConfig()
         self.parameters = Custom(self.poly, "customparams")
         self.data_store = Custom(self.poly, "customdata")
@@ -1277,11 +1454,8 @@ class BroadlinkController(BaseNode):
 
         self._warn_if_static_profile_folder_present()
 
-        LOGGER.info("[__init__] Publishing JSON profile")
-        self._publish_profile(wait_response=True)
-
-        # Register setup node after publishing the profile so nodedef names
-        # are available before any nodes are added.
+        # Register setup node first; dynamic profile is published only after
+        # node initialization has completed.
         self._ensure_registered()
 
         # Signal PG3 that the node server is ready. PG3 will then send
@@ -1306,6 +1480,8 @@ class BroadlinkController(BaseNode):
         if not self._node_added:
             # START can arrive before CUSTOMDATA; ensure the setup node exists.
             self._ensure_registered()
+        self._wait_for_node_confirmed(self.address, timeout=15.0)
+        self.nodeDefineDone = True
         self._bootstrap_config_if_needed()
         self._set("TIME", int(time.time()), 151)
         if self.config.has_hub and not self.hub_nodes:
@@ -1315,10 +1491,11 @@ class BroadlinkController(BaseNode):
         for hub_node in list(self.hub_nodes.values()):
             hub_node.start()
         self._update_overall_status()
-        # Wait for all nodes to be done
+        # Wait for all nodes to be done before publishing dynamic profile
         node_queue = getattr(self.poly, "node_queue", [])
         while node_queue:
             time.sleep(0.1)
+        self._publish_profile(wait_response=True)
         if not self._ready_signaled:
             LOGGER.info("[_run_startup_once] Signaling polyglot ready (late fallback)")
             self.poly.ready()
@@ -1366,6 +1543,17 @@ class BroadlinkController(BaseNode):
             address = node.get("address") or node.get("node")
         if address:
             self._confirmed_node_addresses.add(address)
+            if address == self.address:
+                self.nodeDefineDone = True
+            for hub_node in list(self.hub_nodes.values()):
+                if hub_node.address == address:
+                    hub_node.nodeDefineDone = True
+                if hub_node.ir_controller and hub_node.ir_controller.address == address:
+                    hub_node.ir_controller.nodeDefineDone = True
+                if hub_node.rf_controller and hub_node.rf_controller.address == address:
+                    hub_node.rf_controller.nodeDefineDone = True
+                if hub_node.sensor_node and hub_node.sensor_node.address == address:
+                    hub_node.sensor_node.nodeDefineDone = True
         LOGGER.debug("[node_done] Node %s is done", address or "unknown")
 
     def node_deleted(self, node) -> None:
@@ -1384,6 +1572,8 @@ class BroadlinkController(BaseNode):
         LOGGER.info("[handle_params] CUSTOMPARAMS event received")
         self._bootstrap_applied = True
         self._ensure_registered()
+        self._wait_for_node_confirmed(self.address, timeout=15.0)
+        self.nodeDefineDone = True
         self.parameters.load(custom_params)
         self.poly.Notices.clear()
 
@@ -1396,6 +1586,7 @@ class BroadlinkController(BaseNode):
             if self._node_added:
                 self._set("ST", 0)
                 self._set("GV0", 0)
+            self._publish_profile()
             return
 
         self.temp_unit = _parse_temp_unit(custom_params)
@@ -1408,6 +1599,7 @@ class BroadlinkController(BaseNode):
             if self._node_added:
                 self._set("ST", 0)
                 self._set("GV0", 0)
+            self._publish_profile()
             return
 
         LOGGER.info("[handle_params] Configured hub IPs: %s", self.config.hub_ips)
@@ -1416,10 +1608,12 @@ class BroadlinkController(BaseNode):
 
         if self.temp_unit != prev_temp_unit:
             LOGGER.info("[handle_params] TEMP_UNIT changed from %s to %s", prev_temp_unit, self.temp_unit)
-            self._publish_profile()
 
         self._reconcile_hub_nodes()
-        self._publish_profile()
+        node_queue = getattr(self.poly, "node_queue", [])
+        while node_queue:
+            time.sleep(0.1)
+        self._publish_profile(wait_response=True)
 
     def handle_custom_data(self, custom_data) -> None:
         # PG3 can emit empty custom payload callbacks (e.g. customtypeddata),
@@ -1472,12 +1666,14 @@ class BroadlinkController(BaseNode):
 
     def discover(self, *_) -> None:
         self._reconcile_hub_nodes()
+        self._publish_profile()
 
     # ------------------------------------------------------------------ hub node management
 
     def _ensure_registered(self) -> None:
         """Add the BroadlinkController node to poly if not yet registered."""
         if not self._node_added:
+            self.apply_profile_driver_names()
             self.poly.addNode(self, conn_status="ST", rename=False)
             self._node_added = True
 
@@ -1613,6 +1809,7 @@ class BroadlinkController(BaseNode):
                 trace_id, ip, node.address,
             )
             if self._wait_for_node_confirmed(node.address, timeout=15.0):
+                node.nodeDefineDone = True
                 LOGGER.debug("[_reconcile_hub_nodes][%s] Hub confirmed, reconciling children for ip=%s", trace_id, ip)
                 node.reconcile(trace_id=trace_id)
             else:
@@ -1657,7 +1854,8 @@ class BroadlinkController(BaseNode):
 
     def _existing_plugin_nodes(self) -> dict[str, str]:
         """Return existing PG3 plugin nodes as {address: node_id}."""
-        node_ids = {"setup", "blhub", "blirctl", "blrfctl", "blsensor", "blircode", "blrfcode"}
+        node_ids = {"BLSETUP", "BLHUB", "BLIRCTL", "BLRFCTL", "BLSENSOR", "BLIRCODE", "BLRFCODE"}
+        legacy_id_map = {"SETUP": "BLSETUP"}
         existing: dict[str, str] = {}
         try:
             nodes = self.poly.getNodes()
@@ -1668,7 +1866,8 @@ class BroadlinkController(BaseNode):
 
             for addr, node in iterable:
                 address = str(addr or "")
-                node_id = str(getattr(node, "id", "") or "")
+                raw_id = str(getattr(node, "id", "") or "").upper()
+                node_id = legacy_id_map.get(raw_id, raw_id)
                 if address and node_id in node_ids:
                     existing[address] = node_id
         except Exception as err:
@@ -1703,7 +1902,7 @@ class BroadlinkController(BaseNode):
                 return stored
 
         # Fallback from node type + address prefix when metadata is missing.
-        is_rf = node_id == "blrfcode"
+        is_rf = node_id == "BLRFCODE"
         suffix = "r" if is_rf else "i"
         controller_suffix = "rf" if is_rf else "ir"
         for mac in hub_macs.values():
@@ -1808,20 +2007,20 @@ class BroadlinkController(BaseNode):
             for addr in existing_nodes
             if addr != self.address
             and addr not in assigned_addrs
-            and existing_nodes.get(addr) in {"blhub", "blirctl", "blrfctl", "blsensor"}
+            and existing_nodes.get(addr) in {"BLHUB", "BLIRCTL", "BLRFCTL", "BLSENSOR"}
         ]
 
         removed_controller_addrs = {
             addr
             for addr in stale_core_addrs
-            if existing_nodes.get(addr) in {"blirctl", "blrfctl"}
+            if existing_nodes.get(addr) in {"BLIRCTL", "BLRFCTL"}
         }
 
         all_codes = self._safe_code_map(self.data_store.get("learned_codes", {}))
         hub_macs = self._safe_hub_macs()
         stale_code_addrs = []
         for addr, node_id in existing_nodes.items():
-            if node_id not in {"blircode", "blrfcode"}:
+            if node_id not in {"BLIRCODE", "BLRFCODE"}:
                 continue
             owner_controller = self._infer_code_controller_addr(addr, node_id, all_codes, hub_macs)
             if owner_controller and owner_controller in removed_controller_addrs:
@@ -1849,17 +2048,17 @@ class BroadlinkController(BaseNode):
 
         # Delete in dependency order: code nodes, then controllers/sensors, then hubs.
         delete_order = {
-            "blircode": 0,
-            "blrfcode": 0,
-            "blsensor": 1,
-            "blirctl": 1,
-            "blrfctl": 1,
-            "blhub": 2,
+            "BLIRCODE": 0,
+            "BLRFCODE": 0,
+            "BLSENSOR": 1,
+            "BLIRCTL": 1,
+            "BLRFCTL": 1,
+            "BLHUB": 2,
         }
         stale_sorted = sorted(stale_addrs, key=lambda addr: delete_order.get(existing_nodes.get(addr, ""), 1))
         failed_deletes: set[str] = set()
         for addr in stale_sorted:
-            if existing_nodes.get(addr) == "blhub" or len(addr) == 12:
+            if existing_nodes.get(addr) == "BLHUB" or len(addr) == 12:
                 self._remove_hub_error_notice(addr)
             if self._delete_node_api(addr, trace):
                 self._deleted_node_addresses.add(addr)
@@ -1932,6 +2131,7 @@ class BroadlinkController(BaseNode):
         # Hub nodes must be top-level primaries so the optional sensor node
         # can be their only direct child.
         hub_node = HubNode(self.poly, mac, mac, name, self, ip)
+        hub_node.apply_profile_driver_names()
         self.poly.addNode(hub_node)
         self.hub_nodes[ip] = hub_node
         LOGGER.info("[_create_hub_node] Added HubNode ip=%s mac=%s", ip, mac)
@@ -2028,9 +2228,6 @@ class BroadlinkController(BaseNode):
         current_profile_getter = getattr(self.poly, "getJsonProfile", None)
         if callable(current_profile_getter):
             try:
-                # Do not block startup waiting on profile response; this method
-                # is called before poly.ready(), and synchronous waits can delay
-                # CUSTOMPARAMS/START delivery and make startup appear stuck.
                 current_profile = current_profile_getter({"waitResponse": False})
                 if self._profiles_match(current_profile, profile):
                     LOGGER.info("[_publish_profile] Profile already up to date, skipping publish")
@@ -2173,5 +2370,6 @@ class BroadlinkController(BaseNode):
 
     def force_update(self, command=None) -> None:
         self._reconcile_hub_nodes()
+        self._publish_profile()
 
     commands = {"UPDATE": force_update}

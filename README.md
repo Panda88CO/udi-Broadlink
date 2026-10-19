@@ -17,7 +17,7 @@ Learning an RF code is a two step task.  First the RF controller searches for te
 Note, you can rename the codes once learned - they should keep the name after a restart.
 
 
-### Broadlink Hub (`setup`)
+### Broadlink Hub (`BLSETUP` / `BLHUB`)
 
 Primary node. Created automatically on startup.
 
@@ -33,7 +33,7 @@ Primary node. Created automatically on startup.
 Commands accepted: `UPDATE` (force immediate refresh).
 Heartbeat events `DON` / `DOF` are sent each short poll cycle.
 
-### IR Controller (`blirctl`)
+### IR Controller (`BLIRCTL`)
 
 Created automatically under the hub node when the hub is online.
 
@@ -46,11 +46,11 @@ Created automatically under the hub node when the hub is online.
 
 Commands accepted: `LEARNCODE` — starts a 30-second IR learning window. A new IR Code node is added automatically when a code is captured.
 
-### RF Controller (`blrfctl`)
+### RF Controller (`BLRFCTL`)
 
 Same structure as the IR Controller. RF learning uses a 30-second sweep-and-capture window via the `python-broadlink` frequency sweep API (`sweep_frequency` / `check_frequency` / `find_rf_packet`). Falls back to the generic learn flow for devices that do not expose RF sweep.
 
-### IR Code (`blircode`) / RF Code (`blrfcode`)
+### IR Code (`BLIRCODE`) / RF Code (`BLRFCODE`)
 
 One node per learned code, parented to the appropriate controller.
 
@@ -64,7 +64,7 @@ One node per learned code, parented to the appropriate controller.
 
 Commands accepted: `Send Code` — transmits the stored packet via `device.send_data()`.
 
-### Hub Sensor (`blsensor`)
+### Hub Sensor (`BLSENSOR`)
 
 Optional child node created automatically under the hub node when a temperature/humidity sensor cable is detected. One sensor node per hub.
 
