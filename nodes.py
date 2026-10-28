@@ -19,7 +19,7 @@ from config_parser import PluginConfig, build_config, _is_valid_hub_ip
 
 LOGGER = udi_interface.LOGGER
 Custom = udi_interface.Custom
-VERSION = "0.2.10"
+VERSION = "0.2.11"
 DEFAULT_SETUP_ADDRESS = "setup"
 
 MODEL_INDEX_NAMES = {
@@ -397,31 +397,14 @@ def get_profile_driver_names(poly=None, temp_unit: str = "C") -> dict[tuple[str,
     """Return (node_id, driver_id) -> label from dynamic profile or profile/ directory."""
     names: dict[tuple[str, str], str] = {}
 
-    # 1. Fallback base: static profile directory if present, then generated dynamic profile
+    # 1. Fallback base: static profile directory if present
     static_names = _load_static_profile_driver_names()
     if static_names:
         names.update(static_names)
 
+    # 2. Primary source: dynamic profile definition
     generated_profile = _build_profile_definition(temp_unit)
-    for key, label in _extract_driver_names_from_profile_dict(generated_profile).items():
-        names.setdefault(key, label)
-
-    # 2. Primary source: live dynamic profile from Polyglot if available
-    if poly is not None:
-        current_profile_getter = getattr(poly, "getJsonProfile", None)
-        if callable(current_profile_getter):
-            try:
-                live_profile = current_profile_getter({"waitResponse": False})
-            except TypeError:
-                try:
-                    live_profile = current_profile_getter()
-                except Exception:
-                    live_profile = None
-            except Exception:
-                live_profile = None
-            live_names = _extract_driver_names_from_profile_dict(live_profile)
-            if live_names:
-                names.update(live_names)
+    names.update(_extract_driver_names_from_profile_dict(generated_profile))
 
     return names
 
@@ -1462,6 +1445,7 @@ class BroadlinkController(BaseNode):
         self._bootstrap_applied: bool = False
         self._startup_completed: bool = False
         self._missing_ip_notice_set: bool = False
+        self._last_published_profile: dict | None = None
         self._reconcile_seq: int = 0
         self._data_lock = threading.RLock()
         self._node_confirm_lock = threading.Lock()
@@ -1558,7 +1542,7 @@ class BroadlinkController(BaseNode):
         node_queue = getattr(self.poly, "node_queue", [])
         while node_queue:
             time.sleep(0.1)
-        self._publish_profile(wait_response=True)
+        self._publish_profile()
         if not self._ready_signaled:
             LOGGER.info("[_run_startup_once] Signaling polyglot ready (late fallback)")
             self.poly.ready()
@@ -1687,7 +1671,7 @@ class BroadlinkController(BaseNode):
         node_queue = getattr(self.poly, "node_queue", [])
         while node_queue:
             time.sleep(0.1)
-        self._publish_profile(wait_response=True)
+        self._publish_profile()
         self._startup_completed = True
 
     def handle_custom_data(self, custom_data) -> None:
@@ -2330,31 +2314,21 @@ class BroadlinkController(BaseNode):
             return
 
         profile = _build_profile_definition(self.temp_unit)
-
-        current_profile_getter = getattr(self.poly, "getJsonProfile", None)
-        if callable(current_profile_getter):
-            try:
-                current_profile = current_profile_getter({"waitResponse": False})
-                if self._profiles_match(current_profile, profile):
-                    LOGGER.info("[_publish_profile] Profile already up to date, skipping publish")
-                    return
-            except TypeError:
-                current_profile = current_profile_getter()
-                if self._profiles_match(current_profile, profile):
-                    LOGGER.info("[_publish_profile] Profile already up to date, skipping publish")
-                    return
-            except Exception as err:
-                LOGGER.warning("[_publish_profile] Unable to read existing profile: %s", err)
+        if self._profiles_match(self._last_published_profile, profile):
+            LOGGER.debug("[_publish_profile] Profile already published in this session, skipping")
+            return
 
         try:
             LOGGER.debug("[_publish_profile] Publishing profile: %s",
                          json.dumps(profile, sort_keys=True, indent=2, separators=(",", ": ")))
-            update_json_profile(profile, {"waitResponse": wait_response})
+            update_json_profile(profile, {"waitResponse": False})
+            self._last_published_profile = profile
             LOGGER.info("[_publish_profile] Dynamic JSON profile published successfully")
             if self.poly.Notices.get("profile"):
                 self.poly.Notices.delete("profile")
         except TypeError:
             update_json_profile(profile)
+            self._last_published_profile = profile
             LOGGER.info("[_publish_profile] Dynamic JSON profile published successfully")
             if self.poly.Notices.get("profile"):
                 self.poly.Notices.delete("profile")
