@@ -115,9 +115,11 @@ The Broadlink device must already be provisioned onto the local Wi-Fi network be
 ## Persistence & Dynamic Profiles
 
 Learned codes, hub metadata, and custom node names are persisted in PG3 `customdata`. On startup:
+- Initial node reconciliation and dynamic profile loading wait until PG3 finishes its configuration (`CONFIGDONE`).
+- If no valid IPv4 address is provided in `HUB_IP`, a single notice (`IP address must be provided in Configuration (HUB_IP).`) is posted without generating connection error notices.
 - Parent hub (`BLHUB`) and controller (`BLIRCTL` / `BLRFCTL`) nodes are registered and confirmed via `ADDNODEDONE` before child sensor (`BLSENSOR`) and learned code (`BLIRCODE` / `BLRFCODE`) nodes are added.
 - Stored node names are restored so user-defined renames in the Admin Console survive restarts.
-- Dynamic profile files (`profile/editor/custom.xml`, `profile/nodedef/custom.xml`, `profile/nls/en_us.txt`) are generated from `dynamic_profiles.json` and sent to ISY/IoX via `updateProfile()` only after all nodes have finished initializing (`ADDNODEDONE`).
+- Driver names are populated from the dynamic profile definition (or fallback static `profile/` files prior to `CONFIGDONE`), and the dynamic JSON profile is published to PG3 via `updateJsonProfile()` only after PG3 configuration (`CONFIGDONE`) and all node initializations (`ADDNODEDONE`) have completed.
 
 ## Python Interface
 

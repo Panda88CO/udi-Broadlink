@@ -27,6 +27,8 @@ Supported `HUB_IP` formats:
 
 ## Operational Notes
 
+- If no valid IPv4 address is configured in `HUB_IP`, a single notice (`IP address must be provided in Configuration (HUB_IP).`) is displayed until at least one hub IPv4 address is provided.
+- On startup, node reconciliation and dynamic JSON profile loading wait until PG3 finishes its configuration (`CONFIGDONE`) and all nodes have completed initialization (`ADDNODEDONE`).
 - `shortPoll` sends heartbeat (`DON` / `DOF`) updates on the `BLSETUP` node and refreshes sensor readings on each hub's `BLSENSOR` node (if present).
 - `longPoll` checks hub connectivity, reconnects if needed, and syncs persisted node-name information with PG3 `customdata`.
 

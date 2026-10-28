@@ -14,20 +14,20 @@ Scope:
 ## Architecture
 
 - `udibroadlink.py`: Entry point
-- `nodes.py`: Node classes (`SetupController`, `HubNode`, `HubSensorNode`, `IRControllerNode`, `RFControllerNode`, `IRCodeNode`, `RFCodeNode`) and dynamic profile generation
-- `config_parser.py`: PG3 custom parameter parsing (`HUB_IP`, `TEMP_UNIT`)
+- `nodes.py`: Node classes (`BroadlinkController`, `HubNode`, `HubSensorNode`, `IRControllerNode`, `RFControllerNode`, `IRCodeNode`, `RFCodeNode`) and in-code dynamic JSON profile generation (`_build_profile_definition()`)
+- `config_parser.py`: PG3 custom parameter parsing and strict IPv4 validation (`HUB_IP`, `TEMP_UNIT`)
 - `broadlink_client.py`: Wrapper around the `python-broadlink` API (discovery, authentication, IR/RF learning, RF frequency sweep, sensor reads)
 - `code_helpers.py`: RF payload extraction, duplicate signature matching, and unrecognized code logging
-- `dynamic_profiles.json`: Source definitions for dynamic editors, node definitions, and NLS labels
+- `profile/`: Static fallback profile definitions (`editor/custom.xml`, `nodedef/custom.xml`, `nls/en_us.txt`) used before dynamic profile initialization
 
 Node hierarchy in ISY/IoX:
 - `setup` (`BLSETUP`) — primary coordinator node
-- `hub_<id>` (`BLHUB`) — per-hub status node
-  - `sens_<id>` (`BLSENSOR`) — optional temperature/humidity child node
-- `ir_<id>` (`BLIRCTL`) — per-hub IR learning controller
-  - `irc_<id>_<hash>` (`BLIRCODE`) — learned IR code child nodes
-- `rf_<id>` (`BLRFCTL`) — per-hub RF learning controller
-  - `rfc_<id>_<hash>` (`BLRFCODE`) — learned RF code child nodes
+- `<mac>` (`BLHUB`) — per-hub status node (12-hex MAC address)
+  - `<mac>se` (`BLSENSOR`) — optional temperature/humidity child node
+- `<mac>ir` (`BLIRCTL`) — per-hub IR learning controller
+  - `<mac[-10:]>i<NNN>` (`BLIRCODE`) — learned IR code child nodes
+- `<mac>rf` (`BLRFCTL`) — per-hub RF learning controller
+  - `<mac[-10:]>r<NNN>` (`BLRFCODE`) — learned RF code child nodes
 
 All `nodedef` IDs (`BLSETUP`, `BLHUB`, `BLIRCTL`, `BLRFCTL`, `BLIRCODE`, `BLRFCODE`, `BLSENSOR`) and `editor` IDs (`HUBSTATUS`, `STATUSINDEX`, `BINARYINDEX`, `MODELINDEX`, `RAWVALUE`, `UNIXTIME`, `IRLEARNSTATUS`, `RFLEARNSTATUS`, `TXSTATUS`, `TXRESULT`, `FREQUENCYMHZ`, `BLTEMP`, `BLHUM`) are strictly uppercase alphanumeric with no special characters.
 
@@ -36,17 +36,18 @@ All `nodedef` IDs (`BLSETUP`, `BLHUB`, `BLIRCTL`, `BLRFCTL`, `BLIRCODE`, `BLRFCO
 Configure custom parameters in the PG3 web UI:
 
 Required parameters:
-- `HUB_IP`: Single IP address (e.g., `192.168.1.120`) or multiple space/comma/newline-separated IPs (e.g., `192.168.1.120 192.168.1.121`)
+- `HUB_IP`: Single IPv4 address (e.g., `192.168.1.120`) or multiple space/comma/semicolon/newline-separated IPv4 addresses (e.g., `192.168.1.120 192.168.1.121`). Non-IPv4 placeholder text is ignored, and when no valid IPv4 address is configured, a single notice (`IP address must be provided in Configuration (HUB_IP).`) is displayed.
 
 Optional parameters:
 - `TEMP_UNIT`: `C` (default) or `F` for temperature sensor display unit
 
 ## Runtime Behavior
 
-- On startup (`START`) and parameter updates (`CUSTOMPARAMS`), `SetupController` reconciles the node hierarchy once both events have fired:
-  - Adds and waits for confirmation (`ADDNODEDONE`) of each parent `BLHUB`, `BLIRCTL`, and `BLRFCTL` node before adding child `BLSENSOR`, `BLIRCODE`, and `BLRFCODE` nodes.
+- On startup, `BroadlinkController` registers `BLSETUP`, calls `poly.ready()`, and waits for PG3 to finish delivering its initial configuration (`CONFIGDONE` / `config_done`):
+  - `handle_params` parses `CUSTOMPARAMS` and defers initial node reconciliation and dynamic profile loading until `CONFIGDONE`.
+  - Once `CONFIGDONE` fires, `BroadlinkController` adds and waits for confirmation (`ADDNODEDONE`) of each parent `BLHUB`, `BLIRCTL`, and `BLRFCTL` node before adding child `BLSENSOR`, `BLIRCODE`, and `BLRFCODE` nodes.
   - Defers all `setDriver()` updates on every node until its own `ADDNODEDONE` event confirms initialization (`nodeDefineDone = True`).
-  - Generates dynamic profile files (`profile/editor/custom.xml`, `profile/nodedef/custom.xml`, `profile/nls/en_us.txt`) from `dynamic_profiles.json` (falling back to static `profile/` files if needed) and calls `poly.updateProfile()` only after all nodes have finished initializing.
+  - Populates driver `name` fields from static `profile/` definitions prior to `CONFIGDONE` and from the in-code dynamic profile (`_build_profile_definition()`) after `CONFIGDONE`, publishing the dynamic JSON profile via `poly.updateJsonProfile(profile, {"waitResponse": False})` only after PG3 configuration (`CONFIGDONE`) and all node initializations (`ADDNODEDONE`) have completed.
 - `shortPoll`: Toggles heartbeat (`DON` / `DOF`) on `BLSETUP` and refreshes `BLSENSOR` readings.
 - `longPoll`: Verifies hub connectivity, reconnects offline hubs, and syncs user-customized node names to `customdata`.
 
