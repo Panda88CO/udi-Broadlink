@@ -19,7 +19,7 @@ from config_parser import PluginConfig, build_config, _is_valid_hub_ip
 
 LOGGER = udi_interface.LOGGER
 Custom = udi_interface.Custom
-VERSION = "0.2.11"
+VERSION = "0.2.12"
 DEFAULT_SETUP_ADDRESS = "setup"
 
 MODEL_INDEX_NAMES = {
@@ -393,7 +393,7 @@ def _extract_driver_names_from_profile_dict(profile: dict | None) -> dict[tuple[
     return names
 
 
-def get_profile_driver_names(poly=None, temp_unit: str = "C") -> dict[tuple[str, str], str]:
+def get_profile_driver_names(poly=None, temp_unit: str = "C", allow_dynamic: bool = True) -> dict[tuple[str, str], str]:
     """Return (node_id, driver_id) -> label from dynamic profile or profile/ directory."""
     names: dict[tuple[str, str], str] = {}
 
@@ -402,9 +402,10 @@ def get_profile_driver_names(poly=None, temp_unit: str = "C") -> dict[tuple[str,
     if static_names:
         names.update(static_names)
 
-    # 2. Primary source: dynamic profile definition
-    generated_profile = _build_profile_definition(temp_unit)
-    names.update(_extract_driver_names_from_profile_dict(generated_profile))
+    # 2. Primary source: dynamic profile definition (loaded once PG3 configuration is done)
+    if allow_dynamic or not names:
+        generated_profile = _build_profile_definition(temp_unit)
+        names.update(_extract_driver_names_from_profile_dict(generated_profile))
 
     return names
 
@@ -448,7 +449,15 @@ class BaseNode(udi_interface.Node):
             if not target_id or not isinstance(drivers, list):
                 return
             poly = getattr(self, "poly", None)
-            names = get_profile_driver_names(poly=poly)
+            root_ctrl = self
+            for _ in range(3):
+                parent_ctrl = getattr(root_ctrl, "controller", None)
+                if parent_ctrl is None or parent_ctrl is root_ctrl:
+                    break
+                root_ctrl = parent_ctrl
+            config_done = bool(getattr(root_ctrl, "_config_done", False))
+            temp_unit = str(getattr(root_ctrl, "temp_unit", "C") or "C")
+            names = get_profile_driver_names(poly=poly, temp_unit=temp_unit, allow_dynamic=config_done)
             for d in drivers:
                 if not isinstance(d, dict):
                     continue
@@ -1444,10 +1453,16 @@ class BroadlinkController(BaseNode):
         self._ready_signaled: bool = False
         self._bootstrap_applied: bool = False
         self._startup_completed: bool = False
+        self._config_done: bool = False
+        self._config_done_event = threading.Event()
+        self._pending_config_reconcile: bool = False
+        self._pending_profile_publish: bool = False
+        self._config_error: str | None = None
         self._missing_ip_notice_set: bool = False
         self._last_published_profile: dict | None = None
         self._reconcile_seq: int = 0
         self._data_lock = threading.RLock()
+        self._reconcile_lock = threading.RLock()
         self._node_confirm_lock = threading.Lock()
         self._node_confirm_events: dict[str, threading.Event] = {}
         self._confirmed_node_addresses: set[str] = set()
@@ -1510,44 +1525,18 @@ class BroadlinkController(BaseNode):
 
     def _run_startup_once(self, source: str) -> None:
         """Execute startup initialization once, even if START was missed."""
-        if self._startup_completed:
+        if self._startup_completed and not self._pending_config_reconcile:
             return
-        self._startup_completed = True
         if source != "START":
             LOGGER.debug("[_run_startup_once] Running startup via %s", source)
-        if not self._node_added:
-            # START can arrive before CUSTOMDATA; ensure the setup node exists.
-            self._ensure_registered()
-        if self._wait_for_node_confirmed(self.address, timeout=15.0):
-            self.nodeDefineDone = True
-        self._bootstrap_config_if_needed()
-        self._set("TIME", int(time.time()), 151)
-        if not self.config.has_hub:
-            self._set_missing_ip_notice()
-            self._set("ST", 0)
-            self._set("GV0", 0)
-            if not self._ready_signaled:
-                self.poly.ready()
-                self._ready_signaled = True
-            return
-        if not self.hub_nodes:
-            # Reconcile hub nodes here as a fallback because some PG3 startup
-            # sequences deliver POLL before START/CUSTOMPARAMS settle.
-            self._reconcile_hub_nodes()
-        for hub_node in list(self.hub_nodes.values()):
-            if hub_node.nodeDefineDone and not hub_node._reconciled_once:
-                hub_node.start()
-        self._update_overall_status()
-        # Wait for all nodes to be done before publishing dynamic profile
-        node_queue = getattr(self.poly, "node_queue", [])
-        while node_queue:
-            time.sleep(0.1)
-        self._publish_profile()
-        if not self._ready_signaled:
-            LOGGER.info("[_run_startup_once] Signaling polyglot ready (late fallback)")
-            self.poly.ready()
-            self._ready_signaled = True
-        LOGGER.info("[_run_startup_once] Startup reconciliation complete via %s", source)
+        if not self._config_done:
+            LOGGER.debug("[_run_startup_once] Waiting for PG3 CONFIGDONE before completing startup via %s", source)
+            if not self._config_done_event.wait(timeout=15.0) and not self._config_done:
+                LOGGER.warning("[_run_startup_once] CONFIGDONE not observed within timeout; proceeding via %s", source)
+                self._config_done = True
+                self._config_done_event.set()
+        if not self._startup_completed or self._pending_config_reconcile:
+            self._apply_active_config(source)
 
     def _scan_for_duplicate_codes(self) -> None:
         """Log duplicate learned-code payloads within each hub."""
@@ -1621,58 +1610,103 @@ class BroadlinkController(BaseNode):
         LOGGER.debug("[node_deleted] Node %s deletion complete", address or "unknown")
 
     def config_done(self, _config=None, *_args, **_kwargs) -> None:
-        LOGGER.debug("[config_done] Configuration done")
+        LOGGER.info("[config_done] PG3 configuration done (CONFIGDONE)")
+        self._config_done = True
+        self._config_done_event.set()
+        self.apply_profile_driver_names()
+        if self._pending_config_reconcile or self._bootstrap_applied or not self._startup_completed:
+            self._apply_active_config("CONFIGDONE")
+        elif self._pending_profile_publish:
+            self._publish_profile()
 
     def handle_params(self, custom_params) -> None:
         LOGGER.info("[handle_params] CUSTOMPARAMS event received")
         self._bootstrap_applied = True
         self._ensure_registered()
-        if self._wait_for_node_confirmed(self.address, timeout=15.0):
-            self.nodeDefineDone = True
         self.parameters.load(custom_params)
 
         prev_temp_unit = self.temp_unit
         try:
             self.config = build_config(custom_params)
+            self._config_error = None
         except Exception as err:
-            self._missing_ip_notice_set = False
-            self.poly.Notices.clear()
-            self.poly.Notices["config"] = f"Invalid configuration format: {err}"
+            self._config_error = str(err)
             LOGGER.error("[handle_params] Failed to parse custom params: %s", err)
-            if self._node_added:
-                self._set("ST", 0)
-                self._set("GV0", 0)
-            self._startup_completed = True
-            return
 
         self.temp_unit = _parse_temp_unit(custom_params)
-
-        if not self.config.has_hub:
-            self._set_missing_ip_notice()
-            if self.hub_nodes:
-                self._prune_unconfigured_hubs("no-ip")
-            if self._node_added:
-                self._set("ST", 0)
-                self._set("GV0", 0)
-            self._startup_completed = True
-            return
-
-        self._missing_ip_notice_set = False
-        self.poly.Notices.clear()
-
-        LOGGER.info("[handle_params] Configured hub IPs: %s", self.config.hub_ips)
-        if self._node_added:
-            self._set("GV0", len(self.config.hub_ips))
-
         if self.temp_unit != prev_temp_unit:
             LOGGER.info("[handle_params] TEMP_UNIT changed from %s to %s", prev_temp_unit, self.temp_unit)
 
-        self._reconcile_hub_nodes()
-        node_queue = getattr(self.poly, "node_queue", [])
-        while node_queue:
-            time.sleep(0.1)
-        self._publish_profile()
-        self._startup_completed = True
+        if not self._config_done:
+            self._pending_config_reconcile = True
+            self._pending_profile_publish = True
+            LOGGER.info(
+                "[handle_params] Deferring node reconciliation and dynamic profile load until PG3 finishes configuration (CONFIGDONE)"
+            )
+            return
+
+        self._apply_active_config("CUSTOMPARAMS")
+
+    def _apply_active_config(self, source: str) -> None:
+        """Apply parsed configuration, reconcile nodes, and load dynamic profile once PG3 config is done."""
+        with self._reconcile_lock:
+            self._pending_config_reconcile = False
+            if not self._node_added:
+                self._ensure_registered()
+            if self._wait_for_node_confirmed(self.address, timeout=15.0):
+                self.nodeDefineDone = True
+            if not self._bootstrap_applied:
+                self._bootstrap_config_if_needed()
+            if self._node_added:
+                self._sync_node_names_from_db()
+            self._set("TIME", int(time.time()), 151)
+
+            if self._config_error:
+                self._missing_ip_notice_set = False
+                self.poly.Notices.clear()
+                self.poly.Notices["config"] = f"Invalid configuration format: {self._config_error}"
+                if self._node_added:
+                    self._set("ST", 0)
+                    self._set("GV0", 0)
+                self._startup_completed = True
+                return
+
+            if not self.config.has_hub:
+                self._set_missing_ip_notice()
+                if self.hub_nodes:
+                    self._prune_unconfigured_hubs("no-ip")
+                if self._node_added:
+                    self._set("ST", 0)
+                    self._set("GV0", 0)
+                self._startup_completed = True
+                if not self._ready_signaled:
+                    self.poly.ready()
+                    self._ready_signaled = True
+                return
+
+            self._missing_ip_notice_set = False
+            self.poly.Notices.clear()
+
+            LOGGER.info("[_apply_active_config][%s] Configured hub IPs: %s", source, self.config.hub_ips)
+            if self._node_added:
+                self._set("GV0", len(self.config.hub_ips))
+
+            self._reconcile_hub_nodes()
+            for hub_node in list(self.hub_nodes.values()):
+                if hub_node.nodeDefineDone and not hub_node._reconciled_once:
+                    hub_node.start()
+            self._update_overall_status()
+
+            node_queue = getattr(self.poly, "node_queue", [])
+            while node_queue:
+                time.sleep(0.1)
+            self._publish_profile()
+            if not self._ready_signaled:
+                LOGGER.info("[_apply_active_config] Signaling polyglot ready (late fallback)")
+                self.poly.ready()
+                self._ready_signaled = True
+            self._startup_completed = True
+            LOGGER.info("[_apply_active_config] Startup/configuration reconciliation complete via %s", source)
 
     def handle_custom_data(self, custom_data) -> None:
         # PG3 can emit empty custom payload callbacks (e.g. customtypeddata),
@@ -2306,6 +2340,14 @@ class BroadlinkController(BaseNode):
                 self.data_store["sensor_states"] = {legacy_mac: old_sensor_state}
 
     def _publish_profile(self, wait_response: bool = False) -> None:
+        if not self._config_done:
+            self._pending_profile_publish = True
+            LOGGER.info(
+                "[_publish_profile] Waiting for PG3 configuration to finish (CONFIGDONE) before loading dynamic profile"
+            )
+            return
+
+        self._pending_profile_publish = False
         update_json_profile = getattr(self.poly, "updateJsonProfile", None)
         if not callable(update_json_profile):
             LOGGER.error("[_publish_profile] updateJsonProfile is unavailable")
